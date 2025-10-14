@@ -1,0 +1,26 @@
+{
+  "name": "ofm",
+  "version": "0.0.1",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-kit sync && tsc --noEmit",
+    "check:watch": "svelte-kit sync && tsc --noEmit --watch",
+    "db:seed": "bun run scripts/seed.ts"
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-auto": "^6.1.1",
+    "@sveltejs/kit": "^2.46.5",
+    "@types/bun": "latest",
+    "svelte": "^5.39.12",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.9"
+  },
+  "dependencies": {
+    "leaflet": "^1.9.4",
+    "mongodb": "^6.20.0"
+  }
+}
