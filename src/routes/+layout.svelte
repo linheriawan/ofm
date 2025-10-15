@@ -4,6 +4,7 @@
 	let isMenuOpen = false;
 	let transportDropdownOpen = false;
 	let meetingDropdownOpen = false;
+	let adminDropdownOpen = false;
 
 	function toggleMenu() {
 		isMenuOpen = !isMenuOpen;
@@ -12,16 +13,25 @@
 	function toggleTransportDropdown() {
 		transportDropdownOpen = !transportDropdownOpen;
 		meetingDropdownOpen = false;
+		adminDropdownOpen = false;
 	}
 
 	function toggleMeetingDropdown() {
 		meetingDropdownOpen = !meetingDropdownOpen;
 		transportDropdownOpen = false;
+		adminDropdownOpen = false;
+	}
+
+	function toggleAdminDropdown() {
+		adminDropdownOpen = !adminDropdownOpen;
+		transportDropdownOpen = false;
+		meetingDropdownOpen = false;
 	}
 
 	function closeDropdowns() {
 		transportDropdownOpen = false;
 		meetingDropdownOpen = false;
+		adminDropdownOpen = false;
 	}
 </script>
 
@@ -54,9 +64,7 @@
 						<div class="dropdown-menu">
 							<a href="/transportation" on:click={closeDropdowns}>Overview</a>
 							<a href="/transportation/request" on:click={closeDropdowns}>Request Transport</a>
-							<a href="/transportation/voucher" on:click={closeDropdowns}>Request Voucher</a>
-							<a href="/transportation/bookings" on:click={closeDropdowns}>My Bookings</a>
-							<a href="/transportation/vehicles" on:click={closeDropdowns}>Vehicles</a>
+							<a href="/transportation/bookings" on:click={closeDropdowns}>All Requests</a>
 							<a href="/transportation/tracking" on:click={closeDropdowns}>Track Vehicles</a>
 						</div>
 					{/if}
@@ -72,16 +80,29 @@
 						<div class="dropdown-menu">
 							<a href="/meeting" on:click={closeDropdowns}>Overview</a>
 							<a href="/meeting/book" on:click={closeDropdowns}>Book Room</a>
-							<a href="/meeting/bookings" on:click={closeDropdowns}>My Bookings</a>
-							<a href="/meeting/rooms" on:click={closeDropdowns}>All Rooms</a>
+							<a href="/meeting/bookings" on:click={closeDropdowns}>All Bookings</a>
 							<a href="/meeting/calendar" on:click={closeDropdowns}>Calendar</a>
 						</div>
 					{/if}
 				</li>
-				<li>
-					<a href="/admin" class:active={$page.url.pathname.startsWith('/admin')} on:click={closeDropdowns}>
-						Admin
-					</a>
+				<li class="dropdown">
+					<button
+						class="dropdown-trigger {$page.url.pathname.startsWith('/admin') ? 'active' : ''}"
+						on:click={toggleAdminDropdown}
+					>
+						Admin ▾
+					</button>
+					{#if adminDropdownOpen}
+						<div class="dropdown-menu">
+							<a href="/admin" on:click={closeDropdowns}>Dashboard</a>
+							<a href="/admin/vehicles" on:click={closeDropdowns}>Vehicles</a>
+							<a href="/admin/drivers" on:click={closeDropdowns}>Drivers</a>
+							<a href="/admin/rooms" on:click={closeDropdowns}>Meeting Rooms</a>
+							<a href="/admin/users" on:click={closeDropdowns}>Users</a>
+							<a href="/admin/locations" on:click={closeDropdowns}>Locations</a>
+							<a href="/admin/room-displays" on:click={closeDropdowns}>Room Displays</a>
+						</div>
+					{/if}
 				</li>
 			</ul>
 

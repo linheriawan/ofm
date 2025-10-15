@@ -5,89 +5,114 @@
 	// Get room ID from URL
 	const roomId = $page.params.roomId;
 
-	// Mock data - will be replaced with API call
 	let roomData = {
-		roomId: 'ROOM-A301',
-		roomName: 'Board Room A-301',
-		floor: '3',
-		capacity: 20,
+		roomId: '',
+		roomName: '',
+		roomNumber: '',
+		floor: '',
+		capacity: 0,
 		status: 'available' as 'available' | 'occupied' | 'upcoming',
 		currentMeeting: null as any,
 		nextMeeting: null as any,
-		todaySchedule: [] as any[]
+		todaySchedule: [] as any[],
+		isAvailable: true,
+		availableUntil: null as Date | null
 	};
 
 	let currentTime = new Date();
 	let isCheckinMode = false;
+	let loading = true;
+	let error = '';
 
-	// Mock schedule
-	const mockSchedule = [
-		{
-			id: 'MTG-001',
-			title: 'Board Meeting',
-			organizer: 'John Smith',
-			startTime: new Date(new Date().setHours(14, 0, 0)),
-			endTime: new Date(new Date().setHours(16, 0, 0)),
-			participants: 8,
-			status: 'scheduled'
-		},
-		{
-			id: 'MTG-002',
-			title: 'Team Sync',
-			organizer: 'Jane Doe',
-			startTime: new Date(new Date().setHours(16, 30, 0)),
-			endTime: new Date(new Date().setHours(17, 30, 0)),
-			participants: 5,
-			status: 'scheduled'
-		}
-	];
-
-	// Update current time every second
+	// Update current time every second and refresh data every 30 seconds
 	onMount(() => {
-		const interval = setInterval(() => {
+		const timeInterval = setInterval(() => {
 			currentTime = new Date();
-			updateRoomStatus();
 		}, 1000);
 
+		// Initial load
 		loadSchedule();
 
-		return () => clearInterval(interval);
+		// Refresh data every 30 seconds
+		const refreshInterval = setInterval(() => {
+			loadSchedule();
+		}, 30000);
+
+		return () => {
+			clearInterval(timeInterval);
+			clearInterval(refreshInterval);
+		};
 	});
 
-	function loadSchedule() {
-		roomData.todaySchedule = mockSchedule;
-		updateRoomStatus();
+	async function loadSchedule() {
+		try {
+			const response = await fetch(`/api/rooms/${roomId}/schedule`);
+			const result = await response.json();
+
+			if (result.success) {
+				const data = result.data;
+				roomData.roomId = data.room.roomId;
+				roomData.roomName = data.room.roomName;
+				roomData.roomNumber = data.room.roomNumber || '';
+				roomData.floor = data.room.floor || '';
+				roomData.capacity = data.room.capacity;
+				roomData.todaySchedule = data.todaySchedule.map((booking: any) => ({
+					id: booking.bookingId,
+					title: booking.meetingTitle,
+					organizer: booking.organizerId,
+					startTime: new Date(booking.startTime),
+					endTime: new Date(booking.endTime),
+					participants: booking.participants.length,
+					status: booking.status
+				}));
+				roomData.currentMeeting = data.current ? {
+					id: data.current.bookingId,
+					title: data.current.meetingTitle,
+					organizer: data.current.organizerId,
+					startTime: new Date(data.current.startTime),
+					endTime: new Date(data.current.endTime),
+					participants: data.current.participants.length,
+					status: data.current.status
+				} : null;
+				roomData.nextMeeting = data.next ? {
+					id: data.next.bookingId,
+					title: data.next.meetingTitle,
+					organizer: data.next.organizerId,
+					startTime: new Date(data.next.startTime),
+					endTime: new Date(data.next.endTime),
+					participants: data.next.participants.length,
+					status: data.next.status
+				} : null;
+				roomData.isAvailable = data.isAvailable;
+				roomData.availableUntil = data.availableUntil ? new Date(data.availableUntil) : null;
+
+				updateRoomStatus();
+				loading = false;
+			} else {
+				error = result.error || 'Failed to load schedule';
+				loading = false;
+			}
+		} catch (err) {
+			error = 'Failed to connect to server';
+			loading = false;
+			console.error('Error loading schedule:', err);
+		}
 	}
 
 	function updateRoomStatus() {
-		const now = currentTime.getTime();
-
-		// Check for current meeting
-		const current = roomData.todaySchedule.find(
-			meeting => now >= meeting.startTime.getTime() && now < meeting.endTime.getTime()
-		);
-
-		if (current) {
+		if (roomData.currentMeeting) {
 			roomData.status = 'occupied';
-			roomData.currentMeeting = current;
-		} else {
-			roomData.status = 'available';
-			roomData.currentMeeting = null;
-		}
-
-		// Find next meeting
-		const upcoming = roomData.todaySchedule.find(
-			meeting => meeting.startTime.getTime() > now
-		);
-
-		if (upcoming && !current) {
-			const minutesUntil = Math.floor((upcoming.startTime.getTime() - now) / 60000);
+		} else if (roomData.nextMeeting) {
+			const now = currentTime.getTime();
+			const minutesUntil = Math.floor((roomData.nextMeeting.startTime.getTime() - now) / 60000);
 			if (minutesUntil <= 30) {
 				roomData.status = 'upcoming';
+			} else {
+				roomData.status = 'available';
 			}
+		} else {
+			roomData.status = 'available';
 		}
-
-		roomData.nextMeeting = upcoming;
 	}
 
 	function formatTime(date: Date): string {
@@ -109,9 +134,22 @@
 </script>
 
 <svelte:head>
-	<title>Room Display - {roomData.roomName}</title>
+	<title>Room Display - {roomData.roomName || 'Loading...'}</title>
 </svelte:head>
 
+{#if loading}
+	<div class="loading-screen">
+		<div class="loading-spinner"></div>
+		<p>Loading room information...</p>
+	</div>
+{:else if error}
+	<div class="error-screen">
+		<div class="error-icon">⚠️</div>
+		<h2>Unable to Load Room</h2>
+		<p>{error}</p>
+		<button onclick={() => loadSchedule()} class="retry-btn">Retry</button>
+	</div>
+{:else}
 <div class="room-display {roomData.status}">
 	<!-- Header -->
 	<div class="header">
@@ -153,7 +191,7 @@
 					<p class="time-range">{formatTimeRange(roomData.currentMeeting.startTime, roomData.currentMeeting.endTime)}</p>
 					<p class="participants">{roomData.currentMeeting.participants} participants</p>
 
-					<button class="checkin-btn" on:click={handleCheckin}>
+					<button class="checkin-btn" onclick={handleCheckin}>
 						Check In
 					</button>
 				</div>
@@ -208,15 +246,84 @@
 				</div>
 				<input type="text" placeholder="Or enter Employee ID" class="employee-id-input">
 				<div class="modal-actions">
-					<button class="btn-cancel" on:click={() => isCheckinMode = false}>Cancel</button>
-					<button class="btn-submit" on:click={handleCheckinSubmit}>Check In</button>
+					<button class="btn-cancel" onclick={() => isCheckinMode = false}>Cancel</button>
+					<button class="btn-submit" onclick={handleCheckinSubmit}>Check In</button>
 				</div>
 			</div>
 		</div>
 	{/if}
 </div>
+{/if}
 
 <style>
+	/* Loading and Error States */
+	.loading-screen, .error-screen {
+		min-height: 100vh;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		background: linear-gradient(135deg, #e0e7ff 0%, #dbeafe 100%);
+		padding: 2rem;
+	}
+
+	.loading-spinner {
+		width: 80px;
+		height: 80px;
+		border: 8px solid #e2e8f0;
+		border-top-color: #667eea;
+		border-radius: 50%;
+		animation: spin 1s linear infinite;
+	}
+
+	@keyframes spin {
+		to { transform: rotate(360deg); }
+	}
+
+	.loading-screen p {
+		margin-top: 2rem;
+		font-size: 1.5rem;
+		color: #666;
+	}
+
+	.error-screen {
+		background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+	}
+
+	.error-icon {
+		font-size: 5rem;
+		margin-bottom: 1rem;
+	}
+
+	.error-screen h2 {
+		font-size: 2rem;
+		color: #333;
+		margin: 0 0 1rem 0;
+	}
+
+	.error-screen p {
+		font-size: 1.2rem;
+		color: #666;
+		margin-bottom: 2rem;
+	}
+
+	.retry-btn {
+		padding: 1rem 2rem;
+		font-size: 1.2rem;
+		font-weight: 600;
+		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+		color: white;
+		border: none;
+		border-radius: 8px;
+		cursor: pointer;
+		transition: transform 0.2s;
+	}
+
+	.retry-btn:hover {
+		transform: scale(1.05);
+	}
+
+	/* Room Display */
 	.room-display {
 		min-height: 100vh;
 		padding: 2rem;

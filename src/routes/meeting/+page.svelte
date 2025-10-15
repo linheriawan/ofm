@@ -1,5 +1,92 @@
 <script lang="ts">
+	import type { Room, MeetingBooking } from '$lib/types';
+
 	let title = 'Meeting Room Management';
+
+	// State
+	let rooms: Room[] = $state([]);
+	let bookings: MeetingBooking[] = $state([]);
+	let loading = $state(true);
+
+	// Statistics
+	let roomStats = $state({
+		total: 0,
+		available: 0,
+		occupied: 0,
+		maintenance: 0
+	});
+
+	let todayStats = $state({
+		total: 0,
+		ongoing: 0,
+		upcoming: 0,
+		completed: 0
+	});
+
+	async function fetchData() {
+		loading = true;
+		try {
+			// Fetch rooms
+			const roomsRes = await fetch('/api/rooms?limit=100');
+			const roomsData = await roomsRes.json();
+			if (roomsData.success) {
+				rooms = roomsData.data;
+				roomStats.total = rooms.length;
+				roomStats.available = rooms.filter((r) => r.status === 'available').length;
+				roomStats.occupied = rooms.filter((r) => r.status === 'occupied').length;
+				roomStats.maintenance = rooms.filter((r) => r.status === 'maintenance').length;
+			}
+
+			// Fetch bookings (today's and upcoming)
+			const today = new Date();
+			today.setHours(0, 0, 0, 0);
+			const tomorrow = new Date(today);
+			tomorrow.setDate(tomorrow.getDate() + 1);
+
+			const bookingsRes = await fetch(
+				`/api/meeting-bookings?fromDate=${today.toISOString()}&limit=20`
+			);
+			const bookingsData = await bookingsRes.json();
+			if (bookingsData.success) {
+				bookings = bookingsData.data;
+
+				// Calculate today's stats
+				const now = new Date();
+				const todayBookings = bookings.filter((b) => {
+					const start = new Date(b.startTime);
+					return start >= today && start < tomorrow;
+				});
+
+				todayStats.total = todayBookings.length;
+				todayStats.ongoing = todayBookings.filter((b) => {
+					const start = new Date(b.startTime);
+					const end = new Date(b.endTime);
+					return start <= now && end >= now && b.status === 'ongoing';
+				}).length;
+				todayStats.upcoming = todayBookings.filter((b) => {
+					const start = new Date(b.startTime);
+					return start > now && b.status === 'scheduled';
+				}).length;
+				todayStats.completed = todayBookings.filter((b) => b.status === 'completed').length;
+			}
+		} catch (error) {
+			console.error('Error fetching data:', error);
+		} finally {
+			loading = false;
+		}
+	}
+
+	function formatTime(date: Date | string) {
+		const d = new Date(date);
+		return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+	}
+
+	function formatTimeRange(startTime: Date | string, endTime: Date | string) {
+		return `${formatTime(startTime)} - ${formatTime(endTime)}`;
+	}
+
+	// Load data on mount
+	fetchData();
 </script>
 
 <svelte:head>
@@ -14,13 +101,13 @@
 
 	<div class="actions-bar">
 		<a href="/meeting/book" class="btn-primary">
-			📅 Book Meeting Room
+			📅 New Booking
 		</a>
-		<a href="/meeting/online" class="btn-secondary">
-			💻 Create Online Meeting
+		<a href="/meeting/bookings" class="btn-secondary">
+			📋 All Bookings
 		</a>
 		<a href="/meeting/calendar" class="btn-secondary">
-			📆 View Calendar
+			📆 Calendar
 		</a>
 	</div>
 
@@ -28,49 +115,57 @@
 		<!-- Room Availability -->
 		<div class="card">
 			<h2>Room Availability</h2>
-			<div class="info-grid">
-				<div class="info-item">
-					<span class="label">Total Rooms</span>
-					<span class="value">12</span>
+			{#if loading}
+				<div class="loading-small">Loading...</div>
+			{:else}
+				<div class="info-grid">
+					<div class="info-item">
+						<span class="label">Total Rooms</span>
+						<span class="value">{roomStats.total}</span>
+					</div>
+					<div class="info-item">
+						<span class="label">Available Now</span>
+						<span class="value success">{roomStats.available}</span>
+					</div>
+					<div class="info-item">
+						<span class="label">Occupied</span>
+						<span class="value warning">{roomStats.occupied}</span>
+					</div>
+					<div class="info-item">
+						<span class="label">Maintenance</span>
+						<span class="value danger">{roomStats.maintenance}</span>
+					</div>
 				</div>
-				<div class="info-item">
-					<span class="label">Available Now</span>
-					<span class="value success">8</span>
-				</div>
-				<div class="info-item">
-					<span class="label">Occupied</span>
-					<span class="value warning">3</span>
-				</div>
-				<div class="info-item">
-					<span class="label">Maintenance</span>
-					<span class="value danger">1</span>
-				</div>
-			</div>
-			<a href="/meeting/rooms" class="link-btn">View All Rooms →</a>
+			{/if}
+			<a href="/admin/rooms" class="link-btn">View All Rooms →</a>
 		</div>
 
 		<!-- Meeting Statistics -->
 		<div class="card">
 			<h2>Today's Statistics</h2>
-			<div class="info-grid">
-				<div class="info-item">
-					<span class="label">Total Bookings</span>
-					<span class="value">15</span>
+			{#if loading}
+				<div class="loading-small">Loading...</div>
+			{:else}
+				<div class="info-grid">
+					<div class="info-item">
+						<span class="label">Total Bookings</span>
+						<span class="value">{todayStats.total}</span>
+					</div>
+					<div class="info-item">
+						<span class="label">Ongoing</span>
+						<span class="value success">{todayStats.ongoing}</span>
+					</div>
+					<div class="info-item">
+						<span class="label">Upcoming</span>
+						<span class="value">{todayStats.upcoming}</span>
+					</div>
+					<div class="info-item">
+						<span class="label">Completed</span>
+						<span class="value">{todayStats.completed}</span>
+					</div>
 				</div>
-				<div class="info-item">
-					<span class="label">Ongoing</span>
-					<span class="value success">3</span>
-				</div>
-				<div class="info-item">
-					<span class="label">Upcoming</span>
-					<span class="value">8</span>
-				</div>
-				<div class="info-item">
-					<span class="label">Completed</span>
-					<span class="value">4</span>
-				</div>
-			</div>
-			<a href="/meeting/reports" class="link-btn">View Reports →</a>
+			{/if}
+			<a href="/meeting/bookings" class="link-btn">View All Bookings →</a>
 		</div>
 
 		<!-- License Status -->
@@ -102,91 +197,62 @@
 			<a href="/meeting/licenses" class="link-btn">Manage Licenses →</a>
 		</div>
 
-		<!-- Upcoming Meetings -->
-		<div class="card wide">
-			<h2>Upcoming Meetings</h2>
-			<div class="table-container">
-				<table>
-					<thead>
-						<tr>
-							<th>Time</th>
-							<th>Meeting Title</th>
-							<th>Type</th>
-							<th>Room/Link</th>
-							<th>Organizer</th>
-							<th>Participants</th>
-							<th>Status</th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr>
-							<td>14:00 - 16:00</td>
-							<td>Board Meeting</td>
-							<td><span class="meeting-type offline">Offline</span></td>
-							<td>Room A-301</td>
-							<td>John Smith</td>
-							<td>8</td>
-							<td><span class="status scheduled">Scheduled</span></td>
-						</tr>
-						<tr>
-							<td>13:00 - 14:00</td>
-							<td>Project Kickoff</td>
-							<td><span class="meeting-type online">Online</span></td>
-							<td>Zoom Meeting</td>
-							<td>Jane Doe</td>
-							<td>15</td>
-							<td><span class="status ongoing">Ongoing</span></td>
-						</tr>
-						<tr>
-							<td>16:00 - 17:00</td>
-							<td>Team Sync</td>
-							<td><span class="meeting-type hybrid">Hybrid</span></td>
-							<td>Room B-102</td>
-							<td>Bob Wilson</td>
-							<td>12</td>
-							<td><span class="status scheduled">Scheduled</span></td>
-						</tr>
-					</tbody>
-				</table>
-			</div>
+		<!-- Meeting Type Distribution -->
+		<div class="card">
+			<h2>Meeting Types Today</h2>
+			{#if loading}
+				<div class="loading-small">Loading...</div>
+			{:else}
+				<div class="info-grid">
+					<div class="info-item">
+						<span class="label">Onsite</span>
+						<span class="value"
+							>{bookings.filter((b) => b.meetingType === 'onsite').length}</span
+						>
+					</div>
+					<div class="info-item">
+						<span class="label">Online</span>
+						<span class="value"
+							>{bookings.filter((b) => b.meetingType === 'online').length}</span
+						>
+					</div>
+					<div class="info-item">
+						<span class="label">Hybrid</span>
+						<span class="value"
+							>{bookings.filter((b) => b.meetingType === 'hybrid').length}</span
+						>
+					</div>
+					<div class="info-item">
+						<span class="label">Total</span>
+						<span class="value">{bookings.length}</span>
+					</div>
+				</div>
+			{/if}
 			<a href="/meeting/bookings" class="link-btn">View All Bookings →</a>
 		</div>
 
 		<!-- Quick Room Status -->
 		<div class="card wide">
 			<h2>Room Status Overview</h2>
-			<div class="room-grid">
-				<div class="room-card available">
-					<div class="room-name">A-301</div>
-					<div class="room-status">Available</div>
-					<div class="room-capacity">Capacity: 20</div>
+			{#if loading}
+				<div class="loading-small">Loading...</div>
+			{:else if rooms.length === 0}
+				<p class="no-data-small">No rooms available</p>
+			{:else}
+				<div class="room-grid">
+					{#each rooms.slice(0, 6) as room}
+						<div class="room-card {room.status}">
+							<div class="room-name">{room.roomName || room.roomId}</div>
+							<div class="room-status">{room.status}</div>
+							{#if room.status === 'available'}
+								<div class="room-capacity">Capacity: {room.capacity}</div>
+							{:else if room.status === 'maintenance'}
+								<div class="room-info">Under maintenance</div>
+							{/if}
+						</div>
+					{/each}
 				</div>
-				<div class="room-card occupied">
-					<div class="room-name">A-302</div>
-					<div class="room-status">Occupied</div>
-					<div class="room-info">Until 15:00</div>
-				</div>
-				<div class="room-card available">
-					<div class="room-name">B-101</div>
-					<div class="room-status">Available</div>
-					<div class="room-capacity">Capacity: 10</div>
-				</div>
-				<div class="room-card available">
-					<div class="room-name">B-102</div>
-					<div class="room-status">Available</div>
-					<div class="room-capacity">Capacity: 8</div>
-				</div>
-				<div class="room-card occupied">
-					<div class="room-name">B-205</div>
-					<div class="room-status">Occupied</div>
-					<div class="room-info">Until 16:30</div>
-				</div>
-				<div class="room-card maintenance">
-					<div class="room-name">C-101</div>
-					<div class="room-status">Maintenance</div>
-					<div class="room-info">Back Tomorrow</div>
-				</div>
-			</div>
+			{/if}
 		</div>
 	</div>
 </div>
@@ -482,6 +548,68 @@
 
 	.room-capacity, .room-info {
 		font-size: 0.8rem;
+		color: #666;
+	}
+
+	.loading-small {
+		padding: 2rem;
+		text-align: center;
+		color: #666;
+	}
+
+	.no-data-small {
+		padding: 2rem;
+		text-align: center;
+		color: #999;
+		margin: 0;
+	}
+
+	.quick-actions {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+
+	.action-card {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		padding: 1rem;
+		background: #f9f9f9;
+		border-radius: 8px;
+		text-decoration: none;
+		color: inherit;
+		transition: all 0.2s;
+		border: 2px solid transparent;
+	}
+
+	.action-card:hover {
+		background: #f0f0f0;
+		border-color: #48bb78;
+		transform: translateX(4px);
+	}
+
+	.action-icon {
+		font-size: 2rem;
+		width: 3rem;
+		height: 3rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: white;
+		border-radius: 8px;
+		flex-shrink: 0;
+	}
+
+	.action-title {
+		font-weight: 600;
+		font-size: 1rem;
+		color: #333;
+		margin-bottom: 0.25rem;
+	}
+
+	.action-desc {
+		font-size: 0.85rem;
 		color: #666;
 	}
 

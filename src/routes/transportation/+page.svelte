@@ -1,5 +1,92 @@
 <script lang="ts">
+	import type { Vehicle, Driver, TransportationBooking } from '$lib/types';
+
 	let title = 'Transportation Management';
+
+	// State
+	let vehicles: Vehicle[] = $state([]);
+	let drivers: Driver[] = $state([]);
+	let bookings: TransportationBooking[] = $state([]);
+	let loading = $state(true);
+
+	// Statistics
+	let vehicleStats = $state({
+		total: 0,
+		available: 0,
+		inUse: 0,
+		maintenance: 0
+	});
+
+	let driverStats = $state({
+		total: 0,
+		onDuty: 0,
+		offDuty: 0,
+		onLeave: 0
+	});
+
+	async function fetchData() {
+		loading = true;
+		try {
+			// Fetch vehicles
+			const vehiclesRes = await fetch('/api/vehicles?limit=100');
+			const vehiclesData = await vehiclesRes.json();
+			if (vehiclesData.success) {
+				vehicles = vehiclesData.data;
+				vehicleStats.total = vehicles.length;
+				vehicleStats.available = vehicles.filter((v) => v.status === 'available').length;
+				vehicleStats.inUse = vehicles.filter((v) => v.status === 'in-use').length;
+				vehicleStats.maintenance = vehicles.filter((v) => v.status === 'maintenance').length;
+			}
+
+			// Fetch drivers
+			const driversRes = await fetch('/api/drivers?limit=100');
+			const driversData = await driversRes.json();
+			if (driversData.success) {
+				drivers = driversData.data;
+				driverStats.total = drivers.length;
+				driverStats.onDuty = drivers.filter((d) => d.status === 'on-duty').length;
+				driverStats.offDuty = drivers.filter((d) => d.status === 'off-duty').length;
+				driverStats.onLeave = drivers.filter((d) => d.status === 'on-leave').length;
+			}
+
+			// Fetch recent bookings
+			const bookingsRes = await fetch('/api/transportation-bookings?limit=5');
+			const bookingsData = await bookingsRes.json();
+			if (bookingsData.success) {
+				bookings = bookingsData.data;
+			}
+		} catch (error) {
+			console.error('Error fetching data:', error);
+		} finally {
+			loading = false;
+		}
+	}
+
+	function formatDateTime(date: Date | string) {
+		const d = new Date(date);
+		const now = new Date();
+		const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+		const tomorrow = new Date(today);
+		tomorrow.setDate(tomorrow.getDate() + 1);
+
+		const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+		if (d >= today && d < tomorrow) {
+			return `${time} Today`;
+		} else if (d >= tomorrow && d < new Date(tomorrow.getTime() + 86400000)) {
+			return `${time} Tomorrow`;
+		} else {
+			return d.toLocaleDateString('en-US', {
+				month: 'short',
+				day: 'numeric',
+				hour: '2-digit',
+				minute: '2-digit'
+			});
+		}
+	}
+
+	// Load data on mount
+	fetchData();
 </script>
 
 <svelte:head>
@@ -14,10 +101,10 @@
 
 	<div class="actions-bar">
 		<a href="/transportation/request" class="btn-primary">
-			🚗 Request Transport
+			🚗 New Request
 		</a>
-		<a href="/transportation/voucher" class="btn-secondary">
-			🎫 Request Voucher
+		<a href="/transportation/bookings" class="btn-secondary">
+			📋 All Requests
 		</a>
 		<a href="/transportation/tracking" class="btn-secondary">
 			📍 Track Vehicles
@@ -28,49 +115,57 @@
 		<!-- Vehicle Fleet -->
 		<div class="card">
 			<h2>Vehicle Fleet</h2>
-			<div class="info-grid">
-				<div class="info-item">
-					<span class="label">Total Vehicles</span>
-					<span class="value">15</span>
+			{#if loading}
+				<div class="loading-small">Loading...</div>
+			{:else}
+				<div class="info-grid">
+					<div class="info-item">
+						<span class="label">Total Vehicles</span>
+						<span class="value">{vehicleStats.total}</span>
+					</div>
+					<div class="info-item">
+						<span class="label">Available</span>
+						<span class="value success">{vehicleStats.available}</span>
+					</div>
+					<div class="info-item">
+						<span class="label">In Use</span>
+						<span class="value warning">{vehicleStats.inUse}</span>
+					</div>
+					<div class="info-item">
+						<span class="label">Maintenance</span>
+						<span class="value danger">{vehicleStats.maintenance}</span>
+					</div>
 				</div>
-				<div class="info-item">
-					<span class="label">Available</span>
-					<span class="value success">12</span>
-				</div>
-				<div class="info-item">
-					<span class="label">In Use</span>
-					<span class="value warning">2</span>
-				</div>
-				<div class="info-item">
-					<span class="label">Maintenance</span>
-					<span class="value danger">1</span>
-				</div>
-			</div>
-			<a href="/transportation/vehicles" class="link-btn">View All Vehicles →</a>
+			{/if}
+			<a href="/admin/vehicles" class="link-btn">View All Vehicles →</a>
 		</div>
 
 		<!-- Drivers -->
 		<div class="card">
 			<h2>Drivers</h2>
-			<div class="info-grid">
-				<div class="info-item">
-					<span class="label">Total Drivers</span>
-					<span class="value">12</span>
+			{#if loading}
+				<div class="loading-small">Loading...</div>
+			{:else}
+				<div class="info-grid">
+					<div class="info-item">
+						<span class="label">Total Drivers</span>
+						<span class="value">{driverStats.total}</span>
+					</div>
+					<div class="info-item">
+						<span class="label">On Duty</span>
+						<span class="value success">{driverStats.onDuty}</span>
+					</div>
+					<div class="info-item">
+						<span class="label">Off Duty</span>
+						<span class="value">{driverStats.offDuty}</span>
+					</div>
+					<div class="info-item">
+						<span class="label">On Leave</span>
+						<span class="value">{driverStats.onLeave}</span>
+					</div>
 				</div>
-				<div class="info-item">
-					<span class="label">On Duty</span>
-					<span class="value success">10</span>
-				</div>
-				<div class="info-item">
-					<span class="label">Off Duty</span>
-					<span class="value">2</span>
-				</div>
-				<div class="info-item">
-					<span class="label">On Leave</span>
-					<span class="value">0</span>
-				</div>
-			</div>
-			<a href="/transportation/drivers" class="link-btn">View All Drivers →</a>
+			{/if}
+			<a href="/admin/drivers" class="link-btn">View All Drivers →</a>
 		</div>
 
 		<!-- Voucher Pool -->
@@ -93,50 +188,38 @@
 			<a href="/transportation/vouchers" class="link-btn">Manage Vouchers →</a>
 		</div>
 
-		<!-- Bookings -->
-		<div class="card wide">
-			<h2>Recent Bookings</h2>
-			<div class="table-container">
-				<table>
-					<thead>
-						<tr>
-							<th>ID</th>
-							<th>Requestor</th>
-							<th>Vehicle</th>
-							<th>Schedule</th>
-							<th>From → To</th>
-							<th>Status</th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr>
-							<td>#TRP-001</td>
-							<td>John Doe</td>
-							<td>SUV-001</td>
-							<td>15:30 Today</td>
-							<td>Office → Airport</td>
-							<td><span class="status scheduled">Scheduled</span></td>
-						</tr>
-						<tr>
-							<td>#TRP-002</td>
-							<td>Jane Smith</td>
-							<td>Sedan-003</td>
-							<td>09:00 Tomorrow</td>
-							<td>Home → Office</td>
-							<td><span class="status scheduled">Scheduled</span></td>
-						</tr>
-						<tr>
-							<td>#TRP-003</td>
-							<td>Bob Wilson</td>
-							<td>MPV-002</td>
-							<td>13:00 Today</td>
-							<td>Office → Client Site</td>
-							<td><span class="status in-progress">In Progress</span></td>
-						</tr>
-					</tbody>
-				</table>
-			</div>
-			<a href="/transportation/bookings" class="link-btn">View All Bookings →</a>
+		<!-- Today's Bookings Summary -->
+		<div class="card">
+			<h2>Today's Requests</h2>
+			{#if loading}
+				<div class="loading-small">Loading...</div>
+			{:else}
+				<div class="info-grid">
+					<div class="info-item">
+						<span class="label">Total Today</span>
+						<span class="value">{bookings.length}</span>
+					</div>
+					<div class="info-item">
+						<span class="label">Scheduled</span>
+						<span class="value"
+							>{bookings.filter((b) => b.status === 'scheduled').length}</span
+						>
+					</div>
+					<div class="info-item">
+						<span class="label">Ongoing</span>
+						<span class="value success"
+							>{bookings.filter((b) => b.status === 'ongoing').length}</span
+						>
+					</div>
+					<div class="info-item">
+						<span class="label">Completed</span>
+						<span class="value"
+							>{bookings.filter((b) => b.status === 'completed').length}</span
+						>
+					</div>
+				</div>
+			{/if}
+			<a href="/transportation/bookings" class="link-btn">View All Requests →</a>
 		</div>
 	</div>
 </div>
@@ -341,6 +424,68 @@
 	.status.in-progress {
 		background: #feebc8;
 		color: #7c2d12;
+	}
+
+	.loading-small {
+		padding: 2rem;
+		text-align: center;
+		color: #666;
+	}
+
+	.no-data-small {
+		padding: 2rem;
+		text-align: center;
+		color: #999;
+		margin: 0;
+	}
+
+	.quick-actions {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+
+	.action-card {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		padding: 1rem;
+		background: #f9f9f9;
+		border-radius: 8px;
+		text-decoration: none;
+		color: inherit;
+		transition: all 0.2s;
+		border: 2px solid transparent;
+	}
+
+	.action-card:hover {
+		background: #f0f0f0;
+		border-color: #667eea;
+		transform: translateX(4px);
+	}
+
+	.action-icon {
+		font-size: 2rem;
+		width: 3rem;
+		height: 3rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: white;
+		border-radius: 8px;
+		flex-shrink: 0;
+	}
+
+	.action-title {
+		font-weight: 600;
+		font-size: 1rem;
+		color: #333;
+		margin-bottom: 0.25rem;
+	}
+
+	.action-desc {
+		font-size: 0.85rem;
+		color: #666;
 	}
 
 	@media (max-width: 768px) {

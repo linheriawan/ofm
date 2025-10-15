@@ -21,10 +21,15 @@
 - ✅ Round trip support for voucher allocation
 - ✅ OpenStreetMap integration for company car bookings
 - ✅ Calendar invitation (.ics) notification
+- ✅ Admin dashboard with master data management
+- ✅ Backend API implementation (SvelteKit API routes)
+- ✅ MongoDB CRUD operations for master data collections
+- ✅ Reusable DataTable and Modal components
+- ✅ Master data pages (vehicles, drivers, rooms, users, locations)
+- ✅ Room display system with real-time schedule updates
+- ✅ QR code generation for room tablet access
 
 ## Pending Development
-- [ ] Backend API implementation (SvelteKit API routes)
-- [ ] MongoDB CRUD operations for all collections
 - [ ] Authentication & authorization (JWT + role-based access)
 - [ ] Admin approval workflow for requests
 - [ ] Real-time GPS tracking integration (Arduino + GPS module)
@@ -198,42 +203,22 @@ flowchart TD
 
 ## 4. IoT Integration Process
 
-```mermaid
-flowchart TD
-    Start([IoT Devices]) --> DevType{Device Type}
+---
+# Related Files
+Documentation is in: DOCS/*.md
 
-    DevType -->|Car Arduino| GPSModule[GPS Module]
-    DevType -->|Car Arduino| OBDReader[OBD-II Reader]
-    DevType -->|Room Tablet| TabletApp[Tablet/Pi Zero W<br/>Display App]
+- ./DOCS/example_org_structure.md - example of organizations structure we need to implement.
+- ./DOCS/DATABASE.md - Database Setup Guide
+- ./DOCS/FEATURES.md - OFM Features Documentation
 
-    GPSModule --> CollectGPS[Collect GPS Data<br/>Location<br/>Speed<br/>Route]
-    OBDReader --> CollectOBD[Collect OBD Data<br/>Fuel/Battery<br/>Engine Status<br/>Diagnostics]
+## Important Reminders
 
-    CollectGPS --> SendData[Send Data to<br/>Cloud Server]
-    CollectOBD --> SendData
-    SendData --> ValidateData{Validate Data}
-    ValidateData -->|Valid| StoreDB[(Store in<br/>MongoDB)]
-    ValidateData -->|Invalid| LogError[Log Error]
-    LogError --> Alert[Alert Admin]
+- **Update CLAUDE.md _Development Status_ as you complete tasks** (mark with `[✅]`)
+- **Make reusable code** dont make more than ~500 lines of codes in one file, implements utils/library
+- The issue is mixing Svelte 4 (on:click) and Svelte 5 (onclick) syntax
 
-    StoreDB --> UpdateDash[Update Real-time<br/>Dashboard]
-    UpdateDash --> Analyze[Analyze Patterns<br/>Usage<br/>Maintenance Needs]
+---
 
-    TabletApp --> ConnectServer[Connect to<br/>Server via API]
-    ConnectServer --> FetchSchedule[Fetch Room<br/>Schedule]
-    FetchSchedule --> DisplayInfo[Display Meeting<br/>Info]
-    DisplayInfo --> WaitCheckin{Wait for<br/>Check-in}
-    WaitCheckin -->|Participant Arrives| ScanQR[Scan QR/NFC/<br/>Manual Check-in]
-    ScanQR --> RecordAttend[Record Attendance]
-    RecordAttend --> UpdateServer[Update Server]
-    UpdateServer --> DisplayInfo
-    WaitCheckin -->|Meeting Ends| ClearDisplay[Clear Display]
-
-    Analyze --> Report[Generate Reports<br/>& Insights]
-    ClearDisplay --> FetchSchedule
-    Report --> End([End])
-    Alert --> End
-```
 
 # Additional Information Needed
 
@@ -306,8 +291,8 @@ flowchart TD
   - GPS module specifications
   - OBD-II reader compatibility (standard vs EV vehicles like BYD)
   - Note: EVs may need different protocols (CANbus vs OBD-II)
-  - SIM cards for data transmission?
-  - Power supply method
+  - data transmission: SIM cards with internet 3G network
+  - Power supply: Car Battery
   - Installation vendor
 - **Room Display:**
   - Tablet specifications or Raspberry Pi Zero W?
