@@ -9,6 +9,9 @@
 
 # Development Status
 
+- permintaan fasilitas kerja including ATK
+- GPS from Driver Android
+
 ## Completed Features
 - ✅ Dashboard with statistics and quick actions
 - ✅ Navigation layout with dropdown menus
@@ -42,7 +45,11 @@
 - [ ] Cancellation and modification workflows
 - [ ] Voucher allocation management for admins
 - [ ] Driver/vehicle scheduling algorithm
+- [ ] Driver confirm ATA and ATD
+- [ ] Route used by driver
+- [ ] Driver/vehicle drop or wait
 - [ ] Meeting room availability conflict detection
+- [ ] number of participant (for unknown email address)
 - [ ] Actual .ics calendar file generation and email sending
 - [ ] Notification system (email, push, in-app)
 - [ ] Reporting and analytics dashboard
