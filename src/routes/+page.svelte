@@ -1,5 +1,9 @@
 <script lang="ts">
+	import { page } from '$app/stores';
+
 	let title = 'Dashboard - OFM';
+
+	const user = $page.data.user;
 
 	// Mock data for dashboard
 	let stats = {
@@ -38,10 +42,87 @@
 	<title>{title}</title>
 </svelte:head>
 
+{#if !user}
+<div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+	<div class="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
+		<div class="text-center mb-8">
+			<h1 class="text-3xl font-bold text-gray-800 mb-2">Office Facility Management</h1>
+			<p class="text-gray-600">Transportation & Meeting Room Booking System</p>
+		</div>
+
+		<div class="space-y-4">
+			<a
+				href="/auth/login"
+				class="block w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition text-center font-semibold"
+			>
+				Sign in with Aksara SSO
+			</a>
+		</div>
+
+		<div class="mt-8 pt-6 border-t border-gray-200">
+			<h2 class="text-sm font-semibold text-gray-700 mb-3">Features:</h2>
+			<ul class="space-y-2 text-sm text-gray-600">
+				<li class="flex items-center">
+					<svg class="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+						<path
+							fill-rule="evenodd"
+							d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+							clip-rule="evenodd"
+						/>
+					</svg>
+					Transportation booking & voucher allocation
+				</li>
+				<li class="flex items-center">
+					<svg class="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+						<path
+							fill-rule="evenodd"
+							d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+							clip-rule="evenodd"
+						/>
+					</svg>
+					Meeting room scheduling
+				</li>
+				<li class="flex items-center">
+					<svg class="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+						<path
+							fill-rule="evenodd"
+							d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+							clip-rule="evenodd"
+						/>
+					</svg>
+					Online meeting integration
+				</li>
+				<li class="flex items-center">
+					<svg class="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+						<path
+							fill-rule="evenodd"
+							d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+							clip-rule="evenodd"
+						/>
+					</svg>
+					Real-time tracking & analytics
+				</li>
+			</ul>
+		</div>
+	</div>
+</div>
+{:else}
 <div class="dashboard">
 	<div class="header">
-		<h1>Dashboard</h1>
-		<p class="subtitle">Overview of your facility management system</p>
+		<div class="flex justify-between items-center">
+			<div>
+				<h1>Dashboard</h1>
+				<p class="subtitle">Welcome back, {user.name || user.email}!</p>
+			</div>
+			<form method="POST" action="/auth/logout">
+				<button
+					type="submit"
+					class="text-sm text-gray-500 hover:text-gray-700 underline"
+				>
+					Logout
+				</button>
+			</form>
+		</div>
 	</div>
 
 	<!-- Stats Cards -->
@@ -144,8 +225,191 @@
 		</div>
 	</div>
 </div>
+{/if}
 
 <style>
+	.min-h-screen {
+		min-height: 100vh;
+	}
+
+	.flex {
+		display: flex;
+	}
+
+	.items-center {
+		align-items: center;
+	}
+
+	.justify-center {
+		justify-content: center;
+	}
+
+	.justify-between {
+		justify-content: space-between;
+	}
+
+	.bg-gradient-to-br {
+		background: linear-gradient(to bottom right, #eff6ff, #e0e7ff);
+	}
+
+	.bg-white {
+		background: white;
+	}
+
+	.p-8 {
+		padding: 2rem;
+	}
+
+	.rounded-lg {
+		border-radius: 0.5rem;
+	}
+
+	.shadow-lg {
+		box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+	}
+
+	.max-w-md {
+		max-width: 28rem;
+	}
+
+	.w-full {
+		width: 100%;
+	}
+
+	.text-center {
+		text-align: center;
+	}
+
+	.text-3xl {
+		font-size: 1.875rem;
+		line-height: 2.25rem;
+	}
+
+	.text-sm {
+		font-size: 0.875rem;
+		line-height: 1.25rem;
+	}
+
+	.font-bold {
+		font-weight: 700;
+	}
+
+	.font-semibold {
+		font-weight: 600;
+	}
+
+	.text-gray-800 {
+		color: #1f2937;
+	}
+
+	.text-gray-700 {
+		color: #374151;
+	}
+
+	.text-gray-600 {
+		color: #4b5563;
+	}
+
+	.text-gray-500 {
+		color: #6b7280;
+	}
+
+	.text-green-500 {
+		color: #10b981;
+	}
+
+	.mb-2 {
+		margin-bottom: 0.5rem;
+	}
+
+	.mb-3 {
+		margin-bottom: 0.75rem;
+	}
+
+	.mb-8 {
+		margin-bottom: 2rem;
+	}
+
+	.mt-8 {
+		margin-top: 2rem;
+	}
+
+	.pt-6 {
+		padding-top: 1.5rem;
+	}
+
+	.space-y-4 > * + * {
+		margin-top: 1rem;
+	}
+
+	.space-y-2 > * + * {
+		margin-top: 0.5rem;
+	}
+
+	.border-t {
+		border-top-width: 1px;
+	}
+
+	.border-gray-200 {
+		border-color: #e5e7eb;
+	}
+
+	.block {
+		display: block;
+	}
+
+	.bg-indigo-600 {
+		background-color: #4f46e5;
+	}
+
+	.bg-indigo-600:hover {
+		background-color: #4338ca;
+	}
+
+	.text-white {
+		color: white;
+	}
+
+	.px-6 {
+		padding-left: 1.5rem;
+		padding-right: 1.5rem;
+	}
+
+	.py-3 {
+		padding-top: 0.75rem;
+		padding-bottom: 0.75rem;
+	}
+
+	.transition {
+		transition: all 0.2s;
+	}
+
+	.underline {
+		text-decoration: underline;
+	}
+
+	a {
+		text-decoration: none;
+	}
+
+	.w-4 {
+		width: 1rem;
+	}
+
+	.h-4 {
+		height: 1rem;
+	}
+
+	.mr-2 {
+		margin-right: 0.5rem;
+	}
+
+	button {
+		cursor: pointer;
+		border: none;
+		background: none;
+	}
+
 	.dashboard {
 		animation: fadeIn 0.3s ease-in;
 	}

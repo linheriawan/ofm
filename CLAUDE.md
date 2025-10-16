@@ -4,7 +4,7 @@
 - Typesafe typescript
 - mongodb Atlas
 - bun runtime
-- keycloak/sso (to be implement later)
+- OIDC+SCIM: Aksara SSO 
 - Leaflet.js + OpenStreetMap (for mapping)
 
 # Development Status
@@ -30,29 +30,37 @@
 - ✅ QR code generation for room tablet access
 
 ## Pending Development
-- [ ] Authentication & authorization (JWT + role-based access)
+**Core System :**
+- [✅] Authentication & authorization (JWT + role-based access)
+- [ ] non-Restricted/Public page & Landing Page
+- [ ] Restricted page/middleware and session
+**Core Feature :**
+- [ ] Multi-entity/company support implementation
+- [ ] Regional admin scoping
 - [ ] Admin approval workflow for requests
-- [ ] Real-time GPS tracking integration (Arduino + GPS module)
-- [ ] OBD-II data collection and monitoring
-- [ ] Actual .ics calendar file generation and email sending
+- [ ] Catering order management workflow
+- [ ] Cancellation and modification workflows
 - [ ] Voucher allocation management for admins
 - [ ] Driver/vehicle scheduling algorithm
 - [ ] Meeting room availability conflict detection
-- [ ] Online meeting platform integration (Zoom/Google Meet/Teams)
-- [ ] License usage tracking and limits
-- [ ] Catering order management workflow
+- [ ] Actual .ics calendar file generation and email sending
 - [ ] Notification system (email, push, in-app)
-- [ ] QR/NFC check-in system for room tablets
-- [ ] WebSocket for real-time updates
 - [ ] Reporting and analytics dashboard
-- [ ] Multi-entity/company support implementation
-- [ ] Regional admin scoping
-- [ ] Recurring meeting scheduler
-- [ ] Cancellation and modification workflows
-- [ ] Excel export functionality
+
+**Supporting Feature :**
+- [ ] Real-time GPS tracking integration (Arduino + GPS module)
+- [ ] OBD-II data collection and monitoring
+- [ ] QR/NFC check-in system for room tablets
+
+**Extended Feature :**
 - [ ] Mobile responsive optimization
+- [ ] Online meeting platform integration (Zoom/Google Meet/Teams)
+- [ ] WebSocket for real-time updates
+- [ ] Excel export functionality
+- [ ] Recurring meeting scheduler
 - [ ] Unit and integration testing
 - [ ] Documentation (API docs, user guide)
+- [ ] License usage tracking and limits
 
 # Objective
 
