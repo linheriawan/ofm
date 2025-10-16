@@ -44,23 +44,37 @@ export const collections = {
 	roles: 'roles',
 	permissions: 'permissions',
 
-	// Transportation
+	// Transportation Module
 	vehicles: 'vehicles',
 	drivers: 'drivers',
+	driverProfiles: 'driver_profiles',
+	driverAvailability: 'driver_availability',
+	driverShifts: 'driver_shifts',
+	driverLocations: 'driver_locations',
 	transportationRequests: 'transportation_requests',
-	transportationBookings: 'transportation_bookings',
+	tripPurposes: 'trip_purposes',
+	tripEvents: 'trip_events',
+	transportCompanies: 'transport_companies',
 	vouchers: 'vouchers',
 	voucherAllocations: 'voucher_allocations',
 	vehicleTracking: 'vehicle_tracking',
-	obd_data: 'obd_data',
+	obdData: 'obd_data',
 
-	// Meeting Rooms
+	// Meeting Module
 	meetingRooms: 'meeting_rooms',
-	meetingBookings: 'meeting_bookings',
+	meetingRequests: 'meeting_requests',
+	meetingAttendance: 'meeting_attendance',
 	meetingLicenses: 'meeting_licenses',
 	facilities: 'facilities',
 	catering: 'catering',
-	attendance: 'attendance',
+
+	// Facility Request Module
+	facilityRequests: 'facility_requests',
+	facilityInventory: 'facility_inventory',
+
+	// Event & External Venue Module
+	externalVenues: 'external_venues',
+	eventRequests: 'event_requests',
 
 	// Master Data
 	locations: 'locations',

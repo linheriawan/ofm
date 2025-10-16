@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "check": "svelte-kit sync && tsc --noEmit",
     "check:watch": "svelte-kit sync && tsc --noEmit --watch",
-    "db:seed": "bun run scripts/seed.ts"
+    "db:seed": "bun run scripts/seed.ts",
+    "test:api": "bun run scripts/test-api.ts"
   },
   "devDependencies": {
     "@sveltejs/adapter-auto": "^6.1.1",

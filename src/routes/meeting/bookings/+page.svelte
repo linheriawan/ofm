@@ -46,15 +46,15 @@
 			if (toDateFilter) params.append('toDate', toDateFilter);
 			if (meetingTypeFilter) params.append('meetingType', meetingTypeFilter);
 
-			const response = await fetch(`/api/meeting-bookings?${params}`);
+			const response = await fetch(`/api/v1/meeting/requests?${params}`);
 			const result = await response.json();
 
 			if (result.success) {
 				bookings = result.data;
-				totalPages = result.totalPages;
-				total = result.total;
+				total = result.meta?.total || result.data.length;
+				totalPages = Math.ceil(total / limit);
 			} else {
-				error = result.error || 'Failed to load bookings';
+				error = result.error?.message || 'Failed to load bookings';
 			}
 		} catch (err) {
 			error = 'An error occurred while loading bookings';
@@ -106,16 +106,16 @@
 		if (!selectedBooking) return;
 
 		try {
-			const response = await fetch(`/api/meeting-bookings/${selectedBooking._id}`, {
-				method: 'PUT',
+			const response = await fetch(`/api/v1/meeting/requests/${selectedBooking._id}`, {
+				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					meetingTitle: editForm.meetingTitle,
-					meetingType: editForm.meetingType,
+					title: editForm.meetingTitle,
+					type: editForm.meetingType,
 					startTime: editForm.startTime,
 					endTime: editForm.endTime,
 					participants: editForm.participants,
-					cateringNeeded: editForm.cateringNeeded,
+					cateringRequired: editForm.cateringNeeded,
 					notes: editForm.notes
 				})
 			});
@@ -125,7 +125,7 @@
 				showEditModal = false;
 				fetchBookings();
 			} else {
-				alert(result.error || 'Failed to update booking');
+				alert(result.error?.message || 'Failed to update booking');
 			}
 		} catch (err) {
 			alert('An error occurred while updating the booking');
@@ -137,8 +137,8 @@
 		if (!confirm('Are you sure you want to cancel this booking?')) return;
 
 		try {
-			const response = await fetch(`/api/meeting-bookings/${booking._id}`, {
-				method: 'PUT',
+			const response = await fetch(`/api/v1/meeting/requests/${booking._id}`, {
+				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ status: 'cancelled' })
 			});
@@ -147,7 +147,7 @@
 			if (result.success) {
 				fetchBookings();
 			} else {
-				alert(result.error || 'Failed to cancel booking');
+				alert(result.error?.message || 'Failed to cancel booking');
 			}
 		} catch (err) {
 			alert('An error occurred while canceling the booking');
@@ -157,13 +157,14 @@
 
 	function getStatusClass(status: string) {
 		switch (status) {
-			case 'scheduled':
+			case 'pending':
 				return 'badge-scheduled';
-			case 'ongoing':
+			case 'approved':
 				return 'badge-ongoing';
 			case 'completed':
 				return 'badge-completed';
 			case 'cancelled':
+			case 'rejected':
 				return 'badge-cancelled';
 			default:
 				return '';
@@ -195,8 +196,9 @@
 			<label for="status">Status</label>
 			<select id="status" bind:value={statusFilter} onchange={handleFilterChange}>
 				<option value="">All</option>
-				<option value="scheduled">Scheduled</option>
-				<option value="ongoing">Ongoing</option>
+				<option value="pending">Pending</option>
+				<option value="approved">Approved</option>
+				<option value="rejected">Rejected</option>
 				<option value="completed">Completed</option>
 				<option value="cancelled">Cancelled</option>
 			</select>
@@ -269,7 +271,7 @@
 							<td>
 								<div class="actions">
 									<button class="btn-view" onclick={() => viewDetails(booking)}>View</button>
-									{#if booking.status === 'scheduled'}
+									{#if booking.status === 'pending' || booking.status === 'approved'}
 										<button class="btn-edit" onclick={() => openEditModal(booking)}>Edit</button>
 										<button class="btn-cancel" onclick={() => handleCancel(booking)}
 											>Cancel</button

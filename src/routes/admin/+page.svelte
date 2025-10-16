@@ -17,6 +17,27 @@
 			color: '#48bb78'
 		},
 		{
+			title: 'Transport Companies',
+			description: 'Manage Gojek, Grab, and other providers',
+			icon: '🚕',
+			href: '/admin/transport-companies',
+			color: '#10b981'
+		},
+		{
+			title: 'Vouchers',
+			description: 'Import, manage, and reconcile vouchers',
+			icon: '🎫',
+			href: '/admin/vouchers',
+			color: '#38b2ac'
+		},
+		{
+			title: 'Trip Purposes',
+			description: 'Manage trip purposes for reporting',
+			icon: '🎯',
+			href: '/admin/trip-purposes',
+			color: '#3b82f6'
+		},
+		{
 			title: 'Meeting Rooms',
 			description: 'Manage meeting rooms and facilities',
 			icon: '🏢',
@@ -43,13 +64,6 @@
 			icon: '🏛️',
 			href: '/admin/companies',
 			color: '#4299e1'
-		},
-		{
-			title: 'Vouchers',
-			description: 'Manage transportation vouchers',
-			icon: '🎫',
-			href: '/admin/vouchers',
-			color: '#38b2ac'
 		},
 		{
 			title: 'Licenses',

@@ -6,6 +6,10 @@
 	let meetingDropdownOpen = false;
 	let adminDropdownOpen = false;
 
+	// Get user from page data
+	$: user = $page.data.user;
+	$: isAuthenticated = !!user;
+
 	function toggleMenu() {
 		isMenuOpen = !isMenuOpen;
 	}
@@ -36,6 +40,7 @@
 </script>
 
 <div class="app">
+	{#if isAuthenticated}
 	<header>
 		<nav>
 			<div class="nav-brand">
@@ -43,82 +48,94 @@
 				<span class="subtitle">Office Facility Management</span>
 			</div>
 
-			<button class="menu-toggle" on:click={toggleMenu}>
+			<button class="menu-toggle" onclick={toggleMenu}>
 				☰
 			</button>
 
 			<ul class:open={isMenuOpen}>
 				<li>
-					<a href="/" class:active={$page.url.pathname === '/'} on:click={closeDropdowns}>
+					<a href="/" class:active={$page.url.pathname === '/'} onclick={closeDropdowns}>
 						Dashboard
 					</a>
 				</li>
 				<li class="dropdown">
 					<button
 						class="dropdown-trigger {$page.url.pathname.startsWith('/transportation') ? 'active' : ''}"
-						on:click={toggleTransportDropdown}
+						onclick={toggleTransportDropdown}
 					>
 						Transportation ▾
 					</button>
 					{#if transportDropdownOpen}
 						<div class="dropdown-menu">
-							<a href="/transportation" on:click={closeDropdowns}>Overview</a>
-							<a href="/transportation/request" on:click={closeDropdowns}>Request Transport</a>
-							<a href="/transportation/bookings" on:click={closeDropdowns}>All Requests</a>
-							<a href="/transportation/tracking" on:click={closeDropdowns}>Track Vehicles</a>
+							<a href="/transportation" onclick={closeDropdowns}>Overview</a>
+							<a href="/transportation/request" onclick={closeDropdowns}>Request Transport</a>
+							<a href="/transportation/bookings" onclick={closeDropdowns}>All Requests</a>
+							<a href="/transportation/tracking" onclick={closeDropdowns}>Track Vehicles</a>
 						</div>
 					{/if}
 				</li>
 				<li class="dropdown">
 					<button
 						class="dropdown-trigger {$page.url.pathname.startsWith('/meeting') ? 'active' : ''}"
-						on:click={toggleMeetingDropdown}
+						onclick={toggleMeetingDropdown}
 					>
 						Meeting Rooms ▾
 					</button>
 					{#if meetingDropdownOpen}
 						<div class="dropdown-menu">
-							<a href="/meeting" on:click={closeDropdowns}>Overview</a>
-							<a href="/meeting/book" on:click={closeDropdowns}>Book Room</a>
-							<a href="/meeting/bookings" on:click={closeDropdowns}>All Bookings</a>
-							<a href="/meeting/calendar" on:click={closeDropdowns}>Calendar</a>
+							<a href="/meeting" onclick={closeDropdowns}>Overview</a>
+							<a href="/meeting/book" onclick={closeDropdowns}>Book Room</a>
+							<a href="/meeting/bookings" onclick={closeDropdowns}>All Bookings</a>
+							<a href="/meeting/calendar" onclick={closeDropdowns}>Calendar</a>
 						</div>
 					{/if}
 				</li>
 				<li class="dropdown">
 					<button
 						class="dropdown-trigger {$page.url.pathname.startsWith('/admin') ? 'active' : ''}"
-						on:click={toggleAdminDropdown}
+						onclick={toggleAdminDropdown}
 					>
 						Admin ▾
 					</button>
 					{#if adminDropdownOpen}
 						<div class="dropdown-menu">
-							<a href="/admin" on:click={closeDropdowns}>Dashboard</a>
-							<a href="/admin/vehicles" on:click={closeDropdowns}>Vehicles</a>
-							<a href="/admin/drivers" on:click={closeDropdowns}>Drivers</a>
-							<a href="/admin/rooms" on:click={closeDropdowns}>Meeting Rooms</a>
-							<a href="/admin/users" on:click={closeDropdowns}>Users</a>
-							<a href="/admin/locations" on:click={closeDropdowns}>Locations</a>
-							<a href="/admin/room-displays" on:click={closeDropdowns}>Room Displays</a>
+							<a href="/admin" onclick={closeDropdowns}>Dashboard</a>
+							<div class="dropdown-divider">Transportation</div>
+							<a href="/admin/vehicles" onclick={closeDropdowns}>Vehicles</a>
+							<a href="/admin/drivers" onclick={closeDropdowns}>Drivers</a>
+							<a href="/admin/transport-companies" onclick={closeDropdowns}>Transport Companies</a>
+							<a href="/admin/vouchers" onclick={closeDropdowns}>Vouchers</a>
+							<a href="/admin/trip-purposes" onclick={closeDropdowns}>Trip Purposes</a>
+							<div class="dropdown-divider">Meeting</div>
+							<a href="/admin/rooms" onclick={closeDropdowns}>Meeting Rooms</a>
+							<div class="dropdown-divider">System</div>
+							<a href="/admin/users" onclick={closeDropdowns}>Users</a>
+							<a href="/admin/locations" onclick={closeDropdowns}>Locations</a>
+							<a href="/admin/room-displays" onclick={closeDropdowns}>Room Displays</a>
 						</div>
 					{/if}
 				</li>
 			</ul>
 
 			<div class="user-menu">
-				<span class="user-name">Admin User</span>
+				<span class="user-name">{user?.name || user?.email || 'User'}</span>
+				<form method="POST" action="/auth/logout" style="display: inline;">
+					<button type="submit" class="logout-btn">Logout</button>
+				</form>
 			</div>
 		</nav>
 	</header>
+	{/if}
 
-	<main>
+	<main class:no-header={!isAuthenticated}>
 		<slot />
 	</main>
 
+	{#if isAuthenticated}
 	<footer>
 		<p>&copy; 2025 Office Facility Management System</p>
 	</footer>
+	{/if}
 </div>
 
 <style>
@@ -274,12 +291,29 @@
 	.user-menu {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: 1rem;
 	}
 
 	.user-name {
 		font-size: 0.9rem;
 		opacity: 0.95;
+	}
+
+	.logout-btn {
+		background: rgba(255, 255, 255, 0.2);
+		color: white;
+		border: 1px solid rgba(255, 255, 255, 0.3);
+		padding: 0.5rem 1rem;
+		border-radius: 6px;
+		font-size: 0.85rem;
+		font-weight: 500;
+		cursor: pointer;
+		transition: all 0.2s;
+	}
+
+	.logout-btn:hover {
+		background: rgba(255, 255, 255, 0.3);
+		border-color: rgba(255, 255, 255, 0.5);
 	}
 
 	main {
@@ -289,6 +323,10 @@
 		padding: 2rem;
 		box-sizing: border-box;
 		overflow-x: hidden;
+	}
+
+	main.no-header {
+		padding: 0;
 	}
 
 	main > * {

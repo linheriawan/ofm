@@ -40,15 +40,15 @@
 			if (fromDateFilter) params.append('fromDate', fromDateFilter);
 			if (toDateFilter) params.append('toDate', toDateFilter);
 
-			const response = await fetch(`/api/transportation-bookings?${params}`);
+			const response = await fetch(`/api/v1/transport/requests?${params}`);
 			const result = await response.json();
 
 			if (result.success) {
 				bookings = result.data;
-				total = result.total;
-				totalPages = result.totalPages;
+				total = result.meta?.total || result.data.length;
+				totalPages = Math.ceil(total / limit);
 			} else {
-				error = result.error || 'Failed to fetch bookings';
+				error = result.error?.message || 'Failed to fetch bookings';
 			}
 		} catch (err) {
 			error = 'Failed to connect to server';
@@ -101,8 +101,8 @@
 		if (!selectedBooking) return;
 
 		try {
-			const response = await fetch(`/api/transportation-bookings/${selectedBooking._id}`, {
-				method: 'PUT',
+			const response = await fetch(`/api/v1/transport/requests/${selectedBooking._id}`, {
+				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ status })
 			});
@@ -112,7 +112,7 @@
 				isModalOpen = false;
 				fetchBookings();
 			} else {
-				alert(result.error || 'Failed to update booking');
+				alert(result.error?.message || 'Failed to update booking');
 			}
 		} catch (error) {
 			alert('Failed to update booking');
@@ -142,9 +142,10 @@
 
 	function getStatusColor(status: string): string {
 		const colors: Record<string, string> = {
-			scheduled: 'blue',
-			'in-progress': 'orange',
-			completed: 'green',
+			pending: 'blue',
+			approved: 'green',
+			rejected: 'red',
+			completed: 'gray',
 			cancelled: 'red'
 		};
 		return colors[status] || 'gray';
@@ -169,8 +170,9 @@
 				<label for="status">Status</label>
 				<select id="status" bind:value={statusFilter}>
 					<option value="">All</option>
-					<option value="scheduled">Scheduled</option>
-					<option value="in-progress">In Progress</option>
+					<option value="pending">Pending</option>
+					<option value="approved">Approved</option>
+					<option value="rejected">Rejected</option>
 					<option value="completed">Completed</option>
 					<option value="cancelled">Cancelled</option>
 				</select>
@@ -220,18 +222,35 @@
 					<tbody>
 						{#each bookings as booking}
 							<tr>
-								<td class="booking-id">{booking.bookingId}</td>
+								<td class="booking-id">{booking.requestNumber}</td>
 								<td>
 									<div class="date-time">
 										<div>{formatDate(booking.scheduledTime)}</div>
 										<div class="time">{formatTime(booking.scheduledTime)}</div>
 									</div>
 								</td>
-								<td>{booking.fromLocation}</td>
-								<td>{booking.toLocation}</td>
-								<td>{booking.vehicleId || '-'}</td>
-								<td>{booking.driverId || '-'}</td>
-								<td class="center">{booking.numberOfPassengers}</td>
+								<td>{booking.pickup?.address || '-'}</td>
+								<td>{booking.destination?.address || '-'}</td>
+								<td>
+									{#if booking.type === 'voucher'}
+										<span class="badge-type">Voucher</span>
+										{#if booking.voucherCode}
+											<br /><small>{booking.voucherCode}</small>
+										{/if}
+									{:else}
+										{booking.vehicleId || '-'}
+									{/if}
+								</td>
+								<td>
+									{#if booking.type === 'voucher'}
+										-
+									{:else if booking.driverId}
+										{booking.driverId}
+									{:else}
+										Self-Drive
+									{/if}
+								</td>
+								<td class="center">{booking.passengerCount}</td>
 								<td>
 									<span class="status-badge {getStatusColor(booking.status)}">
 										{booking.status}
@@ -241,7 +260,7 @@
 									<button onclick={() => viewDetails(booking)} class="btn-view">
 										View
 									</button>
-									{#if booking.status === 'scheduled'}
+									{#if booking.status === 'pending'}
 										<button
 											onclick={() => openEditModal(booking)}
 											class="btn-edit"
@@ -283,8 +302,13 @@
 	{#if selectedBooking}
 		<div class="booking-details">
 			<div class="detail-group">
-				<label>Booking ID:</label>
-				<span>{selectedBooking.bookingId}</span>
+				<label>Request Number:</label>
+				<span>{selectedBooking.requestNumber}</span>
+			</div>
+
+			<div class="detail-group">
+				<label>Type:</label>
+				<span>{selectedBooking.type === 'company_car' ? 'Company Car' : 'Voucher'}</span>
 			</div>
 
 			<div class="detail-group">
@@ -296,29 +320,64 @@
 				</span>
 			</div>
 
+			{#if selectedBooking.isRoundTrip && selectedBooking.returnTime}
+				<div class="detail-group">
+					<label>Return Time:</label>
+					<span>
+						{formatDate(selectedBooking.returnTime)} at {formatTime(selectedBooking.returnTime)}
+					</span>
+				</div>
+			{/if}
+
 			<div class="detail-group">
 				<label>From:</label>
-				<span>{selectedBooking.fromLocation}</span>
+				<span>{selectedBooking.pickup?.address || '-'}</span>
 			</div>
 
 			<div class="detail-group">
 				<label>To:</label>
-				<span>{selectedBooking.toLocation}</span>
+				<span>{selectedBooking.destination?.address || '-'}</span>
 			</div>
 
 			<div class="detail-group">
 				<label>Passengers:</label>
-				<span>{selectedBooking.numberOfPassengers}</span>
+				<span>{selectedBooking.passengerCount}</span>
 			</div>
 
-			<div class="detail-group">
-				<label>Vehicle:</label>
-				<span>{selectedBooking.vehicleId || 'Not assigned'}</span>
-			</div>
+			{#if selectedBooking.type === 'company_car'}
+				<div class="detail-group">
+					<label>Vehicle:</label>
+					<span>{selectedBooking.vehicleId || 'Not assigned'}</span>
+				</div>
+
+				<div class="detail-group">
+					<label>Driver:</label>
+					<span>
+						{#if selectedBooking.driverId}
+							{selectedBooking.driverId}
+							{#if selectedBooking.driverType}
+								<small>({selectedBooking.driverType})</small>
+							{/if}
+						{:else}
+							Self-Drive
+						{/if}
+					</span>
+				</div>
+			{:else if selectedBooking.type === 'voucher'}
+				<div class="detail-group">
+					<label>Provider:</label>
+					<span>{selectedBooking.voucherProvider || '-'}</span>
+				</div>
+
+				<div class="detail-group">
+					<label>Voucher Code:</label>
+					<span>{selectedBooking.voucherCode || 'Not assigned yet'}</span>
+				</div>
+			{/if}
 
 			<div class="detail-group">
-				<label>Driver:</label>
-				<span>{selectedBooking.driverId || 'Not assigned'}</span>
+				<label>Priority:</label>
+				<span>{selectedBooking.priority}</span>
 			</div>
 
 			<div class="detail-group">
@@ -328,20 +387,32 @@
 				</span>
 			</div>
 
-			{#if selectedBooking.notes}
+			<div class="detail-group full-width">
+				<label>Purpose:</label>
+				<span>{selectedBooking.purpose}</span>
+			</div>
+
+			{#if selectedBooking.specialRequirements}
 				<div class="detail-group full-width">
-					<label>Notes:</label>
-					<span>{selectedBooking.notes}</span>
+					<label>Special Requirements:</label>
+					<span>{selectedBooking.specialRequirements}</span>
 				</div>
 			{/if}
 
-			{#if editMode && selectedBooking.status === 'scheduled'}
+			{#if selectedBooking.approvedBy}
+				<div class="detail-group">
+					<label>Approved By:</label>
+					<span>{selectedBooking.approvedBy}</span>
+				</div>
+			{/if}
+
+			{#if editMode && selectedBooking.status === 'pending'}
 				<div class="modal-actions">
 					<button
 						onclick={() => updateBookingStatus('cancelled')}
 						class="btn-danger"
 					>
-						Cancel Booking
+						Cancel Request
 					</button>
 				</div>
 			{/if}
@@ -553,6 +624,15 @@
 	.status-badge.red {
 		background: #fee2e2;
 		color: #991b1b;
+	}
+
+	.badge-type {
+		background: #e0e7ff;
+		color: #3730a3;
+		padding: 0.25rem 0.5rem;
+		border-radius: 4px;
+		font-size: 0.75rem;
+		font-weight: 500;
 	}
 
 	.actions {

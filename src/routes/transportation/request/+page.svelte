@@ -1,8 +1,14 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { slide } from 'svelte/transition';
+	import { goto } from '$app/navigation';
 	import LocationPicker from '$lib/components/LocationPicker.svelte';
+	import { transportApi } from '$lib/client/api';
 
 	let title = 'Request Transportation';
+	let isSubmitting = false;
+	let errorMessage = '';
+	let isLoadingCompanies = true;
 
 	// Form state
 	let requestType: 'company-car' | 'voucher' = 'company-car';
@@ -16,13 +22,36 @@
 	let toLng: number | null = null;
 	let purpose = '';
 	let numberOfPassengers = 1;
-	let voucherProvider: 'gojek' | 'grab' | 'other' = 'gojek';
+	let selectedTransportCompanyId = '';
 	let isRoundTrip = false;
 	let returnDate = new Date().toISOString().split('T')[0];
 	let returnTime = '17:00';
 	let notes = '';
 	let showMapPicker = false;
 	let currentMapField: 'from' | 'to' = 'from';
+
+	// Transport companies from database
+	interface TransportCompany {
+		_id: string;
+		companyId: string;
+		name: string;
+		type: string;
+		isActive: boolean;
+	}
+	let transportCompanies: TransportCompany[] = [];
+	let availableVoucherCounts: Record<string, number> = {};
+
+	// Trip purposes from database
+	interface TripPurpose {
+		_id: string;
+		purposeId: string;
+		name: string;
+		category: string;
+		isActive: boolean;
+	}
+	let tripPurposes: TripPurpose[] = [];
+	let selectedPurposeId = '';
+	let driverShouldWait = false;
 
 	// Mock data
 	let availableVehicles = [
@@ -34,51 +63,152 @@
 
 	let selectedVehicle = '';
 
-	let availableVouchers = {
-		gojek: 15,
-		grab: 30,
-		other: 0
-	};
+	// Fetch transport companies and trip purposes on mount
+	onMount(async () => {
+		await Promise.all([loadTransportCompanies(), loadTripPurposes()]);
+	});
 
-	function handleSubmit() {
+	async function loadTransportCompanies() {
+		try {
+			isLoadingCompanies = true;
+			const response = await fetch('/api/v1/transport-companies');
+			const result = await response.json();
+
+			if (result.success && result.data) {
+				// Filter only active companies
+				transportCompanies = result.data.filter((c: TransportCompany) => c.isActive);
+
+				// Set default selection to first company
+				if (transportCompanies.length > 0) {
+					selectedTransportCompanyId = transportCompanies[0]._id;
+				}
+
+				// Fetch voucher availability for each company
+				await loadVoucherAvailability();
+			}
+		} catch (error) {
+			console.error('Failed to load transport companies:', error);
+			errorMessage = 'Failed to load transport providers. Please refresh the page.';
+		} finally {
+			isLoadingCompanies = false;
+		}
+	}
+
+	async function loadVoucherAvailability() {
+		try {
+			// Fetch voucher stats
+			const response = await fetch('/api/v1/vouchers/stats');
+			const result = await response.json();
+
+			if (result.success && result.data) {
+				// Build map of company ID to available voucher count
+				for (const company of transportCompanies) {
+					const stats = result.data.byProvider.find(
+						(p: any) => p._id === company.name.toLowerCase()
+					);
+					availableVoucherCounts[company._id] = stats?.available || 0;
+				}
+			}
+		} catch (error) {
+			console.error('Failed to load voucher availability:', error);
+		}
+	}
+
+	async function loadTripPurposes() {
+		try {
+			const response = await fetch('/api/v1/trip-purposes');
+			const result = await response.json();
+
+			if (result.success && result.data) {
+				tripPurposes = result.data;
+			}
+		} catch (error) {
+			console.error('Failed to load trip purposes:', error);
+		}
+	}
+
+	async function handleSubmit() {
+		// Validation
 		if (requestType === 'company-car') {
-			if (!fromLocation || !toLocation || !purpose || !selectedVehicle) {
-				alert('Please fill all required fields');
+			if (!fromLocation || !toLocation || (!selectedPurposeId && !purpose) || !selectedVehicle) {
+				errorMessage = 'Please fill all required fields (location, purpose, vehicle)';
 				return;
 			}
 		} else {
-			if (!fromLocation || !toLocation || !purpose) {
-				alert('Please fill all required fields');
+			if (!fromLocation || !toLocation || (!selectedPurposeId && !purpose)) {
+				errorMessage = 'Please fill all required fields (location, purpose)';
 				return;
 			}
 		}
 
-		const formData = {
-			requestType,
-			bookingDate,
-			bookingTime,
-			fromLocation,
-			toLocation,
-			fromLat,
-			fromLng,
-			toLat,
-			toLng,
-			purpose,
-			numberOfPassengers,
-			selectedVehicle: requestType === 'company-car' ? selectedVehicle : null,
-			voucherProvider: requestType === 'voucher' ? voucherProvider : null,
-			isRoundTrip: requestType === 'voucher' ? isRoundTrip : false,
-			returnDate: requestType === 'voucher' && isRoundTrip ? returnDate : null,
-			returnTime: requestType === 'voucher' && isRoundTrip ? returnTime : null,
-			vouchersNeeded: requestType === 'voucher' && isRoundTrip ? 2 : 1,
-			notes
-		};
+		errorMessage = '';
+		isSubmitting = true;
 
-		console.log('Submitting request:', formData);
-		alert('Transportation request submitted successfully!\nRequest ID: #TRP-' + Math.floor(Math.random() * 1000));
+		try {
+			// Format date and time to ISO string
+			const scheduledDateTime = new Date(`${bookingDate}T${bookingTime}:00`);
+			const returnDateTime = isRoundTrip && returnDate && returnTime
+				? new Date(`${returnDate}T${returnTime}:00`)
+				: undefined;
 
-		// Reset form
-		resetForm();
+			// Find selected transport company to get provider name
+			const selectedCompany = transportCompanies.find(c => c._id === selectedTransportCompanyId);
+
+			// Find selected purpose to get the name
+			const selectedPurpose = tripPurposes.find(p => p._id === selectedPurposeId);
+			const purposeText = selectedPurpose ? selectedPurpose.name : purpose;
+
+			// Prepare API request body
+			const requestBody = {
+				type: requestType === 'company-car' ? 'company_car' : 'voucher',
+				pickup: {
+					address: fromLocation,
+					latitude: fromLat || undefined,
+					longitude: fromLng || undefined
+				},
+				destination: {
+					address: toLocation,
+					latitude: toLat || undefined,
+					longitude: toLng || undefined
+				},
+				scheduledTime: scheduledDateTime.toISOString(),
+				returnTime: returnDateTime?.toISOString(),
+				isRoundTrip: isRoundTrip,
+				passengerCount: numberOfPassengers,
+				purposeId: selectedPurposeId || undefined,
+				purpose: purposeText,
+				priority: 'medium',
+				specialRequirements: notes || undefined,
+				driverShouldWait: requestType === 'company-car' ? driverShouldWait : undefined,
+				// For company car - vehicle will be assigned by admin
+				// For voucher - transport company info
+				transportCompanyId: requestType === 'voucher' ? selectedTransportCompanyId : undefined,
+				voucherProvider: requestType === 'voucher' && selectedCompany
+					? selectedCompany.name.toLowerCase()
+					: undefined
+			};
+
+			// Call API
+			const response = await transportApi.createRequest(requestBody);
+
+			if (response.success && response.data) {
+				// Show success message
+				alert(
+					`Transportation request submitted successfully!\n\n` +
+					`Request Number: ${response.data.requestNumber}\n` +
+					`Status: Pending approval\n\n` +
+					`You will be notified once your request is approved.`
+				);
+
+				// Redirect to bookings page
+				goto('/transportation/bookings');
+			}
+		} catch (error: any) {
+			errorMessage = error.message || 'Failed to submit request. Please try again.';
+			console.error('Submission error:', error);
+		} finally {
+			isSubmitting = false;
+		}
 	}
 
 	function resetForm() {
@@ -123,6 +253,14 @@
 	</div>
 
 	<div class="form-container">
+		<!-- Error Message -->
+		{#if errorMessage}
+			<div class="alert alert-error">
+				<span class="alert-icon">⚠️</span>
+				<span>{errorMessage}</span>
+			</div>
+		{/if}
+
 		<!-- Request Type Selection -->
 		<div class="card">
 			<h2>Select Request Type</h2>
@@ -190,8 +328,22 @@
 
 					<!-- Purpose -->
 					<div class="form-group full-width">
-						<label for="purpose">Purpose <span class="required">*</span></label>
-						<input type="text" id="purpose" bind:value={purpose} placeholder="e.g., Airport transfer, Client meeting" required />
+						<label for="purposeDropdown">Trip Purpose <span class="required">*</span></label>
+						<select id="purposeDropdown" bind:value={selectedPurposeId} required>
+							<option value="">-- Select Purpose --</option>
+							{#each tripPurposes as tripPurpose}
+								<option value={tripPurpose._id}>{tripPurpose.name}</option>
+							{/each}
+						</select>
+						{#if selectedPurposeId === ''}
+							<input
+								type="text"
+								id="purpose"
+								bind:value={purpose}
+								placeholder="Or type custom purpose..."
+								class="purpose-fallback"
+							/>
+						{/if}
 					</div>
 
 					<!-- Passengers -->
@@ -221,6 +373,21 @@
 								</label>
 							{/each}
 						</div>
+
+						<!-- Driver Wait/Drop Option -->
+						<div class="driver-wait-option">
+							<label class="checkbox-label">
+								<input type="checkbox" bind:checked={driverShouldWait} />
+								<span>
+									<strong>Driver should wait for return trip</strong>
+									<span class="info-text">
+										{driverShouldWait
+											? '(Driver will wait and bring you back to the office)'
+											: '(Driver will just drop you off at the destination)'}
+									</span>
+								</span>
+							</label>
+						</div>
 					</div>
 				{/if}
 
@@ -228,31 +395,34 @@
 				{#if requestType === 'voucher'}
 					<div class="voucher-selection" in:slide="{{ duration: 300 }}" out:slide="{{ duration: 300 }}">
 						<h3>Select Provider</h3>
-						<div class="provider-grid">
-							<label class="provider-card {voucherProvider === 'gojek' ? 'selected' : ''}">
-								<input type="radio" bind:group={voucherProvider} value="gojek" />
-								<div class="provider-content">
-									<h4>Gojek</h4>
-									<p class="available-count">{availableVouchers.gojek} vouchers available</p>
-								</div>
-							</label>
 
-							<label class="provider-card {voucherProvider === 'grab' ? 'selected' : ''}">
-								<input type="radio" bind:group={voucherProvider} value="grab" />
-								<div class="provider-content">
-									<h4>Grab</h4>
-									<p class="available-count">{availableVouchers.grab} vouchers available</p>
-								</div>
-							</label>
-
-							<label class="provider-card {voucherProvider === 'other' ? 'selected' : ''} {availableVouchers.other === 0 ? 'disabled' : ''}">
-								<input type="radio" bind:group={voucherProvider} value="other" disabled={availableVouchers.other === 0} />
-								<div class="provider-content">
-									<h4>Other</h4>
-									<p class="available-count">{availableVouchers.other} vouchers available</p>
-								</div>
-							</label>
-						</div>
+						{#if isLoadingCompanies}
+							<div class="loading-message">
+								<p>Loading transport providers...</p>
+							</div>
+						{:else if transportCompanies.length === 0}
+							<div class="empty-message">
+								<p>No active transport providers available. Please contact administrator.</p>
+							</div>
+						{:else}
+							<div class="provider-grid">
+								{#each transportCompanies as company}
+									{@const voucherCount = availableVoucherCounts[company._id] || 0}
+									<label class="provider-card {selectedTransportCompanyId === company._id ? 'selected' : ''} {voucherCount === 0 ? 'disabled' : ''}">
+										<input
+											type="radio"
+											bind:group={selectedTransportCompanyId}
+											value={company._id}
+											disabled={voucherCount === 0}
+										/>
+										<div class="provider-content">
+											<h4>{company.name}</h4>
+											<p class="available-count">{voucherCount} vouchers available</p>
+										</div>
+									</label>
+								{/each}
+							</div>
+						{/if}
 
 						<!-- Round Trip Option -->
 						<div class="round-trip-option">
@@ -282,14 +452,16 @@
 
 				<!-- Notes -->
 				<div class="form-group full-width">
-					<label for="notes">Additional Notes</label>
-					<textarea id="notes" bind:value={notes} rows="3" placeholder="Any special requirements or notes..."></textarea>
+					<label for="notes">Additional Notes / Instructions for Driver or Administrator</label>
+					<textarea id="notes" bind:value={notes} rows="3" placeholder="e.g., Pick up from basement parking, Contact security at gate, Special luggage..."></textarea>
 				</div>
 
 				<!-- Actions -->
 				<div class="form-actions">
 					<a href="/transportation" class="btn-secondary">Cancel</a>
-					<button type="submit" class="btn-primary">Submit Request</button>
+					<button type="submit" class="btn-primary" disabled={isSubmitting}>
+						{isSubmitting ? 'Submitting...' : 'Submit Request'}
+					</button>
 				</div>
 			</form>
 		</div>
@@ -447,6 +619,7 @@
 	input[type="date"],
 	input[type="time"],
 	input[type="number"],
+	select,
 	textarea {
 		padding: 0.75rem;
 		border: 2px solid #e2e8f0;
@@ -455,7 +628,16 @@
 		transition: border-color 0.2s;
 	}
 
-	input:focus, textarea:focus {
+	select {
+		cursor: pointer;
+		background: white;
+	}
+
+	.purpose-fallback {
+		margin-top: 0.5rem;
+	}
+
+	input:focus, select:focus, textarea:focus {
 		outline: none;
 		border-color: #667eea;
 	}
@@ -508,7 +690,7 @@
 	/* Voucher/Provider Selection */
 	.provider-grid {
 		display: grid;
-		grid-template-columns: repeat(3, 1fr);
+		grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
 		gap: 1rem;
 	}
 
@@ -519,6 +701,20 @@
 	.provider-card.disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
+	}
+
+	.loading-message,
+	.empty-message {
+		padding: 2rem;
+		text-align: center;
+		color: #666;
+		background: #f8f9fa;
+		border-radius: 8px;
+	}
+
+	.loading-message p,
+	.empty-message p {
+		margin: 0;
 	}
 
 	.provider-card input {
@@ -585,6 +781,44 @@
 		box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 	}
 
+	.btn-primary:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+		transform: none;
+	}
+
+	/* Alert */
+	.alert {
+		padding: 1rem 1.5rem;
+		border-radius: 8px;
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		margin-bottom: 1.5rem;
+		animation: slideDown 0.3s ease-out;
+	}
+
+	@keyframes slideDown {
+		from {
+			opacity: 0;
+			transform: translateY(-10px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	.alert-error {
+		background: #fff5f5;
+		border: 2px solid #fc8181;
+		color: #c53030;
+	}
+
+	.alert-icon {
+		font-size: 1.5rem;
+	}
+
 	/* Location Input with Map Button */
 	.location-input-group {
 		display: flex;
@@ -611,6 +845,15 @@
 		background: #667eea;
 		color: white;
 		transform: translateY(-2px);
+	}
+
+	/* Driver Wait/Drop Option */
+	.driver-wait-option {
+		margin-top: 1.5rem;
+		padding: 1rem;
+		background: #f0f4ff;
+		border: 2px solid #667eea;
+		border-radius: 8px;
 	}
 
 	/* Round Trip Option */

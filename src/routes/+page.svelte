@@ -109,20 +109,8 @@
 {:else}
 <div class="dashboard">
 	<div class="header">
-		<div class="flex justify-between items-center">
-			<div>
-				<h1>Dashboard</h1>
-				<p class="subtitle">Welcome back, {user.name || user.email}!</p>
-			</div>
-			<form method="POST" action="/auth/logout">
-				<button
-					type="submit"
-					class="text-sm text-gray-500 hover:text-gray-700 underline"
-				>
-					Logout
-				</button>
-			</form>
-		</div>
+		<h1>Dashboard</h1>
+		<p class="subtitle">Welcome back, {user.name || user.email}!</p>
 	</div>
 
 	<!-- Stats Cards -->
@@ -244,10 +232,6 @@
 		justify-content: center;
 	}
 
-	.justify-between {
-		justify-content: space-between;
-	}
-
 	.bg-gradient-to-br {
 		background: linear-gradient(to bottom right, #eff6ff, #e0e7ff);
 	}
@@ -308,10 +292,6 @@
 
 	.text-gray-600 {
 		color: #4b5563;
-	}
-
-	.text-gray-500 {
-		color: #6b7280;
 	}
 
 	.text-green-500 {
@@ -382,10 +362,6 @@
 
 	.transition {
 		transition: all 0.2s;
-	}
-
-	.underline {
-		text-decoration: underline;
 	}
 
 	a {

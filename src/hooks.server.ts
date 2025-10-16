@@ -22,6 +22,7 @@ initializeDB();
 export const handle: Handle = async ({ event, resolve }) => {
 	const sessionCookie = event.cookies.get('ofm_session');
 
+	// Session validation
 	if (sessionCookie) {
 		try {
 			const { getSession, refreshSession, setSessionCookie } = await import('$lib/server/auth/session');
@@ -31,6 +32,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 				const timeUntilExpiry = session.expiresAt - Date.now();
 				const fifteenMinutes = 15 * 60 * 1000;
 
+				// Auto-refresh if expiring soon
 				if (timeUntilExpiry < fifteenMinutes && timeUntilExpiry > 0) {
 					try {
 						const newSessionToken = await refreshSession(session);
@@ -56,6 +58,26 @@ export const handle: Handle = async ({ event, resolve }) => {
 			console.error('Session validation error:', error);
 			event.locals.user = null;
 		}
+	}
+
+	// Protected routes - redirect to login if not authenticated
+	const pathname = event.url.pathname;
+	const isAuthRoute = pathname.startsWith('/auth');
+	const isDisplayRoute = pathname.startsWith('/display'); // Public route for room displays
+	const isApiRoute = pathname.startsWith('/api');
+	const isHomePage = pathname === '/';
+
+	// Define public routes
+	const isPublicRoute = isAuthRoute || isDisplayRoute || isApiRoute || isHomePage;
+
+	// Redirect to login if accessing protected route without authentication
+	if (!isPublicRoute && !event.locals.user) {
+		return new Response(null, {
+			status: 302,
+			headers: {
+				location: '/'
+			}
+		});
 	}
 
 	const response = await resolve(event);
