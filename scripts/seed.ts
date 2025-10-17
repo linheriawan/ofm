@@ -24,6 +24,7 @@ async function seedDatabase() {
 		await db.collection('drivers').deleteMany({});
 		await db.collection('meeting_rooms').deleteMany({});
 		await db.collection('transportation_bookings').deleteMany({});
+		await db.collection('transportation_requests').deleteMany({});
 		await db.collection('meeting_bookings').deleteMany({});
 		await db.collection('vouchers').deleteMany({});
 
@@ -432,11 +433,179 @@ async function seedDatabase() {
 		];
 		await db.collection('vouchers').insertMany(vouchers);
 
-		// Seed Sample Bookings
-		console.log('📅 Seeding sample bookings...');
+		// Seed Transportation Requests
+		console.log('🚗 Seeding transportation requests...');
 		const today = new Date();
 		const tomorrow = new Date(today);
 		tomorrow.setDate(tomorrow.getDate() + 1);
+		const nextWeek = new Date(today);
+		nextWeek.setDate(nextWeek.getDate() + 7);
+
+		const transportRequests = [
+			{
+				_id: new ObjectId(),
+				requestNumber: 'TR-2025-001',
+				companyId: 'IAS',
+				type: 'company_car',
+				userId: 'USR-002',
+				userName: 'John Doe',
+				userEmail: 'john.doe@ias.co.id',
+				pickup: {
+					address: 'Office Jakarta - Jl. Sudirman No. 123',
+					latitude: -6.2088,
+					longitude: 106.8456
+				},
+				destination: {
+					address: 'Soekarno-Hatta International Airport',
+					latitude: -6.1256,
+					longitude: 106.6559
+				},
+				scheduledTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 15, 30),
+				isRoundTrip: false,
+				passengerCount: 2,
+				purpose: 'Airport Transfer - Client Meeting',
+				priority: 'high',
+				status: 'pending',
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				createdBy: 'USR-002'
+			},
+			{
+				_id: new ObjectId(),
+				requestNumber: 'TR-2025-002',
+				companyId: 'IAS',
+				type: 'voucher',
+				userId: 'USR-003',
+				userName: 'Jane Smith',
+				userEmail: 'jane.smith@ias.co.id',
+				pickup: {
+					address: 'Kemang Residence, Jakarta Selatan'
+				},
+				destination: {
+					address: 'Office Jakarta - Jl. Sudirman No. 123'
+				},
+				scheduledTime: new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate(), 8, 0),
+				isRoundTrip: true,
+				returnTime: new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate(), 17, 30),
+				passengerCount: 1,
+				purpose: 'Daily Commute',
+				priority: 'medium',
+				voucherProvider: 'gojek',
+				status: 'pending',
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				createdBy: 'USR-003'
+			},
+			{
+				_id: new ObjectId(),
+				requestNumber: 'TR-2025-003',
+				companyId: 'IAS',
+				type: 'company_car',
+				userId: 'USR-002',
+				userName: 'John Doe',
+				userEmail: 'john.doe@ias.co.id',
+				pickup: {
+					address: 'Office Jakarta',
+					latitude: -6.2088,
+					longitude: 106.8456
+				},
+				destination: {
+					address: 'Wisma BNI 46, Jakarta',
+					latitude: -6.2093,
+					longitude: 106.8233
+				},
+				scheduledTime: new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate(), 10, 0),
+				isRoundTrip: false,
+				passengerCount: 3,
+				purpose: 'Client Meeting',
+				priority: 'medium',
+				driverShouldWait: true,
+				status: 'approved',
+				approvedBy: 'USR-001',
+				approvedByName: 'Admin User',
+				approvedAt: new Date(),
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				createdBy: 'USR-002'
+			},
+			{
+				_id: new ObjectId(),
+				requestNumber: 'TR-2025-004',
+				companyId: 'IAS',
+				type: 'voucher',
+				userId: 'USR-003',
+				userName: 'Jane Smith',
+				userEmail: 'jane.smith@ias.co.id',
+				pickup: {
+					address: 'Grand Indonesia Mall'
+				},
+				destination: {
+					address: 'Office Jakarta'
+				},
+				scheduledTime: new Date(nextWeek.getFullYear(), nextWeek.getMonth(), nextWeek.getDate(), 14, 0),
+				isRoundTrip: false,
+				passengerCount: 1,
+				purpose: 'Return from Lunch Meeting',
+				priority: 'low',
+				voucherProvider: 'grab',
+				status: 'approved',
+				approvedBy: 'USR-001',
+				approvedByName: 'Admin User',
+				approvedAt: new Date(),
+				voucherCode: 'GRAB100K2024',
+				voucherAmount: 100000,
+				assignedBy: 'USR-001',
+				assignedByName: 'Admin User',
+				assignedAt: new Date(),
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				createdBy: 'USR-003'
+			},
+			{
+				_id: new ObjectId(),
+				requestNumber: 'TR-2025-005',
+				companyId: 'IAS',
+				type: 'company_car',
+				userId: 'USR-002',
+				userName: 'John Doe',
+				userEmail: 'john.doe@ias.co.id',
+				pickup: {
+					address: 'Office Jakarta',
+					latitude: -6.2088,
+					longitude: 106.8456
+				},
+				destination: {
+					address: 'Thamrin City',
+					latitude: -6.1944,
+					longitude: 106.8229
+				},
+				scheduledTime: new Date(nextWeek.getFullYear(), nextWeek.getMonth(), nextWeek.getDate(), 9, 30),
+				isRoundTrip: true,
+				returnTime: new Date(nextWeek.getFullYear(), nextWeek.getMonth(), nextWeek.getDate(), 16, 0),
+				passengerCount: 4,
+				purpose: 'Team Building Event',
+				priority: 'urgent',
+				driverShouldWait: false,
+				status: 'assigned',
+				vehicleId: 'VEH-MPV-001',
+				vehicleName: 'Toyota Alphard',
+				driverId: 'DRV-001',
+				driverName: 'Driver Budi',
+				approvedBy: 'USR-001',
+				approvedByName: 'Admin User',
+				approvedAt: new Date(),
+				assignedBy: 'USR-001',
+				assignedByName: 'Admin User',
+				assignedAt: new Date(),
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				createdBy: 'USR-002'
+			}
+		];
+		await db.collection('transportation_requests').insertMany(transportRequests);
+
+		// Seed Sample Bookings (Old format - kept for reference)
+		console.log('📅 Seeding sample bookings...');
 
 		const transportBookings = [
 			{
@@ -529,7 +698,8 @@ async function seedDatabase() {
 - Drivers: ${drivers.length}
 - Meeting Rooms: ${meetingRooms.length}
 - Vouchers: ${vouchers.length}
-- Transport Bookings: ${transportBookings.length}
+- Transport Requests: ${transportRequests.length}
+- Transport Bookings (Old): ${transportBookings.length}
 - Meeting Bookings: ${meetingBookings.length}
 		`);
 

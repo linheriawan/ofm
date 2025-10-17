@@ -1,13 +1,14 @@
-import {
-	SSO_AUTHORIZATION_URL,
-	SSO_TOKEN_URL,
-	SSO_USERINFO_URL,
-	SSO_CLIENT_ID,
-	SSO_CLIENT_SECRET,
-	SSO_REDIRECT_URI,
-	SSO_SCOPES
-} from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import { generatePKCEPair, generateRandomString } from './pkce';
+
+// Runtime environment variables with fallbacks
+const SSO_AUTHORIZATION_URL = env.SSO_AUTHORIZATION_URL || process.env.SSO_AUTHORIZATION_URL || '';
+const SSO_TOKEN_URL = env.SSO_TOKEN_URL || process.env.SSO_TOKEN_URL || '';
+const SSO_USERINFO_URL = env.SSO_USERINFO_URL || process.env.SSO_USERINFO_URL || '';
+const SSO_CLIENT_ID = env.SSO_CLIENT_ID || process.env.SSO_CLIENT_ID || '';
+const SSO_CLIENT_SECRET = env.SSO_CLIENT_SECRET || process.env.SSO_CLIENT_SECRET || '';
+const SSO_REDIRECT_URI = env.SSO_REDIRECT_URI || process.env.SSO_REDIRECT_URI || '';
+const SSO_SCOPES = env.SSO_SCOPES || process.env.SSO_SCOPES || 'openid email profile';
 
 export interface OAuthTokens {
 	access_token: string;

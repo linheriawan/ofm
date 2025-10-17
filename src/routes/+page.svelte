@@ -1,9 +1,41 @@
 <script lang="ts">
 	import { page } from '$app/stores';
+	import { onMount } from 'svelte';
 
 	let title = 'Dashboard - OFM';
 
 	const user = $page.data.user;
+	let showCancelledMessage = false;
+	let errorMessage = '';
+
+	onMount(() => {
+		// Check if user cancelled login or if there was an error
+		const urlParams = new URLSearchParams(window.location.search);
+
+		if (urlParams.get('cancelled') === 'true') {
+			showCancelledMessage = true;
+			// Clear the URL parameter after showing message
+			window.history.replaceState({}, '', '/');
+			// Auto-hide message after 5 seconds
+			setTimeout(() => {
+				showCancelledMessage = false;
+			}, 5000);
+		} else if (urlParams.get('error')) {
+			const error = urlParams.get('error');
+			const errorMessages: Record<string, string> = {
+				'invalid_request': 'Invalid authentication request. Please try again.',
+				'server_error': 'Server error during authentication. Please try again.',
+				'temporarily_unavailable': 'Authentication service is temporarily unavailable.'
+			};
+			errorMessage = errorMessages[error || ''] || `Authentication error: ${error}`;
+			// Clear the URL parameter
+			window.history.replaceState({}, '', '/');
+			// Auto-hide error after 8 seconds
+			setTimeout(() => {
+				errorMessage = '';
+			}, 8000);
+		}
+	});
 
 	// Mock data for dashboard
 	let stats = {
@@ -50,12 +82,30 @@
 			<p class="text-gray-600">Transportation & Meeting Room Booking System</p>
 		</div>
 
+		{#if showCancelledMessage}
+		<div class="alert-warning mb-4">
+			<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+				<path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+			</svg>
+			<span>Login cancelled. Please sign in to continue.</span>
+		</div>
+		{/if}
+
+		{#if errorMessage}
+		<div class="alert-error mb-4">
+			<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+				<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+			</svg>
+			<span>{errorMessage}</span>
+		</div>
+		{/if}
+
 		<div class="space-y-4">
 			<a
 				href="/auth/login"
 				class="block w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition text-center font-semibold"
 			>
-				Sign in with Aksara SSO
+				Sign in with SSO
 			</a>
 		</div>
 
@@ -376,14 +426,63 @@
 		height: 1rem;
 	}
 
+	.w-5 {
+		width: 1.25rem;
+	}
+
+	.h-5 {
+		height: 1.25rem;
+	}
+
 	.mr-2 {
 		margin-right: 0.5rem;
+	}
+
+	.mb-4 {
+		margin-bottom: 1rem;
 	}
 
 	button {
 		cursor: pointer;
 		border: none;
 		background: none;
+	}
+
+	.alert-warning {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		padding: 0.75rem 1rem;
+		background-color: #fef3c7;
+		border: 1px solid #f59e0b;
+		border-radius: 0.5rem;
+		color: #92400e;
+		font-size: 0.875rem;
+		animation: slideDown 0.3s ease-out;
+	}
+
+	.alert-error {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		padding: 0.75rem 1rem;
+		background-color: #fee2e2;
+		border: 1px solid #ef4444;
+		border-radius: 0.5rem;
+		color: #991b1b;
+		font-size: 0.875rem;
+		animation: slideDown 0.3s ease-out;
+	}
+
+	@keyframes slideDown {
+		from {
+			opacity: 0;
+			transform: translateY(-10px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
 	}
 
 	.dashboard {

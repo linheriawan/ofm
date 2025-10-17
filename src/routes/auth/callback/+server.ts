@@ -15,12 +15,19 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 	console.log('   State:', state);
 	console.log('   Error:', errorParam);
 
+	// Handle user cancellation gracefully
 	if (errorParam) {
-		throw error(400, `SSO authentication failed: ${errorParam}`);
+		if (errorParam === 'access_denied') {
+			console.log('⚠️  User cancelled login');
+			throw redirect(302, '/?cancelled=true');
+		}
+		console.error('❌ OAuth error:', errorParam);
+		throw redirect(302, `/?error=${encodeURIComponent(errorParam)}`);
 	}
 
 	if (!code || !state) {
-		throw error(400, 'Missing code or state parameter');
+		console.error('❌ Missing OAuth parameters - code:', !!code, 'state:', !!state);
+		throw redirect(302, '/?error=invalid_request');
 	}
 
 	const [stateValue, redirectPath] = state.split(':');

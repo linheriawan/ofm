@@ -1,4 +1,4 @@
-import { SESSION_SECRET } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import type { RequestEvent } from '@sveltejs/kit';
 import type { OAuthTokens, UserInfo } from './oauth';
 import { refreshAccessToken, getUserInfo } from './oauth';
@@ -7,6 +7,11 @@ const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
 async function getKey(): Promise<CryptoKey> {
+	const SESSION_SECRET = env.SESSION_SECRET || process.env.SESSION_SECRET;
+	if (!SESSION_SECRET) {
+		throw new Error('SESSION_SECRET must be set');
+	}
+
 	const keyMaterial = await crypto.subtle.importKey(
 		'raw',
 		encoder.encode(SESSION_SECRET),

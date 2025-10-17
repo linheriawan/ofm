@@ -1,0 +1,185 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ofm-secret
+  namespace: development
+type: Opaque
+stringData:
+  MONGODB_URI: "mongodb+srv://root:pass123word@devday.wmveufv.mongodb.net/?retryWrites=true&w=majority&appName=DevDay"
+  MONGODB_DB: "ofm_dev"
+  SESSION_SECRET: "dev-session-secret-key-change-in-production"
+  SSO_CLIENT_SECRET: "ofm-secret-2025"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ofm
+  namespace: development
+  labels:
+    app: ofm
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ofm
+  template:
+    metadata:
+      labels:
+        app: ofm
+      annotations:
+        eks.amazonaws.com/security-groups: sg-0c68d65790df0389d
+    spec:
+      nodeSelector:
+        topology.kubernetes.io/zone: ap-southeast-3a
+      containers:
+      - name: ofm
+        image: 851725647704.dkr.ecr.ap-southeast-3.amazonaws.com/ofm:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3001
+          name: http
+          protocol: TCP
+        resources:
+          requests:
+            cpu: 250m
+            memory: 512Mi
+          limits:
+            cpu: 500m
+            memory: 1Gi
+        env:
+        - name: PORT
+          value: "3001"
+        - name: HOST
+          value: "0.0.0.0"
+        - name: NODE_ENV
+          value: "production"
+        - name: APP_URL
+          value: "https://ofm.ias.id"
+        - name: ORIGIN
+          value: "https://ofm.ias.id"
+        - name: SSO_ISSUER
+          value: "https://sso.ias.id"
+        - name: SSO_AUTHORIZATION_URL
+          value: "https://sso.ias.id/oauth/authorize"
+        - name: SSO_TOKEN_URL
+          value: "https://sso.ias.id/oauth/token"
+        - name: SSO_USERINFO_URL
+          value: "https://sso.ias.id/oauth/userinfo"
+        - name: SSO_JWKS_URL
+          value: "https://sso.ias.id/.well-known/jwks.json"
+        - name: SSO_CLIENT_ID
+          value: "ofm-client"
+        - name: SSO_REDIRECT_URI
+          value: "https://ofm.ias.id/auth/callback"
+        - name: SSO_SCOPES
+          value: "openid email profile roles"
+        - name: MONGODB_URI
+          valueFrom:
+            secretKeyRef:
+              name: ofm-secret
+              key: MONGODB_URI
+        - name: MONGODB_DB
+          valueFrom:
+            secretKeyRef:
+              name: ofm-secret
+              key: MONGODB_DB
+        - name: SESSION_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: ofm-secret
+              key: SESSION_SECRET
+        - name: SSO_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: ofm-secret
+              key: SSO_CLIENT_SECRET
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 3001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 3001
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ofm-hpa
+  namespace: development
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ofm
+  minReplicas: 1
+  maxReplicas: 3
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 25
+        periodSeconds: 60
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ofm-service
+  namespace: development
+  labels:
+    app: ofm
+spec:
+  type: ClusterIP
+  selector:
+    app: ofm
+  ports:
+  - name: http
+    port: 80
+    targetPort: 3001
+    protocol: TCP
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
+---
+apiVersion: elbv2.k8s.aws/v1beta1
+kind: TargetGroupBinding
+metadata:
+  name: ofm-tgb
+  namespace: development
+spec:
+  ipAddressType: ipv4
+  serviceRef:
+    name: ofm-service
+    port: 80
+  targetGroupARN: arn:aws:elasticloadbalancing:ap-southeast-3:851725647704:targetgroup/TG-EKS-OFM/459966af7bde59be
+  targetType: ip

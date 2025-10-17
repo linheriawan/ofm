@@ -104,7 +104,7 @@
 			const response = await fetch(`/api/v1/transport/requests/${selectedBooking._id}`, {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ status })
+				body: JSON.stringify({ action: status === 'cancelled' ? 'cancel' : status })
 			});
 
 			const result = await response.json();

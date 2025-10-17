@@ -113,12 +113,22 @@ export const GET: RequestHandler = async (event) => {
 		// Build query
 		const query: any = {};
 
+		// Check if user is admin
+		const userRoles = user.roles || [];
+		const isAdmin = userRoles.includes('admin') || userRoles.includes('regional_admin') || userRoles.includes('super_admin');
+
+		console.log('🔍 Transport requests query - User:', user.email, 'Roles:', userRoles, 'isAdmin:', isAdmin);
+
 		// Regular users can only see their own requests
 		// Admins can see all requests or filter by userId
-		if (!user.roles.includes('admin') && !user.roles.includes('regional_admin')) {
+		if (!isAdmin) {
 			query.userId = user.userId;
+			console.log('   👤 Non-admin: filtering by userId:', user.userId);
 		} else if (userId) {
 			query.userId = userId;
+			console.log('   👨‍💼 Admin: filtering by requested userId:', userId);
+		} else {
+			console.log('   👨‍💼 Admin: showing all requests (no userId filter)');
 		}
 
 		if (status) query.status = status;
@@ -128,6 +138,9 @@ export const GET: RequestHandler = async (event) => {
 			if (startDate) query.scheduledTime.$gte = new Date(startDate);
 			if (endDate) query.scheduledTime.$lte = new Date(endDate);
 		}
+
+		console.log('   🔎 Final query:', JSON.stringify(query));
+		console.log('   📄 Pagination: page', page, 'limit', limit, 'skip', skip);
 
 		// Execute query
 		const [requests, total] = await Promise.all([
@@ -139,6 +152,8 @@ export const GET: RequestHandler = async (event) => {
 				.toArray(),
 			db.collection(collections.transportationRequests).countDocuments(query)
 		]);
+
+		console.log('   ✅ Found', total, 'requests, returning', requests.length, 'items');
 
 		// Format response
 		const formattedRequests = requests.map(req => ({

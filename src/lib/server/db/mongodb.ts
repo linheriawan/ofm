@@ -1,5 +1,5 @@
 import { MongoClient, Db } from 'mongodb';
-import { MONGODB_URI, MONGODB_DB } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 
 let client: MongoClient;
 let db: Db;
@@ -7,6 +7,13 @@ let db: Db;
 export async function connectDB(): Promise<Db> {
 	if (db) {
 		return db;
+	}
+
+	const MONGODB_URI = env.MONGODB_URI || process.env.MONGODB_URI;
+	const MONGODB_DB = env.MONGODB_DB || process.env.MONGODB_DB;
+
+	if (!MONGODB_URI || !MONGODB_DB) {
+		throw new Error('MONGODB_URI and MONGODB_DB must be set');
 	}
 
 	try {
