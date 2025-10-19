@@ -163,7 +163,11 @@
 		<p class="subtitle">Welcome back, {user.name || user.email}!</p>
 	</div>
 
-	<!-- Stats Cards -->
+	<!-- Transportation Overview Section -->
+	<div class="section-header">
+		<h2>🚗 Transportation</h2>
+		<a href="/transportation/request" class="section-link">Request Transport →</a>
+	</div>
 	<div class="stats-grid">
 		<div class="stat-card transport">
 			<div class="stat-icon">🚗</div>
@@ -183,6 +187,31 @@
 			</div>
 		</div>
 
+		<div class="stat-card transport">
+			<div class="stat-icon">🎫</div>
+			<div class="stat-content">
+				<h3>Pending Requests</h3>
+				<div class="stat-value">{stats.transportation.pendingRequests}</div>
+				<p class="stat-label">Awaiting approval</p>
+			</div>
+		</div>
+
+		<div class="stat-card transport">
+			<div class="stat-icon">🎟️</div>
+			<div class="stat-content">
+				<h3>Vouchers Available</h3>
+				<div class="stat-value">{stats.transportation.vouchersAvailable}</div>
+				<p class="stat-label">Gojek, Grab</p>
+			</div>
+		</div>
+	</div>
+
+	<!-- Meeting Rooms Overview Section -->
+	<div class="section-header" style="margin-top: 3rem;">
+		<h2>🏢 Meeting Rooms</h2>
+		<a href="/meeting/book" class="section-link">Book Room →</a>
+	</div>
+	<div class="stats-grid">
 		<div class="stat-card meeting">
 			<div class="stat-icon">🏢</div>
 			<div class="stat-content">
@@ -199,6 +228,57 @@
 				<div class="stat-value">{stats.meeting.todayBookings}</div>
 				<p class="stat-label">{stats.meeting.ongoingMeetings} ongoing</p>
 			</div>
+		</div>
+
+		<div class="stat-card meeting">
+			<div class="stat-icon">🎥</div>
+			<div class="stat-content">
+				<h3>Active Licenses</h3>
+				<div class="stat-value">{stats.meeting.activeLicenses}</div>
+				<p class="stat-label">Zoom, Meet, Teams</p>
+			</div>
+		</div>
+
+		<div class="stat-card meeting">
+			<div class="stat-icon">✅</div>
+			<div class="stat-content">
+				<h3>Ongoing Meetings</h3>
+				<div class="stat-value">{stats.meeting.ongoingMeetings}</div>
+				<p class="stat-label">In progress now</p>
+			</div>
+		</div>
+	</div>
+
+	<!-- Reports & Analytics Section -->
+	<div class="section-header" style="margin-top: 3rem;">
+		<h2>📊 Reports & Analytics</h2>
+	</div>
+	<div class="stats-grid">
+		<div class="stat-card report unavailable">
+			<div class="stat-icon">📈</div>
+			<div class="stat-content">
+				<h3>Transport Reports</h3>
+				<p class="report-description">Utilization and cost analytics</p>
+			</div>
+			<div class="coming-soon-badge">Coming Soon</div>
+		</div>
+
+		<div class="stat-card report unavailable">
+			<div class="stat-icon">📊</div>
+			<div class="stat-content">
+				<h3>Meeting Reports</h3>
+				<p class="report-description">Room occupancy and usage stats</p>
+			</div>
+			<div class="coming-soon-badge">Coming Soon</div>
+		</div>
+
+		<div class="stat-card report unavailable">
+			<div class="stat-icon">💰</div>
+			<div class="stat-content">
+				<h3>Financial Reports</h3>
+				<p class="report-description">Cost tracking and budget analysis</p>
+			</div>
+			<div class="coming-soon-badge">Coming Soon</div>
 		</div>
 	</div>
 
@@ -509,6 +589,32 @@
 		margin: 0.5rem 0 0 0;
 	}
 
+	.section-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 1.5rem;
+		padding-bottom: 0.75rem;
+		border-bottom: 2px solid #e2e8f0;
+	}
+
+	.section-header h2 {
+		margin: 0;
+		font-size: 1.5rem;
+		color: #333;
+	}
+
+	.section-link {
+		color: #667eea;
+		text-decoration: none;
+		font-weight: 500;
+		transition: color 0.2s;
+	}
+
+	.section-link:hover {
+		color: #764ba2;
+	}
+
 	.stats-grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -538,6 +644,39 @@
 
 	.stat-card.meeting {
 		border-color: #48bb78;
+	}
+
+	.stat-card.report {
+		border-color: #f6ad55;
+		position: relative;
+	}
+
+	.stat-card.unavailable {
+		opacity: 0.6;
+		cursor: not-allowed;
+		background: #f9fafb;
+	}
+
+	.coming-soon-badge {
+		position: absolute;
+		top: 1rem;
+		right: 1rem;
+		background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+		color: white;
+		padding: 0.25rem 0.75rem;
+		border-radius: 12px;
+		font-size: 0.75rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+	}
+
+	.report-description {
+		margin: 0.5rem 0 0 0;
+		font-size: 0.85rem;
+		color: #888;
+		line-height: 1.4;
 	}
 
 	.stat-icon {

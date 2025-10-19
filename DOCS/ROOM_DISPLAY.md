@@ -4,7 +4,7 @@ I've successfully created a complete room display system for your meeting room t
 
 ## 1. API Endpoint for Room Schedule
 
-  File: src/routes/api/rooms/[id]/schedule/+server.ts
+  File: src/routes/api/v1/rooms/[id]/schedule/+server.ts
 
   Features:
   - Fetches room details by ID
@@ -14,7 +14,7 @@ I've successfully created a complete room display system for your meeting room t
   - Calculates room availability status
   - Auto-refreshes every 30 seconds
 
-  Endpoint: GET /api/rooms/{roomId}/schedule
+  Endpoint: GET /api/v1/rooms/{roomId}/schedule
 
   Response includes:
   - Room information (name, capacity, facilities)

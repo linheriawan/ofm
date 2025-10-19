@@ -65,7 +65,7 @@ The following collections will be created:
 ### Transportation
 - `vehicles` - Company vehicles
 - `drivers` - Company drivers
-- `transportation_bookings` - Car bookings
+- `transportation_requests` - Car bookings
 - `vouchers` - Transportation vouchers
 - `voucher_allocations` - Voucher assignments
 - `vehicle_tracking` - GPS data

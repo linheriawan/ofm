@@ -17,16 +17,19 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		// Parse pagination parameters
 		const { page, limit, skip } = parsePagination(url);
 
+		// Build query - show all trip purposes (no company filter for now)
+		const query: any = {};
+
+		console.log('Trip Purposes Query:', JSON.stringify(query));
+		console.log('User companyId:', user.companyId);
+
 		// Get total count
-		const total = await tripPurposesCollection.countDocuments({
-			companyId: user.companyId || 'IAS'
-		});
+		const total = await tripPurposesCollection.countDocuments(query);
+		console.log('Trip Purposes Total:', total);
 
 		// Get paginated trip purposes
 		const purposes = await tripPurposesCollection
-			.find({
-				companyId: user.companyId || 'IAS'
-			})
+			.find(query)
 			.sort({ sortOrder: 1, name: 1 })
 			.skip(skip)
 			.limit(limit)
@@ -37,8 +40,12 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		return json({
 			success: true,
 			data: purposes,
-			total,
-			totalPages
+			meta: {
+				page,
+				limit,
+				total,
+				totalPages
+			}
 		});
 	} catch (err: any) {
 		console.error('Error fetching trip purposes:', err);

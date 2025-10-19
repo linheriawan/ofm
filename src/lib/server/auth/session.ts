@@ -69,20 +69,96 @@ export interface SessionData {
 	email: string;
 	name?: string;
 	ssoUserId: string;
-	companyId?: string;
-	roles: string[];
+
+	// Employee info
+	employeeId?: string; // NIK
+	firstName?: string;
+	lastName?: string;
+	fullName?: string;
+	phone?: string;
+
+	// Organization (Entitas) - companyId is the organizationId
+	companyId?: string; // Maps to organizationId from SSO
+	companyName?: string;
+	companyCode?: string;
+
+	// Org Unit (Unit Kerja)
+	orgUnitId?: string;
+	orgUnitName?: string;
+	orgUnitCode?: string;
+	orgUnitType?: string;
+
+	// Position (Jabatan)
+	positionId?: string;
+	positionName?: string;
+	positionCode?: string;
+	positionLevel?: string;
+	positionGrade?: string;
+
+	// Work location
+	workLocation?: string;
+	region?: string;
+	employmentType?: string;
+	employmentStatus?: string;
+	isRemote?: boolean;
+
+	// Manager
+	managerId?: string;
+
+	// Roles (both SSO and OFM app-specific)
+	roles: string[]; // OFM-specific roles
+	ssoRoles?: string[]; // Roles from SSO
+
 	tokens: OAuthTokens;
 	expiresAt: number;
 }
 
-export async function createSession(userInfo: UserInfo, tokens: OAuthTokens, companyId?: string): Promise<string> {
+export async function createSession(userInfo: UserInfo, tokens: OAuthTokens, localCompanyId?: string, userRoles?: string[]): Promise<string> {
 	const sessionData: SessionData = {
 		userId: userInfo.sub,
 		email: userInfo.email,
-		name: userInfo.name,
+		name: userInfo.name || userInfo.fullName,
 		ssoUserId: userInfo.sub,
-		companyId,
-		roles: [],
+
+		// Employee info from SSO
+		employeeId: userInfo.employeeId,
+		firstName: userInfo.firstName,
+		lastName: userInfo.lastName,
+		fullName: userInfo.fullName,
+		phone: userInfo.phone,
+
+		// Organization - use SSO organizationId, fallback to local companyId
+		companyId: userInfo.organizationId || localCompanyId,
+		companyName: userInfo.organizationName,
+		companyCode: userInfo.organizationCode,
+
+		// Org Unit (Unit Kerja)
+		orgUnitId: userInfo.orgUnitId,
+		orgUnitName: userInfo.orgUnitName,
+		orgUnitCode: userInfo.orgUnitCode,
+		orgUnitType: userInfo.orgUnitType,
+
+		// Position
+		positionId: userInfo.positionId,
+		positionName: userInfo.positionName,
+		positionCode: userInfo.positionCode,
+		positionLevel: userInfo.positionLevel,
+		positionGrade: userInfo.positionGrade,
+
+		// Work location
+		workLocation: userInfo.workLocation,
+		region: userInfo.region,
+		employmentType: userInfo.employmentType,
+		employmentStatus: userInfo.employmentStatus,
+		isRemote: userInfo.isRemote,
+
+		// Manager
+		managerId: userInfo.managerId,
+
+		// Roles - from OFM database
+		roles: userRoles || [],
+		ssoRoles: [], // Can be populated from SSO if available
+
 		tokens,
 		expiresAt: Date.now() + tokens.expires_in * 1000
 	};

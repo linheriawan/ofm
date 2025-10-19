@@ -37,8 +37,9 @@
 
 			if (result.success) {
 				data = result.data;
-				total = result.total;
-				totalPages = result.totalPages;
+				// Support both meta.total and direct total properties
+				total = result.meta?.total || result.total || 0;
+				totalPages = result.meta?.totalPages || result.totalPages || 1;
 			} else {
 				error = result.error || 'Failed to fetch data';
 			}

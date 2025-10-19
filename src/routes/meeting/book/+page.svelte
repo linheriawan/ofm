@@ -122,7 +122,7 @@
 		}
 	}
 
-	function handleSubmit() {
+	async function handleSubmit() {
 		if (!meetingTitle || !meetingDate || !startTime || !endTime) {
 			alert('Please fill all required fields');
 			return;
@@ -138,36 +138,56 @@
 			return;
 		}
 
-		const formData = {
-			meetingType,
-			meetingTitle,
-			meetingDate,
-			startTime,
-			endTime,
-			duration,
-			participantCount: (meetingType === 'offline' || meetingType === 'hybrid') ? participantCount : null,
-			selectedRoom: meetingType !== 'online' ? selectedRoom : null,
-			platform: meetingType !== 'offline' ? platform : null,
+		// Construct date-time strings
+		const startDateTime = `${meetingDate}T${startTime}:00`;
+		const endDateTime = `${meetingDate}T${endTime}:00`;
+
+		const requestData = {
+			type: meetingType,
+			title: meetingTitle,
+			startTime: startDateTime,
+			endTime: endDateTime,
+			participantCount: (meetingType === 'offline' || meetingType === 'hybrid') ? participantCount : undefined,
+			roomId: meetingType !== 'online' ? selectedRoom : undefined,
+			platform: meetingType !== 'offline' ? platform : undefined,
 			participants,
 			externalParticipants,
 			cateringNeeded,
-			cateringItems: cateringNeeded ? cateringItems : [],
-			facilitiesNeeded,
-			notes,
+			cateringItems: cateringNeeded ? cateringItems : undefined,
+			facilitiesNeeded: facilitiesNeeded.length > 0 ? facilitiesNeeded : undefined,
+			notes: notes || undefined,
 			isRecurring,
-			recurringPattern: isRecurring ? recurringPattern : null,
-			sendCalendarInvite: true // Will send .ics calendar file to all participants
+			recurringPattern: isRecurring ? recurringPattern : undefined,
+			sendCalendarInvite: true
 		};
 
-		console.log('Submitting booking:', formData);
-		alert(
-			'Meeting room booked successfully!\n' +
-			'Booking ID: #MTG-' + Math.floor(Math.random() * 1000) + '\n\n' +
-			'📧 Calendar invitations (.ics) will be sent to all participants via email.'
-		);
+		try {
+			const response = await fetch('/api/v1/meeting/requests', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(requestData)
+			});
 
-		// Reset form
-		resetForm();
+			const result = await response.json();
+
+			if (result.success) {
+				alert(
+					'Meeting room booked successfully!\n' +
+					`Booking ID: ${result.data.requestNumber}\n\n` +
+					'📧 Calendar invitations (.ics) will be sent to all participants via email.'
+				);
+				resetForm();
+				// Redirect to bookings page
+				window.location.href = '/meeting/bookings';
+			} else {
+				alert(`Failed to book meeting: ${result.error?.message || 'Unknown error'}`);
+			}
+		} catch (error) {
+			console.error('Error submitting booking:', error);
+			alert('An error occurred while booking the meeting. Please try again.');
+		}
 	}
 
 	function resetForm() {

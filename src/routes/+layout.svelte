@@ -1,10 +1,12 @@
 <script lang="ts">
 	import { page } from '$app/stores';
+	import { onMount } from 'svelte';
 
 	let isMenuOpen = false;
-	let transportDropdownOpen = false;
-	let meetingDropdownOpen = false;
-	let adminDropdownOpen = false;
+	let requestsDropdownOpen = false;
+	let masterDataDropdownOpen = false;
+	let configDropdownOpen = false;
+	let userMenuOpen = false;
 
 	// Get user from page data
 	$: user = $page.data.user;
@@ -14,29 +16,60 @@
 		isMenuOpen = !isMenuOpen;
 	}
 
-	function toggleTransportDropdown() {
-		transportDropdownOpen = !transportDropdownOpen;
-		meetingDropdownOpen = false;
-		adminDropdownOpen = false;
+	function toggleRequestsDropdown() {
+		requestsDropdownOpen = !requestsDropdownOpen;
+		masterDataDropdownOpen = false;
+		configDropdownOpen = false;
+		userMenuOpen = false;
 	}
 
-	function toggleMeetingDropdown() {
-		meetingDropdownOpen = !meetingDropdownOpen;
-		transportDropdownOpen = false;
-		adminDropdownOpen = false;
+	function toggleMasterDataDropdown() {
+		masterDataDropdownOpen = !masterDataDropdownOpen;
+		requestsDropdownOpen = false;
+		configDropdownOpen = false;
+		userMenuOpen = false;
 	}
 
-	function toggleAdminDropdown() {
-		adminDropdownOpen = !adminDropdownOpen;
-		transportDropdownOpen = false;
-		meetingDropdownOpen = false;
+	function toggleConfigDropdown() {
+		configDropdownOpen = !configDropdownOpen;
+		requestsDropdownOpen = false;
+		masterDataDropdownOpen = false;
+		userMenuOpen = false;
+	}
+
+	function toggleUserMenu() {
+		userMenuOpen = !userMenuOpen;
+		requestsDropdownOpen = false;
+		masterDataDropdownOpen = false;
+		configDropdownOpen = false;
 	}
 
 	function closeDropdowns() {
-		transportDropdownOpen = false;
-		meetingDropdownOpen = false;
-		adminDropdownOpen = false;
+		requestsDropdownOpen = false;
+		masterDataDropdownOpen = false;
+		configDropdownOpen = false;
+		userMenuOpen = false;
 	}
+
+	// Click outside to close dropdowns
+	onMount(() => {
+		function handleClickOutside(event: MouseEvent) {
+			const target = event.target as HTMLElement;
+
+			// Check if click is outside all dropdowns
+			const isClickInsideDropdown = target.closest('.dropdown') || target.closest('.user-menu');
+
+			if (!isClickInsideDropdown) {
+				closeDropdowns();
+			}
+		}
+
+		document.addEventListener('click', handleClickOutside);
+
+		return () => {
+			document.removeEventListener('click', handleClickOutside);
+		};
+	});
 </script>
 
 <div class="app">
@@ -60,68 +93,112 @@
 				</li>
 				<li class="dropdown">
 					<button
-						class="dropdown-trigger {$page.url.pathname.startsWith('/transportation') ? 'active' : ''}"
-						onclick={toggleTransportDropdown}
+						class="dropdown-trigger {$page.url.pathname.startsWith('/transportation') || $page.url.pathname.startsWith('/meeting') ? 'active' : ''}"
+						onclick={toggleRequestsDropdown}
 					>
-						Transportation ▾
+						Requests ▾
 					</button>
-					{#if transportDropdownOpen}
+					{#if requestsDropdownOpen}
 						<div class="dropdown-menu">
-							<a href="/transportation" onclick={closeDropdowns}>Overview</a>
-							<a href="/transportation/request" onclick={closeDropdowns}>Request Transport</a>
-							<a href="/transportation/bookings" onclick={closeDropdowns}>All Requests</a>
+							<div class="dropdown-section-title">Booking Data</div>
+							<a href="/transportation/bookings" onclick={closeDropdowns}>Transport</a>
+							<a href="/meeting/bookings" onclick={closeDropdowns}>Meetings</a>
+							
+							<div class="dropdown-divider"></div>
+							<div class="dropdown-section-title">Summary</div>
 							<a href="/transportation/tracking" onclick={closeDropdowns}>Track Vehicles</a>
-						</div>
-					{/if}
-				</li>
-				<li class="dropdown">
-					<button
-						class="dropdown-trigger {$page.url.pathname.startsWith('/meeting') ? 'active' : ''}"
-						onclick={toggleMeetingDropdown}
-					>
-						Meeting Rooms ▾
-					</button>
-					{#if meetingDropdownOpen}
-						<div class="dropdown-menu">
-							<a href="/meeting" onclick={closeDropdowns}>Overview</a>
-							<a href="/meeting/book" onclick={closeDropdowns}>Book Room</a>
-							<a href="/meeting/bookings" onclick={closeDropdowns}>All Bookings</a>
-							<a href="/meeting/calendar" onclick={closeDropdowns}>Calendar</a>
+							<a href="/meeting/calendar" onclick={closeDropdowns}>Room Calendar</a>
 						</div>
 					{/if}
 				</li>
 				<li class="dropdown">
 					<button
 						class="dropdown-trigger {$page.url.pathname.startsWith('/admin') ? 'active' : ''}"
-						onclick={toggleAdminDropdown}
+						onclick={toggleMasterDataDropdown}
 					>
-						Admin ▾
+						Master Data ▾
 					</button>
-					{#if adminDropdownOpen}
+					{#if masterDataDropdownOpen}
 						<div class="dropdown-menu">
-							<a href="/admin" onclick={closeDropdowns}>Dashboard</a>
-							<div class="dropdown-divider">Transportation</div>
+							<div class="dropdown-section-title">Transportation</div>
 							<a href="/admin/vehicles" onclick={closeDropdowns}>Vehicles</a>
 							<a href="/admin/drivers" onclick={closeDropdowns}>Drivers</a>
 							<a href="/admin/transport-companies" onclick={closeDropdowns}>Transport Companies</a>
 							<a href="/admin/vouchers" onclick={closeDropdowns}>Vouchers</a>
 							<a href="/admin/trip-purposes" onclick={closeDropdowns}>Trip Purposes</a>
-							<div class="dropdown-divider">Meeting</div>
+							<div class="dropdown-divider"></div>
+							<div class="dropdown-section-title">Meeting Rooms</div>
 							<a href="/admin/rooms" onclick={closeDropdowns}>Meeting Rooms</a>
-							<div class="dropdown-divider">System</div>
-							<a href="/admin/users" onclick={closeDropdowns}>Users</a>
-							<a href="/admin/locations" onclick={closeDropdowns}>Locations</a>
-							<a href="/admin/room-displays" onclick={closeDropdowns}>Room Displays</a>
+						</div>
+					{/if}
+				</li>
+				<li class="dropdown">
+					<button
+						class="dropdown-trigger {$page.url.pathname.startsWith('/admin/approvals') || $page.url.pathname.startsWith('/admin/room-displays') ? 'active' : ''}"
+						onclick={toggleConfigDropdown}
+					>
+						Configuration ▾
+					</button>
+					{#if configDropdownOpen}
+						<div class="dropdown-menu">
+							<a href="/modules" onclick={closeDropdowns}> ⚙️ Modules </a>
+							<div class="user-menu-divider"></div>
+							<a href="/modules/approvals" onclick={closeDropdowns}>Approval Workflow</a>
+							<a href="/modules/room-displays" onclick={closeDropdowns}>Room Displays</a>
+							<a href="/modules/sync" onclick={closeDropdowns}>Data Sync</a>
+							<div class="dropdown-divider"></div>
+							<div class="dropdown-section-title">General</div>
+							<a href="/admin/settings" onclick={closeDropdowns}>⚙️ Settings</a>
+							<a href="/modules/users" onclick={closeDropdowns}>Users</a>
+							<a href="/modules/locations" onclick={closeDropdowns}>Locations</a>
 						</div>
 					{/if}
 				</li>
 			</ul>
 
 			<div class="user-menu">
-				<span class="user-name">{user?.name || user?.email || 'User'}</span>
-				<form method="POST" action="/auth/logout" style="display: inline;">
-					<button type="submit" class="logout-btn">Logout</button>
-				</form>
+				<button class="user-menu-trigger" onclick={toggleUserMenu}>
+					<div class="user-info-compact">
+						<span class="user-name">{user?.fullName || user?.name || user?.email || 'User'}</span>
+						{#if user?.positionName}
+							<span class="user-position">{user.positionName}</span>
+						{/if}
+					</div>
+					<span class="user-arrow">▾</span>
+				</button>
+				{#if userMenuOpen}
+					<div class="user-dropdown">
+						<div class="user-info-section">
+							<div class="user-detail-row">
+								<strong>{user?.fullName || user?.name || 'User'}</strong>
+							</div>
+							{#if user?.employeeId}
+								<div class="user-detail-row text-muted">
+									NIK: {user.employeeId}
+								</div>
+							{/if}
+							{#if user?.positionName}
+								<div class="user-detail-row">
+									<span class="detail-label">Position:</span> {user.positionName}
+								</div>
+							{/if}
+							{#if user?.orgUnitName}
+								<div class="user-detail-row">
+									<span class="detail-label">Unit:</span> {user.orgUnitName}
+								</div>
+							{/if}
+							{#if user?.workLocation}
+								<div class="user-detail-row">
+									<span class="detail-label">Location:</span> {user.workLocation}
+								</div>
+							{/if}
+						</div>
+						<div class="user-menu-divider"></div>
+						<form method="POST" action="/auth/logout" style="margin: 0;">
+							<button type="submit" class="user-menu-logout">🚪 Logout</button>
+						</form>
+					</div>
+				{/if}
 			</div>
 		</nav>
 	</header>
@@ -162,13 +239,12 @@
 	}
 
 	nav {
-		max-width: 1400px;
 		margin: 0 auto;
 		padding: 0 2rem;
 		display: flex;
 		align-items: center;
 		gap: 2rem;
-		height: 70px;
+		height: 60px;
 	}
 
 	.nav-brand {
@@ -262,6 +338,7 @@
 		min-width: 200px;
 		z-index: 1000;
 		animation: dropdownFade 0.2s ease-in;
+		* {white-space: nowrap;}
 	}
 
 	@keyframes dropdownFade {
@@ -288,18 +365,31 @@
 		color: #667eea;
 	}
 
+	.dropdown-section-title {
+		padding: 0.5rem 1.25rem 0.25rem;
+		color: #667eea;
+		font-size: 0.75rem;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+
+	.dropdown-divider {
+		height: 1px;
+		background: #e5e7eb;
+		margin: 0.5rem 0;
+	}
+
 	.user-menu {
+		position: relative;
 		display: flex;
 		align-items: center;
-		gap: 1rem;
 	}
 
-	.user-name {
-		font-size: 0.9rem;
-		opacity: 0.95;
-	}
-
-	.logout-btn {
+	.user-menu-trigger {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
 		background: rgba(255, 255, 255, 0.2);
 		color: white;
 		border: 1px solid rgba(255, 255, 255, 0.3);
@@ -309,11 +399,125 @@
 		font-weight: 500;
 		cursor: pointer;
 		transition: all 0.2s;
+		font-family: inherit;
 	}
 
-	.logout-btn:hover {
+	.user-menu-trigger:hover {
 		background: rgba(255, 255, 255, 0.3);
 		border-color: rgba(255, 255, 255, 0.5);
+	}
+
+	.user-name {
+		font-size: 0.9rem;
+		white-space: nowrap;
+	}
+
+	.user-arrow {
+		font-size: 0.75rem;
+		opacity: 0.8;
+	}
+
+	.user-dropdown {
+		position: absolute;
+		top: 100%;
+		right: 0;
+		margin-top: 0.5rem;
+		background: white;
+		border-radius: 8px;
+		box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+		padding: 0.5rem 0;
+		min-width: 200px;
+		z-index: 1000;
+		animation: dropdownFade 0.2s ease-in;
+	}
+
+	.user-menu-item {
+		display: block;
+		padding: 0.75rem 1.25rem;
+		color: #333;
+		text-decoration: none;
+		transition: background 0.2s;
+		font-size: 0.9rem;
+	}
+
+	.user-menu-item:hover {
+		background: #f0f4ff;
+		color: #667eea;
+	}
+
+	.user-menu-divider {
+		height: 1px;
+		background: #e5e7eb;
+		margin: 0.5rem 0;
+	}
+
+	.user-menu-logout {
+		display: block;
+		width: 100%;
+		padding: 0.75rem 1.25rem;
+		color: #dc2626;
+		text-align: left;
+		background: none;
+		border: none;
+		cursor: pointer;
+		transition: background 0.2s;
+		font-size: 0.9rem;
+		font-family: inherit;
+		font-weight: 500;
+	}
+
+	.user-menu-logout:hover {
+		background: #fef2f2;
+	}
+
+	.user-info-compact {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 0.15rem;
+		white-space: nowrap;
+	}
+
+	.user-position {
+		font-size: 0.7rem;
+		opacity: 0.85;
+		font-weight: 400;
+		white-space: nowrap;
+	}
+
+	.user-info-section {
+		padding: 0.75rem 1.25rem;
+		background: #f9fafb;
+		border-radius: 6px;
+		margin: 0.5rem;
+	}
+
+	.user-detail-row {
+		font-size: 0.85rem;
+		color: #333;
+		margin-bottom: 0.4rem;
+		line-height: 1.4;
+		white-space: nowrap;
+	}
+
+	.user-detail-row:last-child {
+		margin-bottom: 0;
+	}
+
+	.user-detail-row strong {
+		font-size: 0.95rem;
+		color: #111;
+	}
+
+	.text-muted {
+		color: #6b7280;
+		font-size: 0.8rem;
+	}
+
+	.detail-label {
+		color: #667eea;
+		font-weight: 600;
+		font-size: 0.75rem;
 	}
 
 	main {
@@ -339,7 +543,7 @@
 		background: #333;
 		color: white;
 		text-align: center;
-		padding: 1.5rem;
+		padding: .5rem;
 		margin-top: 3rem;
 	}
 

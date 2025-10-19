@@ -75,7 +75,7 @@
 
 	async function handleSubmit(event: Event) {
 		event.preventDefault();
-		const url = editingRoom ? `/api/rooms/${editingRoom._id}` : '/api/rooms';
+		const url = editingRoom ? `/api/v1/rooms/${editingRoom._id}` : '/api/v1/rooms';
 		const method = editingRoom ? 'PUT' : 'POST';
 
 		try {
@@ -111,7 +111,7 @@
 	<DataTable
 		title="Meeting Rooms"
 		{columns}
-		apiEndpoint="/api/rooms"
+		apiEndpoint="/api/v1/rooms"
 		onAdd={openAddModal}
 		onEdit={openEditModal}
 	/>

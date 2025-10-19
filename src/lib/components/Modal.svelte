@@ -3,10 +3,11 @@
 		isOpen: boolean;
 		title: string;
 		onClose: () => void;
+		width?: string;
 		children?: any;
 	}
 
-	let { isOpen = $bindable(), title, onClose, children }: Props = $props();
+	let { isOpen = $bindable(), title, onClose, width = '600px', children }: Props = $props();
 
 	function handleOverlayClick(event: MouseEvent) {
 		if (event.target === event.currentTarget) {
@@ -17,7 +18,7 @@
 
 {#if isOpen}
 	<div class="modal-overlay" onclick={handleOverlayClick} role="dialog" aria-modal="true">
-		<div class="modal-content">
+		<div class="modal-content" style="max-width: {width}">
 			<div class="modal-header">
 				<h3>{title}</h3>
 				<button class="close-btn" onclick={onClose} aria-label="Close">

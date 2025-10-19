@@ -24,6 +24,41 @@ export interface UserInfo {
 	email: string;
 	name?: string;
 	email_verified?: boolean;
+
+	// Employee basic info
+	employeeId?: string; // NIK
+	firstName?: string;
+	lastName?: string;
+	fullName?: string;
+	phone?: string;
+
+	// Organization (Entitas/Realm)
+	organizationId?: string;
+	organizationName?: string;
+	organizationCode?: string;
+
+	// Org Unit (Unit Kerja)
+	orgUnitId?: string;
+	orgUnitName?: string;
+	orgUnitCode?: string;
+	orgUnitType?: string;
+
+	// Position (Jabatan)
+	positionId?: string;
+	positionName?: string;
+	positionCode?: string;
+	positionLevel?: string;
+	positionGrade?: string;
+
+	// Work location and assignment
+	workLocation?: string; // CGK, DPS, KNO, etc
+	region?: string; // Regional 1, Regional 2, etc
+	employmentType?: string;
+	employmentStatus?: string;
+	isRemote?: boolean;
+
+	// Manager
+	managerId?: string;
 }
 
 export async function buildAuthorizationUrl(redirectPath: string = '/'): Promise<{

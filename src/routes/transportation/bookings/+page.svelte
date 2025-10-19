@@ -3,7 +3,7 @@
 	import Modal from '$lib/components/Modal.svelte';
 	import type { TransportationBooking } from '$lib/types';
 
-	let title = 'My Transportation Bookings - OFM';
+	let title = 'Transportation Bookings - OFM';
 	let bookings: TransportationBooking[] = $state([]);
 	let loading = $state(true);
 	let error = $state('');

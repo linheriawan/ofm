@@ -1,5 +1,6 @@
 import type { Handle } from '@sveltejs/kit';
 import { connectDB } from '$lib/server/db/mongodb';
+import { initializeSettings } from '$lib/server/settings';
 
 // Initialize database connection on server startup
 let dbInitialized = false;
@@ -8,6 +9,8 @@ async function initializeDB() {
 	if (!dbInitialized) {
 		try {
 			await connectDB();
+			// Initialize settings after DB connection
+			await initializeSettings();
 			dbInitialized = true;
 			console.log('Database initialized successfully');
 		} catch (error) {
@@ -49,8 +52,45 @@ export const handle: Handle = async ({ event, resolve }) => {
 						userId: session.userId,
 						email: session.email,
 						name: session.name,
+
+						// Employee info
+						employeeId: session.employeeId,
+						firstName: session.firstName,
+						lastName: session.lastName,
+						fullName: session.fullName,
+						phone: session.phone,
+
+						// Organization
 						companyId: session.companyId,
-						roles: session.roles
+						companyName: session.companyName,
+						companyCode: session.companyCode,
+
+						// Org Unit
+						orgUnitId: session.orgUnitId,
+						orgUnitName: session.orgUnitName,
+						orgUnitCode: session.orgUnitCode,
+						orgUnitType: session.orgUnitType,
+
+						// Position
+						positionId: session.positionId,
+						positionName: session.positionName,
+						positionCode: session.positionCode,
+						positionLevel: session.positionLevel,
+						positionGrade: session.positionGrade,
+
+						// Work location
+						workLocation: session.workLocation,
+						region: session.region,
+						employmentType: session.employmentType,
+						employmentStatus: session.employmentStatus,
+						isRemote: session.isRemote,
+
+						// Manager
+						managerId: session.managerId,
+
+						// Roles
+						roles: session.roles,
+						ssoRoles: session.ssoRoles
 					};
 				}
 			}

@@ -91,8 +91,8 @@
 		event.preventDefault();
 
 		const url = editingVehicle
-			? `/api/vehicles/${editingVehicle._id}`
-			: '/api/vehicles';
+			? `/api/v1/vehicles/${editingVehicle._id}`
+			: '/api/v1/vehicles';
 		const method = editingVehicle ? 'PUT' : 'POST';
 
 		try {
@@ -130,7 +130,7 @@
 	<DataTable
 		title="Vehicles"
 		{columns}
-		apiEndpoint="/api/vehicles"
+		apiEndpoint="/api/v1/vehicles"
 		onAdd={openAddModal}
 		onEdit={openEditModal}
 	/>

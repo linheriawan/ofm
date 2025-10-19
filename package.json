@@ -10,7 +10,8 @@
     "check": "svelte-kit sync && tsc --noEmit",
     "check:watch": "svelte-kit sync && tsc --noEmit --watch",
     "db:seed": "bun run scripts/seed.ts",
-    "test:api": "bun run scripts/test-api.ts"
+    "test:api": "bun run scripts/test-api.ts",
+    "sync:scim": "bun run scripts/sync-from-scim.ts"
   },
   "devDependencies": {
     "@sveltejs/adapter-auto": "^6.1.1",
@@ -23,6 +24,7 @@
   },
   "dependencies": {
     "leaflet": "^1.9.4",
-    "mongodb": "^6.20.0"
+    "mongodb": "^6.20.0",
+    "undici": "^7.16.0"
   }
 }

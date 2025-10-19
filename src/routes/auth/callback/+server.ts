@@ -68,8 +68,22 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 		const user = await syncUserFromSSO(userInfo);
 		console.log('✅ User synced:', user.email);
 
+		// Load user roles from OFM database
+		console.log('🔐 Loading user roles...');
+		const { getDB } = await import('$lib/server/db/mongodb');
+		const { ObjectId } = await import('mongodb');
+		const db = getDB();
+
+		let roleNames: string[] = [];
+		if (user.roles && user.roles.length > 0) {
+			const roleIds = user.roles.map(id => new ObjectId(id));
+			const roles = await db.collection('roles').find({ _id: { $in: roleIds } }).toArray();
+			roleNames = roles.map(r => r.roleId); // Use roleId field instead of name
+		}
+		console.log('✅ User roles loaded:', roleNames);
+
 		console.log('🔐 Creating session...');
-		const sessionToken = await createSession(userInfo, tokens, user.companyId);
+		const sessionToken = await createSession(userInfo, tokens, user.companyId, roleNames);
 		console.log('✅ Session created');
 
 		setSessionCookie({ cookies } as any, sessionToken);

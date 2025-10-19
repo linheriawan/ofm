@@ -28,7 +28,7 @@
 		loading = true;
 		try {
 			// Fetch vehicles
-			const vehiclesRes = await fetch('/api/vehicles?limit=100');
+			const vehiclesRes = await fetch('/api/v1/vehicles?limit=100');
 			const vehiclesData = await vehiclesRes.json();
 			if (vehiclesData.success) {
 				vehicles = vehiclesData.data;
@@ -39,7 +39,7 @@
 			}
 
 			// Fetch drivers
-			const driversRes = await fetch('/api/drivers?limit=100');
+			const driversRes = await fetch('/api/v1/drivers?limit=100');
 			const driversData = await driversRes.json();
 			if (driversData.success) {
 				drivers = driversData.data;
@@ -49,8 +49,8 @@
 				driverStats.onLeave = drivers.filter((d) => d.status === 'on-leave').length;
 			}
 
-			// Fetch recent bookings
-			const bookingsRes = await fetch('/api/transportation-bookings?limit=5');
+			// Fetch recent requests
+			const bookingsRes = await fetch('/api/v1/transport/requests?limit=5');
 			const bookingsData = await bookingsRes.json();
 			if (bookingsData.success) {
 				bookings = bookingsData.data;

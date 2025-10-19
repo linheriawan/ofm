@@ -71,7 +71,7 @@
 	async function handleSubmit(event: Event) {
 		event.preventDefault();
 
-		const url = editingDriver ? `/api/drivers/${editingDriver._id}` : '/api/drivers';
+		const url = editingDriver ? `/api/v1/drivers/${editingDriver._id}` : '/api/v1/drivers';
 		const method = editingDriver ? 'PUT' : 'POST';
 
 		try {
@@ -109,7 +109,7 @@
 	<DataTable
 		title="Drivers"
 		{columns}
-		apiEndpoint="/api/drivers"
+		apiEndpoint="/api/v1/drivers"
 		onAdd={openAddModal}
 		onEdit={openEditModal}
 	/>

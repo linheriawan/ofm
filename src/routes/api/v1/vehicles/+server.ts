@@ -1,64 +1,48 @@
-/**
- * Vehicles API
- * GET /api/v1/vehicles - List all vehicles
- */
-
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDB, collections } from '$lib/server/db/mongodb';
+import { listDocuments, createDocument, buildFilterFromParams, getPaginationParams } from '$lib/utils/api';
+import type { Vehicle } from '$lib/types';
 
-export const GET: RequestHandler = async ({ url, locals }) => {
+export const GET: RequestHandler = async ({ url }) => {
 	try {
-		// Check authentication
-		const user = locals.user;
-		if (!user) {
-			return json(
-				{
-					success: false,
-					error: {
-						code: 'unauthorized',
-						message: 'You must be logged in'
-					}
-				},
-				{ status: 401 }
-			);
-		}
+		const allowedFilters = ['companyId', 'status', 'locationId', 'vehicleType'];
+		const filter = buildFilterFromParams(url.searchParams, allowedFilters);
+		const { page, limit } = getPaginationParams(url.searchParams);
 
-		const db = getDB();
+		const result = await listDocuments<Vehicle>('vehicles', { filter, page, limit });
+		return json(result);
+	} catch (error) {
+		console.error('Error fetching vehicles:', error);
+		return json({ success: false, error: 'Failed to fetch vehicles' }, { status: 500 });
+	}
+};
 
-		// Get all active vehicles
-		const vehicles = await db
-			.collection(collections.vehicles)
-			.find({ status: { $ne: 'inactive' } })
-			.sort({ brand: 1, model: 1 })
-			.toArray();
+export const POST: RequestHandler = async ({ request }) => {
+	try {
+		const body = await request.json();
 
-		// Format response
-		const formattedVehicles = vehicles.map((vehicle) => ({
-			...vehicle,
-			_id: vehicle._id?.toString()
-		}));
+		const vehicle = {
+			vehicleId: body.vehicleId || `VEH-${Date.now()}`,
+			companyId: body.companyId,
+			licensePlate: body.licensePlate,
+			vehicleType: body.vehicleType,
+			brand: body.brand,
+			model: body.model,
+			year: parseInt(body.year),
+			capacity: parseInt(body.capacity),
+			fuelType: body.fuelType,
+			isElectric: body.isElectric || body.fuelType === 'electric',
+			status: body.status || 'available',
+			locationId: body.locationId,
+			hasGPS: body.hasGPS || false,
+			hasOBD: body.hasOBD || false,
+			arduinoDeviceId: body.arduinoDeviceId
+		};
 
-		return json({
-			success: true,
-			data: formattedVehicles,
-			meta: {
-				total: formattedVehicles.length,
-				timestamp: new Date().toISOString()
-			}
-		});
-	} catch (err: any) {
-		console.error('Failed to fetch vehicles:', err);
-		return json(
-			{
-				success: false,
-				error: {
-					code: 'server_error',
-					message: 'Failed to fetch vehicles',
-					details: err.message
-				}
-			},
-			{ status: 500 }
-		);
+		const result = await createDocument<Vehicle>('vehicles', vehicle);
+		return json(result, { status: result.status });
+	} catch (error) {
+		console.error('Error creating vehicle:', error);
+		return json({ success: false, error: 'Failed to create vehicle' }, { status: 500 });
 	}
 };

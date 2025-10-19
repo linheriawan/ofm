@@ -27,7 +27,7 @@
 		loading = true;
 		try {
 			// Fetch rooms
-			const roomsRes = await fetch('/api/rooms?limit=100');
+			const roomsRes = await fetch('/api/v1/rooms?limit=100');
 			const roomsData = await roomsRes.json();
 			if (roomsData.success) {
 				rooms = roomsData.data;

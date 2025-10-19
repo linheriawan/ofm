@@ -39,8 +39,11 @@ export interface User extends BaseDocument {
 	lastName: string;
 	phone?: string;
 	companyId: string;
-	departmentId?: string;
-	positionId?: string;
+	departmentId?: string; // References org unit from SSO
+	positionId?: string; // References position from SSO
+	locationId?: string; // References location
+	managerId?: string; // References another User._id
+	ssoUserId?: string; // SSO user ID for sync
 	roleIds: string[];
 	isActive: boolean;
 	lastLogin?: Date;

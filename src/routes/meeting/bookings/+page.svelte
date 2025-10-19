@@ -188,6 +188,7 @@
 <div class="bookings-container">
 	<div class="header">
 		<h1>Meeting Bookings</h1>
+		<a href="/meeting/book" class="btn-primary">Booking</a>
 	</div>
 
 	<!-- Filters -->
@@ -435,12 +436,22 @@
 
 <style>
 	.bookings-container {
-		padding: 2rem;
-		max-width: 1400px;
-		margin: 0 auto;
+		animation: fadeIn 0.3s ease-in;
 	}
-
+	@keyframes fadeIn {
+		from {
+			opacity: 0;
+			transform: translateY(10px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
 	.header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
 		margin-bottom: 2rem;
 	}
 
@@ -712,12 +723,17 @@
 	}
 
 	.btn-primary {
-		background: #0d6efd;
+		padding: 0.75rem 1.5rem;
+		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 		color: white;
+		text-decoration: none;
+		border-radius: 8px;
+		font-weight: 500;
+		transition: transform 0.2s;
 	}
 
 	.btn-primary:hover {
-		background: #0b5ed7;
+		transform: translateY(-2px);
 	}
 
 	.btn-secondary {

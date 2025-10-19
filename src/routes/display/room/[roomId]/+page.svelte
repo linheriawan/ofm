@@ -46,7 +46,7 @@
 
 	async function loadSchedule() {
 		try {
-			const response = await fetch(`/api/rooms/${roomId}/schedule`);
+			const response = await fetch(`/api/v1/rooms/${roomId}/schedule`);
 			const result = await response.json();
 
 			if (result.success) {

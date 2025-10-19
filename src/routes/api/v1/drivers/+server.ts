@@ -1,64 +1,41 @@
-/**
- * Drivers API
- * GET /api/v1/drivers - List all drivers
- */
-
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDB, collections } from '$lib/server/db/mongodb';
+import { listDocuments, createDocument, buildFilterFromParams, getPaginationParams } from '$lib/utils/api';
+import type { Driver } from '$lib/types';
 
-export const GET: RequestHandler = async ({ url, locals }) => {
+export const GET: RequestHandler = async ({ url }) => {
 	try {
-		// Check authentication
-		const user = locals.user;
-		if (!user) {
-			return json(
-				{
-					success: false,
-					error: {
-						code: 'unauthorized',
-						message: 'You must be logged in'
-					}
-				},
-				{ status: 401 }
-			);
-		}
+		const allowedFilters = ['companyId', 'status', 'locationId'];
+		const filter = buildFilterFromParams(url.searchParams, allowedFilters);
+		const { page, limit } = getPaginationParams(url.searchParams);
 
-		const db = getDB();
+		const result = await listDocuments<Driver>('drivers', { filter, page, limit });
+		return json(result);
+	} catch (error) {
+		console.error('Error fetching drivers:', error);
+		return json({ success: false, error: 'Failed to fetch drivers' }, { status: 500 });
+	}
+};
 
-		// Get all active drivers
-		const drivers = await db
-			.collection(collections.drivers)
-			.find({ status: { $ne: 'inactive' } })
-			.sort({ name: 1 })
-			.toArray();
+export const POST: RequestHandler = async ({ request }) => {
+	try {
+		const body = await request.json();
 
-		// Format response
-		const formattedDrivers = drivers.map((driver) => ({
-			...driver,
-			_id: driver._id?.toString()
-		}));
+		const driver = {
+			driverId: body.driverId || `DRV-${Date.now()}`,
+			userId: body.userId,
+			companyId: body.companyId,
+			licenseNumber: body.licenseNumber,
+			licenseExpiry: new Date(body.licenseExpiry),
+			status: body.status || 'available',
+			locationId: body.locationId,
+			rating: body.rating || 0
+		};
 
-		return json({
-			success: true,
-			data: formattedDrivers,
-			meta: {
-				total: formattedDrivers.length,
-				timestamp: new Date().toISOString()
-			}
-		});
-	} catch (err: any) {
-		console.error('Failed to fetch drivers:', err);
-		return json(
-			{
-				success: false,
-				error: {
-					code: 'server_error',
-					message: 'Failed to fetch drivers',
-					details: err.message
-				}
-			},
-			{ status: 500 }
-		);
+		const result = await createDocument<Driver>('drivers', driver);
+		return json(result, { status: result.status });
+	} catch (error) {
+		console.error('Error creating driver:', error);
+		return json({ success: false, error: 'Failed to create driver' }, { status: 500 });
 	}
 };

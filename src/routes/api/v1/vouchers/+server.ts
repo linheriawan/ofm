@@ -16,10 +16,11 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		const limit = parseInt(url.searchParams.get('limit') || '50');
 		const skip = (page - 1) * limit;
 
-		// Build query
-		const query: any = {
-			companyId: user.companyId || 'IAS'
-		};
+		// Build query - show all vouchers (no company filter for now)
+		const query: any = {};
+
+		console.log('Vouchers Query:', JSON.stringify(query));
+		console.log('User companyId:', user.companyId);
 
 		const status = url.searchParams.get('status');
 		if (status) query.status = status;

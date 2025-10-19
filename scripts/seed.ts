@@ -5,46 +5,22 @@ const MONGODB_DB = process.env.MONGODB_DB || 'ofm_dev';
 
 async function seedDatabase() {
 	console.log('🌱 Starting database seeding...');
-
 	const client = new MongoClient(MONGODB_URI);
 
 	try {
 		await client.connect();
 		console.log('✅ Connected to MongoDB');
-
 		const db = client.db(MONGODB_DB);
 
 		// Clear existing data
 		console.log('🗑️  Clearing existing data...');
-		await db.collection('companies').deleteMany({});
 		await db.collection('users').deleteMany({});
 		await db.collection('roles').deleteMany({});
 		await db.collection('locations').deleteMany({});
-		await db.collection('vehicles').deleteMany({});
-		await db.collection('drivers').deleteMany({});
-		await db.collection('meeting_rooms').deleteMany({});
-		await db.collection('transportation_bookings').deleteMany({});
+		await db.collection('vouchers').deleteMany({});
+		
 		await db.collection('transportation_requests').deleteMany({});
 		await db.collection('meeting_bookings').deleteMany({});
-		await db.collection('vouchers').deleteMany({});
-
-		// Seed Companies
-		console.log('🏢 Seeding companies...');
-		const companies = [
-			{
-				_id: new ObjectId(),
-				companyId: 'IAS',
-				companyName: 'Indonesian Aviation Services',
-				email: 'info@ias.co.id',
-				phone: '+62-21-12345678',
-				address: 'Jakarta, Indonesia',
-				isActive: true,
-				parentCompanyId: null,
-				createdAt: new Date(),
-				updatedAt: new Date()
-			}
-		];
-		await db.collection('companies').insertMany(companies);
 
 		// Seed Locations
 		console.log('📍 Seeding locations...');
@@ -179,214 +155,6 @@ async function seedDatabase() {
 			}
 		];
 		await db.collection('users').insertMany(users);
-
-		// Seed Vehicles
-		console.log('🚗 Seeding vehicles...');
-		const vehicles = [
-			{
-				_id: new ObjectId(),
-				vehicleId: 'VEH-SUV-001',
-				companyId: 'IAS',
-				licensePlate: 'B 1234 ABC',
-				vehicleType: 'suv',
-				brand: 'Toyota',
-				model: 'Fortuner',
-				year: 2023,
-				capacity: 7,
-				fuelType: 'diesel',
-				isElectric: false,
-				status: 'available',
-				locationId: 'LOC-CGK',
-				hasGPS: true,
-				hasOBD: true,
-				arduinoDeviceId: 'ARD-001',
-				createdAt: new Date(),
-				updatedAt: new Date()
-			},
-			{
-				_id: new ObjectId(),
-				vehicleId: 'VEH-SED-001',
-				companyId: 'IAS',
-				licensePlate: 'B 5678 DEF',
-				vehicleType: 'sedan',
-				brand: 'Honda',
-				model: 'Accord',
-				year: 2022,
-				capacity: 5,
-				fuelType: 'gasoline',
-				isElectric: false,
-				status: 'available',
-				locationId: 'LOC-CGK',
-				hasGPS: true,
-				hasOBD: true,
-				arduinoDeviceId: 'ARD-002',
-				createdAt: new Date(),
-				updatedAt: new Date()
-			},
-			{
-				_id: new ObjectId(),
-				vehicleId: 'VEH-MPV-001',
-				companyId: 'IAS',
-				licensePlate: 'B 9012 GHI',
-				vehicleType: 'mpv',
-				brand: 'Toyota',
-				model: 'Alphard',
-				year: 2023,
-				capacity: 8,
-				fuelType: 'gasoline',
-				isElectric: false,
-				status: 'available',
-				locationId: 'LOC-CGK',
-				hasGPS: true,
-				hasOBD: true,
-				arduinoDeviceId: 'ARD-003',
-				createdAt: new Date(),
-				updatedAt: new Date()
-			},
-			{
-				_id: new ObjectId(),
-				vehicleId: 'VEH-EV-001',
-				companyId: 'IAS',
-				licensePlate: 'B 3456 JKL',
-				vehicleType: 'suv',
-				brand: 'BYD',
-				model: 'Atto 3',
-				year: 2024,
-				capacity: 5,
-				fuelType: 'electric',
-				isElectric: true,
-				status: 'available',
-				locationId: 'LOC-CGK',
-				hasGPS: true,
-				hasOBD: false,
-				arduinoDeviceId: 'ARD-004',
-				createdAt: new Date(),
-				updatedAt: new Date()
-			}
-		];
-		await db.collection('vehicles').insertMany(vehicles);
-
-		// Seed Drivers
-		console.log('👨‍✈️ Seeding drivers...');
-		const drivers = [
-			{
-				_id: new ObjectId(),
-				driverId: 'DRV-001',
-				userId: 'USR-004',
-				companyId: 'IAS',
-				licenseNumber: 'SIM-12345678',
-				licenseExpiry: new Date('2026-12-31'),
-				status: 'available',
-				locationId: 'LOC-CGK',
-				rating: 4.8,
-				createdAt: new Date(),
-				updatedAt: new Date()
-			},
-			{
-				_id: new ObjectId(),
-				driverId: 'DRV-002',
-				userId: 'USR-005',
-				companyId: 'IAS',
-				licenseNumber: 'SIM-87654321',
-				licenseExpiry: new Date('2027-06-30'),
-				status: 'available',
-				locationId: 'LOC-CGK',
-				rating: 4.9,
-				createdAt: new Date(),
-				updatedAt: new Date()
-			}
-		];
-		await db.collection('drivers').insertMany(drivers);
-
-		// Seed Meeting Rooms
-		console.log('🏢 Seeding meeting rooms...');
-		const meetingRooms = [
-			{
-				_id: new ObjectId(),
-				roomId: 'ROOM-A301',
-				companyId: 'IAS',
-				locationId: 'LOC-CGK',
-				roomName: 'Board Room A-301',
-				roomNumber: 'A-301',
-				floor: '3',
-				capacity: 20,
-				roomType: 'boardroom',
-				facilities: ['projector', 'whiteboard', 'video-conference', 'ac'],
-				hasVideoConference: true,
-				tabletDeviceId: 'TAB-A301',
-				status: 'available',
-				createdAt: new Date(),
-				updatedAt: new Date()
-			},
-			{
-				_id: new ObjectId(),
-				roomId: 'ROOM-A302',
-				companyId: 'IAS',
-				locationId: 'LOC-CGK',
-				roomName: 'Conference Room A-302',
-				roomNumber: 'A-302',
-				floor: '3',
-				capacity: 15,
-				roomType: 'conference',
-				facilities: ['projector', 'whiteboard', 'video-conference'],
-				hasVideoConference: true,
-				tabletDeviceId: 'TAB-A302',
-				status: 'available',
-				createdAt: new Date(),
-				updatedAt: new Date()
-			},
-			{
-				_id: new ObjectId(),
-				roomId: 'ROOM-B101',
-				companyId: 'IAS',
-				locationId: 'LOC-CGK',
-				roomName: 'Meeting Room B-101',
-				roomNumber: 'B-101',
-				floor: '1',
-				capacity: 10,
-				roomType: 'meeting',
-				facilities: ['tv', 'whiteboard'],
-				hasVideoConference: false,
-				status: 'available',
-				createdAt: new Date(),
-				updatedAt: new Date()
-			},
-			{
-				_id: new ObjectId(),
-				roomId: 'ROOM-B102',
-				companyId: 'IAS',
-				locationId: 'LOC-CGK',
-				roomName: 'Meeting Room B-102',
-				roomNumber: 'B-102',
-				floor: '1',
-				capacity: 8,
-				roomType: 'meeting',
-				facilities: ['tv', 'whiteboard', 'video-conference'],
-				hasVideoConference: true,
-				tabletDeviceId: 'TAB-B102',
-				status: 'available',
-				createdAt: new Date(),
-				updatedAt: new Date()
-			},
-			{
-				_id: new ObjectId(),
-				roomId: 'ROOM-B205',
-				companyId: 'IAS',
-				locationId: 'LOC-CGK',
-				roomName: 'Training Room B-205',
-				roomNumber: 'B-205',
-				floor: '2',
-				capacity: 30,
-				roomType: 'training',
-				facilities: ['projector', 'whiteboard', 'video-conference', 'sound-system'],
-				hasVideoConference: true,
-				tabletDeviceId: 'TAB-B205',
-				status: 'available',
-				createdAt: new Date(),
-				updatedAt: new Date()
-			}
-		];
-		await db.collection('meeting_rooms').insertMany(meetingRooms);
 
 		// Seed Vouchers
 		console.log('🎫 Seeding vouchers...');
@@ -603,45 +371,6 @@ async function seedDatabase() {
 			}
 		];
 		await db.collection('transportation_requests').insertMany(transportRequests);
-
-		// Seed Sample Bookings (Old format - kept for reference)
-		console.log('📅 Seeding sample bookings...');
-
-		const transportBookings = [
-			{
-				_id: new ObjectId(),
-				bookingId: 'TRP-001',
-				companyId: 'IAS',
-				userId: 'USR-002',
-				vehicleId: 'VEH-SUV-001',
-				driverId: 'DRV-001',
-				bookingDate: today,
-				scheduledTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 15, 30),
-				fromLocation: 'Office Jakarta',
-				toLocation: 'Soekarno-Hatta Airport',
-				numberOfPassengers: 2,
-				status: 'scheduled',
-				createdAt: new Date(),
-				updatedAt: new Date()
-			},
-			{
-				_id: new ObjectId(),
-				bookingId: 'TRP-002',
-				companyId: 'IAS',
-				userId: 'USR-003',
-				vehicleId: 'VEH-SED-001',
-				driverId: 'DRV-002',
-				bookingDate: tomorrow,
-				scheduledTime: new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate(), 9, 0),
-				fromLocation: 'Home',
-				toLocation: 'Office Jakarta',
-				numberOfPassengers: 1,
-				status: 'scheduled',
-				createdAt: new Date(),
-				updatedAt: new Date()
-			}
-		];
-		await db.collection('transportation_bookings').insertMany(transportBookings);
 
 		const meetingBookings = [
 			{
