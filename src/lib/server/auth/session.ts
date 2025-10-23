@@ -34,7 +34,7 @@ async function getKey(): Promise<CryptoKey> {
 	);
 }
 
-async function encrypt(data: string): Promise<string> {
+export async function encrypt(data: string): Promise<string> {
 	const key = await getKey();
 	const iv = crypto.getRandomValues(new Uint8Array(12));
 	const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoder.encode(data));
@@ -49,10 +49,18 @@ async function encrypt(data: string): Promise<string> {
 		.replace(/=/g, '');
 }
 
-async function decrypt(encryptedData: string): Promise<string> {
+export async function decrypt(encryptedData: string): Promise<string> {
 	const key = await getKey();
+
+	// Convert base64url to base64 and add padding if needed
+	let base64 = encryptedData.replace(/-/g, '+').replace(/_/g, '/');
+
+	// Add padding if needed
+	const paddingNeeded = (4 - (base64.length % 4)) % 4;
+	base64 += '='.repeat(paddingNeeded);
+
 	const data = Uint8Array.from(
-		atob(encryptedData.replace(/-/g, '+').replace(/_/g, '/')),
+		atob(base64),
 		(c) => c.charCodeAt(0)
 	);
 

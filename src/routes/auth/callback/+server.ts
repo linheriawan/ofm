@@ -30,30 +30,24 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 		throw redirect(302, '/?error=invalid_request');
 	}
 
-	const [stateValue, redirectPath] = state.split(':');
+	console.log('🔐 Retrieving OAuth state from cookie');
+	console.log('   State from URL:', state);
 
-	console.log('🔐 Retrieving OAuth state from server-side store');
-	console.log('   State value from URL:', stateValue);
-	console.log('   Redirect path from URL:', redirectPath);
-
-	const storedOAuthState = getOAuthState(stateValue);
+	const storedOAuthState = getOAuthState(cookies, state);
 
 	console.log('   Stored state found:', storedOAuthState ? 'yes' : 'no');
 	if (storedOAuthState) {
 		console.log('   Stored state value:', storedOAuthState.state);
 		console.log('   Stored redirect path:', storedOAuthState.redirectPath);
-		console.log('   State match:', storedOAuthState.state === stateValue);
+		console.log('   State match:', storedOAuthState.state === state);
 	}
 
 	if (!storedOAuthState) {
 		throw error(400, 'Invalid or expired OAuth state');
 	}
 
-	if (storedOAuthState.state !== stateValue) {
-		throw error(400, 'State mismatch');
-	}
-
-	deleteOAuthState(stateValue);
+	// Delete the OAuth state cookie after successful validation
+	deleteOAuthState(cookies);
 
 	try {
 		console.log('🔐 Exchanging code for tokens...');
@@ -75,8 +69,8 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 		const db = getDB();
 
 		let roleNames: string[] = [];
-		if (user.roles && user.roles.length > 0) {
-			const roleIds = user.roles.map(id => new ObjectId(id));
+		if (user.roleIds && user.roleIds.length > 0) {
+			const roleIds = user.roleIds.map((id: string) => new ObjectId(id));
 			const roles = await db.collection('roles').find({ _id: { $in: roleIds } }).toArray();
 			roleNames = roles.map(r => r.roleId); // Use roleId field instead of name
 		}

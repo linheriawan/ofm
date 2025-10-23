@@ -74,7 +74,7 @@ export async function buildAuthorizationUrl(redirectPath: string = '/'): Promise
 		client_id: SSO_CLIENT_ID,
 		redirect_uri: SSO_REDIRECT_URI,
 		scope: SSO_SCOPES,
-		state: `${state}:${redirectPath}`,
+		state: state, // Just the state, redirect path is stored in cookie
 		code_challenge: codeChallenge,
 		code_challenge_method: 'S256'
 	});

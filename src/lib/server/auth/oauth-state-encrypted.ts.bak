@@ -1,4 +1,5 @@
 import type { Cookies } from '@sveltejs/kit';
+import { encrypt, decrypt } from './session';
 
 interface OAuthState {
 	state: string;
@@ -12,31 +13,15 @@ const STATE_EXPIRY = 10 * 60 * 1000; // 10 minutes
 const OAUTH_STATE_COOKIE = 'oauth_state';
 
 /**
- * Simple base64 encoding for OAuth state
- * We don't need heavy encryption since:
- * 1. Cookie is httpOnly (not accessible to JS)
- * 2. Cookie is secure in production (HTTPS only)
- * 3. State has built-in CSRF protection
- * 4. State expires in 10 minutes
- */
-function encodeState(data: string): string {
-	return Buffer.from(data, 'utf-8').toString('base64url');
-}
-
-function decodeState(encoded: string): string {
-	return Buffer.from(encoded, 'base64url').toString('utf-8');
-}
-
-/**
- * Save OAuth state in a cookie
+ * Save OAuth state in an encrypted cookie
  * This persists across server restarts (important for dev mode with hot reload)
  */
-export function saveOAuthState(
+export async function saveOAuthState(
 	cookies: Cookies,
 	state: string,
 	codeVerifier: string,
 	redirectPath: string
-): void {
+): Promise<void> {
 	const oauthState: OAuthState = {
 		state,
 		codeVerifier,
@@ -44,9 +29,9 @@ export function saveOAuthState(
 		createdAt: Date.now()
 	};
 
-	const encoded = encodeState(JSON.stringify(oauthState));
+	const encrypted = await encrypt(JSON.stringify(oauthState));
 
-	cookies.set(OAUTH_STATE_COOKIE, encoded, {
+	cookies.set(OAUTH_STATE_COOKIE, encrypted, {
 		path: '/',
 		httpOnly: true,
 		secure: process.env.NODE_ENV === 'production',
@@ -54,32 +39,34 @@ export function saveOAuthState(
 		maxAge: STATE_EXPIRY / 1000 // Convert to seconds
 	});
 
-	console.log('📝 OAuth state saved to cookie');
+	console.log('📝 OAuth state saved to encrypted cookie');
 	console.log('   State:', state);
 	console.log('   Redirect path:', redirectPath);
-	console.log('   Encoded length:', encoded.length);
+	console.log('   Encrypted length:', encrypted.length);
+	console.log('   Encrypted (first 50):', encrypted.substring(0, 50));
 }
 
 /**
- * Retrieve and validate OAuth state from cookie
+ * Retrieve and validate OAuth state from encrypted cookie
  */
-export function getOAuthState(cookies: Cookies, state: string): OAuthState | null {
-	const encodedState = cookies.get(OAUTH_STATE_COOKIE);
+export async function getOAuthState(cookies: Cookies, state: string): Promise<OAuthState | null> {
+	const encryptedState = cookies.get(OAUTH_STATE_COOKIE);
 
-	if (!encodedState) {
+	if (!encryptedState) {
 		console.log('❌ No OAuth state cookie found');
 		console.log('   Available cookies:', Object.keys(cookies.getAll()));
 		return null;
 	}
 
-	console.log('📦 OAuth state cookie found');
-	console.log('   Length:', encodedState.length);
+	console.log('📦 Encrypted state cookie found');
+	console.log('   Length:', encryptedState.length);
+	console.log('   First 50 chars:', encryptedState.substring(0, 50));
 
 	try {
-		const decoded = decodeState(encodedState);
-		console.log('✅ Successfully decoded OAuth state');
+		const decrypted = await decrypt(encryptedState);
+		console.log('✅ Successfully decrypted OAuth state');
 
-		const stored: OAuthState = JSON.parse(decoded);
+		const stored: OAuthState = JSON.parse(decrypted);
 
 		console.log('🔍 OAuth state retrieved from cookie');
 		console.log('   Expected state:', state);
@@ -105,10 +92,11 @@ export function getOAuthState(cookies: Cookies, state: string): OAuthState | nul
 		console.log('✅ OAuth state validated successfully');
 		return stored;
 	} catch (error) {
-		console.error('❌ Failed to decode OAuth state:', error);
+		console.error('❌ Failed to decrypt OAuth state:', error);
 		console.error('   Error type:', error instanceof Error ? error.constructor.name : typeof error);
 		if (error instanceof Error) {
 			console.error('   Error message:', error.message);
+			console.error('   Error stack:', error.stack);
 		}
 		return null;
 	}
