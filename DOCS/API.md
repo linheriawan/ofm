@@ -476,10 +476,24 @@ GET /api/v1/transport/requests?status=pending&type=company_car&startDate=2025-10
 
 ## 🧪 Testing
 
-### Using cURL
+### Get Session Cookie
+
+To test API endpoints, you need authentication:
+
+1. **Via Browser:**
+   - Open DevTools (F12)
+   - Go to Application → Cookies
+   - Look for `ofm_session`
+   - Copy the value
+
+2. **Via Login:**
+   - Login at `http://localhost:5174`
+   - Use SSO credentials
+   - Cookie is automatically set
+
+### Test 1: Create Transport Request
 
 ```bash
-# Create transport request
 curl -X POST http://localhost:5174/api/v1/transport/requests \
   -H "Content-Type: application/json" \
   -H "Cookie: ofm_session=<your_session>" \
@@ -497,10 +511,49 @@ curl -X POST http://localhost:5174/api/v1/transport/requests \
     },
     "scheduledTime": "2025-10-25T09:00:00Z",
     "isRoundTrip": false,
-    "passengerCount": 1,
+    "passengerCount": 2,
     "purpose": "Client meeting"
   }'
 ```
+
+**Expected Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "_id": "507f1f77bcf86cd799439011",
+    "requestNumber": "TR-20251025-1234",
+    "status": "pending",
+    "type": "company_car",
+    ...
+  },
+  "meta": {
+    "timestamp": "2025-10-25T10:00:00.000Z"
+  }
+}
+```
+
+### Test 2: List Requests
+
+```bash
+curl http://localhost:5174/api/v1/transport/requests?page=1&limit=10 \
+  -H "Cookie: ofm_session=<your_session>"
+```
+
+### Verify in Database
+
+After creating requests, verify in MongoDB:
+
+```javascript
+// In MongoDB Compass or Atlas
+db.transportation_requests.find({}).limit(10)
+```
+
+**Should see:**
+- ✅ Correct `requestNumber` format (TR-YYYYMMDD-XXXX)
+- ✅ Status = "pending"
+- ✅ All required fields populated
+- ✅ Timestamps (`createdAt`, `updatedAt`)
 
 ### Using Postman
 

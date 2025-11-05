@@ -22,20 +22,59 @@
 
 ---
 
-# 🚀 Latest Updates (2025-10-17)
+# 🚀 Latest Updates (2025-11-05)
 
-✅ **Transport Companies & Voucher Management**: Complete CRUD for Gojek/Grab providers with voucher import/export
-✅ **Trip Purpose Master Data**: Categorized purposes for reporting with dropdown in request form
-✅ **Driver Wait/Drop Condition**: Added checkbox for driver to wait or just drop-off
-✅ **API Standardization**: Implemented `/api/v1/*` structure with pagination support
-✅ **Authentication Fixed**: OAuth 2.0 integration with Aksara SSO completed
-✅ **Route Protection**: Middleware now restricts unauthenticated access
-✅ **Session Management**: Auto-refresh tokens before expiry
-🆕 **New Requirements**: Android apps for employees and drivers
-🆕 **Facility Management**: Office supplies (ATK) request module
-📱 **Architecture Shift**: Arduino GPS → Android Driver App
+✅ **SCIM Integration**: Employee sync from Aksara SSO with webhooks (see DOCS/SCIM_INTEGRATION.md)
+✅ **Settings Management**: Database-backed configuration with web UI (see DOCS/SETTINGS_MANAGEMENT.md)
+✅ **Comprehensive API**: 22+ API modules implemented (see DOCS/API.md)
+✅ **Transport Companies & Voucher Management**: Complete CRUD with CSV import/export
+✅ **Trip Purpose Master Data**: Categorized purposes for analytics
+✅ **Authentication & Session**: OAuth 2.0 + OIDC with auto-refresh
+📱 **Architecture Decision**: Android Driver App (replacing Arduino GPS)
+🎯 **Documentation Complete**: API, SCIM, SSO, Data Sync, Business Process
 
-**Next Priority**: Build transportation approval workflow and driver assignment system
+**Next Priority**: Build approval workflow and driver assignment system
+
+---
+
+## Implementation Notes
+
+### Business Process Ambiguities & Recommendations
+
+The following design decisions need to be finalized during implementation:
+
+#### 1. Voucher Distribution Method
+- **Question:** How should voucher codes be delivered to employees?
+  - Email the code to employee?
+  - Display in web app?
+  - Push notification?
+- **Recommendation:** All of the above for redundancy
+- **Status:** Pending implementation
+
+#### 2. Driver Notification Timing
+- **Question:** When should drivers be notified about assignments?
+  - Immediately upon approval?
+  - X hours before trip?
+- **Recommendation:** Both (immediate notification + reminder 2 hours before trip)
+- **Status:** Pending implementation
+
+#### 3. Alternative Offer Workflow
+- **Question:** When car is unavailable, should system auto-offer voucher or require admin decision?
+- **Recommendation:** Admin decides, system suggests (better control over budget)
+- **Status:** Pending implementation
+
+#### 4. Trip Completion Criteria
+- **Question:** How to mark trip as completed?
+  - Driver confirms in app?
+  - Auto-complete after X hours?
+- **Recommendation:** Driver confirms + auto-complete after 12 hours as fallback
+- **Status:** Pending implementation (driver app needed)
+
+#### 5. Meeting Approval Rules
+- **Question:** Do all meetings need approval or only certain types?
+- **Recommendation:** Configurable per room (e.g., VIP rooms need approval, regular rooms auto-approved)
+- **Status:** Pending implementation
+
 
 ---
 
@@ -80,7 +119,7 @@
 - [✅] Authentication & authorization (OAuth 2.0 + OIDC with Aksara SSO)
 - [✅] Restricted page/middleware and session management
 - [✅] Public page & Landing Page (login page)
-- [ ] Implement SCIM employee sync from SSO
+- [✅] SCIM employee sync from SSO (see DOCS/SCIM_INTEGRATION.md)
 
 **Core Feature :**
 - [✅] Transport companies master data (Gojek, Grab with active/inactive)
@@ -121,7 +160,8 @@
 - [ ] Excel export functionality
 - [ ] Recurring meeting scheduler
 - [ ] Unit and integration testing
-- [ ] Documentation (API docs, user guide)
+- [✅] Documentation (API, SCIM, SSO - see DOCS/)
+- [ ] User guide documentation
 - [ ] License usage tracking and limits
 
 ---
@@ -186,37 +226,21 @@ graph TB
 
 Based on new requirements for Android apps and facility management, here's the recommended development sequence:
 
-## Phase 1: API Foundation (Week 1-2) ⭐⭐⭐ CRITICAL
+## Phase 1: API Foundation ✅ COMPLETE
 **Goal**: Build RESTful API to support both web and mobile clients
 
-1. **RESTful API Design & Implementation**
-   - [ ] Design API structure (`/api/v1/*`)
-   - [ ] Implement authentication middleware (JWT from SSO)
-   - [ ] Create standardized response format (success/error handling)
-   - [ ] Add API rate limiting and security headers
+**Status**: All core APIs implemented (22+ modules)
+- ✅ `/api/v1/transport/*` - Transport requests
+- ✅ `/api/v1/meeting/*` - Meeting bookings
+- ✅ `/api/v1/driver/*` - Driver operations
+- ✅ `/api/v1/facilities/*` - Facility requests
+- ✅ `/api/v1/scim/*` - SCIM integration
+- ✅ `/api/v1/settings/*` - System settings
+- ✅ Master data APIs (vehicles, drivers, rooms, users, etc.)
+- ✅ Authentication middleware (OAuth 2.0 + sessions)
+- ✅ Standardized response format with pagination
 
-2. **Transportation API Endpoints**
-   - [ ] `POST /api/v1/requests/transport` - Create transport request
-   - [ ] `GET /api/v1/requests/transport` - List requests (with filters)
-   - [ ] `GET /api/v1/requests/transport/:id` - Get request details
-   - [ ] `PATCH /api/v1/requests/transport/:id` - Update request status
-   - [ ] `DELETE /api/v1/requests/transport/:id` - Cancel request
-
-3. **Driver API Endpoints** (for Android Driver App)
-   - [ ] `GET /api/v1/driver/assignments` - Get assigned trips
-   - [ ] `POST /api/v1/driver/location` - Update GPS location
-   - [ ] `POST /api/v1/driver/trip/:id/start` - Confirm trip start (ATA)
-   - [ ] `POST /api/v1/driver/trip/:id/complete` - Confirm trip end (ATD)
-   - [ ] `POST /api/v1/driver/trip/:id/route` - Submit route data
-
-4. **Facility Request API Endpoints** (NEW)
-   - [ ] `POST /api/v1/requests/facility` - Create facility request (ATK, equipment)
-   - [ ] `GET /api/v1/requests/facility` - List facility requests
-   - [ ] `PATCH /api/v1/requests/facility/:id` - Update status (approve/reject)
-
-5. **API Documentation**
-   - [ ] OpenAPI/Swagger specification
-   - [ ] API testing collection (Postman/Insomnia)
+**See**: `DOCS/API.md` for complete API reference
 
 ## Phase 2: Mobile Infrastructure (Week 3-4) ⭐⭐⭐ HIGH PRIORITY
 **Goal**: Enable mobile app authentication and data sync
@@ -329,281 +353,92 @@ Based on new requirements for Android apps and facility management, here's the r
 
 ---
 
-# 🎬 Quick Start for Next Phase
+# 📱 Mobile Apps (Planned)
 
-## Immediate Next Steps (Phase 1: API Foundation)
+## Technology Stack
+- **Driver App**: Kotlin + Jetpack Compose + Retrofit + Google Maps SDK
+- **Employee App**: Kotlin + Jetpack Compose + Retrofit
+- **Backend**: Shared API (`/api/v1/*`) + Aksara SSO (OAuth 2.0)
 
-1. **Create API Route Structure**
-   ```bash
-   mkdir -p src/routes/api/v1/{requests,driver,auth}
-   ```
-
-2. **Design API Response Format**
-   ```typescript
-   // src/lib/server/api/response.ts
-   interface ApiResponse<T> {
-     success: boolean;
-     data?: T;
-     error?: {
-       code: string;
-       message: string;
-     };
-     meta?: {
-       page?: number;
-       limit?: number;
-       total?: number;
-     };
-   }
-   ```
-
-3. **Create Authentication Middleware**
-   ```typescript
-   // src/lib/server/api/auth.ts
-   export async function requireAuth(event: RequestEvent) {
-     const token = event.request.headers.get('Authorization')?.replace('Bearer ', '');
-     if (!token) throw error(401, 'Unauthorized');
-     // Validate JWT token from SSO
-   }
-   ```
-
-4. **Start with Transportation Request Endpoint**
-   ```typescript
-   // src/routes/api/v1/requests/transport/+server.ts
-   export async function POST({ request, locals }) {
-     // Create transport request
-   }
-
-   export async function GET({ url, locals }) {
-     // List transport requests with filters
-   }
-   ```
-
-5. **Update Database Schemas**
-   - Add `facilityRequests` collection schema
-   - Add `driverLocations` collection for GPS tracking
-   - Add `tripEvents` collection for ATA/ATD logs
+## Why Android instead of Arduino GPS?
+1. ✅ Lower cost (phones vs Arduino + GPS + SIM)
+2. ✅ Better UX (driver interactions, confirmations)
+3. ✅ Simpler deployment (no hardware installation)
+4. ✅ Real-time communication (push notifications)
+5. ✅ Dual purpose (navigation + tracking)
 
 ---
 
-# 📱 Android App Architecture
+# Project Objective
 
-## Shared Backend (OFM Web App)
-- SvelteKit API endpoints (`/api/v1/*`)
-- MongoDB database (shared with web)
-- Aksara SSO for authentication
+**Office Facility Management (OFM)** - Unified system for managing employee transportation, meeting rooms, and office facilities.
 
-## Driver App (Kotlin + Jetpack Compose)
-```
-com.ofm.driver/
-├── data/
-│   ├── api/          # Retrofit API clients
-│   ├── repository/   # Data repositories
-│   └── model/        # Data models
-├── ui/
-│   ├── login/        # Login screen
-│   ├── trips/        # Trip list & details
-│   ├── tracking/     # Live tracking screen
-│   └── profile/      # Driver profile
-├── service/
-│   └── LocationService.kt  # Background GPS tracking
-└── util/
-    ├── AuthManager.kt      # OAuth 2.0 handling
-    └── NotificationManager.kt
-```
+## Core Functions
 
-## Employee App (Kotlin + Jetpack Compose)
-```
-com.ofm.employee/
-├── data/
-│   ├── api/          # Retrofit API clients
-│   ├── repository/   # Data repositories
-│   └── model/        # Data models
-├── ui/
-│   ├── login/        # Login screen
-│   ├── home/         # Dashboard
-│   ├── transport/    # Transport request screens
-│   ├── meeting/      # Meeting booking screens
-│   └── facility/     # Facility request screens (NEW)
-└── util/
-    ├── AuthManager.kt
-    └── NotificationManager.kt
-```
+### 1. Transportation Management
+- Voucher allocation (Gojek, Grab, etc.)
+- Company car scheduling with driver assignment
+- GPS tracking via Android Driver App
+- Asset and voucher utilization dashboard
 
-## Key Technical Decisions
+### 2. Meeting Room Booking
+- Online/offline/hybrid meeting support
+- Room reservation with facility preparation
+- Tablet display for room schedules
+- License and facility utilization tracking
 
-### Why Android instead of Arduino?
-1. ✅ **Lower Hardware Cost**: Android phones vs Arduino + GPS + SIM card
-2. ✅ **Better UX**: Drivers can interact with app (confirmations, status updates)
-3. ✅ **Simpler Deployment**: No hardware installation required
-4. ✅ **Real-time Communication**: Push notifications, chat with admin
-5. ✅ **Dual Purpose**: Navigation + tracking in one device
-
-### API-First Design
-- Web app and mobile apps share the same backend API
-- Easy to add more clients (iOS, desktop) in the future
-- Clear separation of concerns
-
-### Authentication Strategy
-- All apps use Aksara SSO via OAuth 2.0
-- JWT tokens for API authentication
-- Refresh token mechanism for mobile apps
+### 3. Multi-Entity Support
+- Holding company + subsidiaries
+- Regional admin scoping
+- Centralized reporting
 
 ---
 
-# Objective
+# Documentation Reference
 
-- **Manage Employee Transportation Support**:
-    - Admin need to allocate voucher(from Transportation Company/Go-Car) from employee request.
-    - Admin need to schedule driver and car to transport employee based on empleyee booking.
-    - having dashboard of assets(car/driver) and voucher utilization to support employee productivity
-    - we will install arduino with GPS and OBD reader on each car(but what about BYD ev, is it will be different?)
-- **Meeting Booking**:
-    - admin need to manage booking to create (link for on-line meeting), or prepare physical room, facility, snack/lunch (for off-line meeting)
-    - global admin need to see utilization of license, or facility of organisation meeting.
-    - admin is regionally scooped (may have many location to manage)
-    - tablet/raspberry pi zero w will be placed on in front of each rooms for displaying meeting title, and meeting attendance confirmation
-- can be implemented for multi-entities company(Holding and its subsidiaries)
+## Technical Documentation (DOCS/)
+- **API.md** - Complete API reference with 22+ endpoints
+- **SCIM_INTEGRATION.md** - Employee sync setup guide
+- **SETTINGS_MANAGEMENT.md** - Database-backed configuration
+- **SSO_INTEGRATION.md** - OAuth 2.0 / OIDC setup
+- **DATA_SYNC_STRATEGY.md** - SSO ↔ OFM data architecture
+- **BUSINESS_PROCESS.md** - Business workflows with flowcharts
+- **ROOM_DISPLAY.md** - Tablet display system
+- **DATABASE.md** - Database setup and schema
+- **FEATURES.md** - Feature overview
+- **example_org_structure.md** - IAS organization structure
 
----
-
-# Related Files
-Documentation is in: DOCS/*.md
-
-- ./DOCS/example_org_structure.md - example of organizations structure we need to implement.
-- ./DOCS/DATABASE.md - Database Setup Guide
-- ./DOCS/FEATURES.md - OFM Features Documentation
-- ./DOCS/BUSINESS_PROCESS.md - Business Process
-
-
-## Important Reminders
-
-- **Update CLAUDE.md _Development Status_ as you complete tasks** (mark with `[✅]`)
-- **Make reusable code** dont make more than ~500 lines of codes in one file, implements utils/library
-- dont mix Svelte 4 (on:click) and Svelte 5 (onclick) syntax
+## Development Guidelines
+- **Update CLAUDE.md** as you complete tasks (mark with `[✅]`)
+- **Keep files small** - Max ~500 lines, use utils/libraries
+- **Use Svelte 5 syntax** - Use `onclick` not `on:click`
+- **Reference DOCS/** - Don't duplicate technical details here
 
 ---
 
-# Additional Information Needed
+# Business Rules (Configured)
 
-## 1. Stakeholders & Roles
-- key stakeholders: GA
-- Define user roles and permissions:
-  - Global Admin (multi-entity access)
-  - Regional Admin (location-specific)
-  - Department Admin
-  - Employee (requestor)
-  - Driver
-  - Super Admin
-- Approval workflow hierarchy
+## User Roles
+- **Super Admin** - Full system access
+- **Global Admin** - Multi-entity access
+- **Regional Admin** - Location-specific
+- **Employee** - Request and view own bookings
+- **Driver** - View assignments, confirm trips
 
-## 2. Business Rules & Policies
-- **Transportation:**
-  - Voucher allocation criteria (position level, frequency limits, amount limits)
-  - Car booking priority rules (executive vs general employee)
-  - Advance booking requirements (how many days/hours in advance?)
-  - Cancellation policies: Just enable/update the Car status as available
-  - Emergency/urgent request handling
-  - Overtime/after-hours usage policies: need Advance booking
-- **Meeting Rooms:**
-  - Maximum booking duration (8 Hours)
-  - Advance booking window (min/max days ahead)
-  - Recurring meeting policies (Need Approvals from Super Admin)
-  - Cancellation/modification deadlines (need re-approval from admin)
-  - No-show penalties/None
-  - Room capacity vs participant count rules (each room may have different capacity)
-  - Catering order lead time
+## Transportation Policies
+- **Cancellation**: Enable/update car status as available
+- **After-hours**: Requires advance booking
+- **Voucher Providers**: Gojek, Grab (managed via admin)
 
-## 3. Integration Requirements
-- **Authentication & Authorization:**
-  - SSO/LDAP/Active Directory integration? 
-  - Existing HR system integration for employee data?
-- **External Services:**
-  - Which ride-hailing providers? (Gojek, Grab, Uber?)
-  - API documentation and credentials
-  - Video conferencing platforms (Zoom, Google Meet, MS Teams?)
-  - License management APIs
-- **Notification Channels:**
-  - Email provider (SMTP settings)
-  - Push notifications?
-  - In-app notifications?
-  - Telegram/WhatsApp integration
+## Meeting Room Policies
+- **Max Duration**: 8 hours
+- **Recurring Meetings**: Require Super Admin approval
+- **Cancellation**: Requires re-approval from admin
+- **Room Capacity**: Validated against participant count
 
-## 4. Data & Reporting Requirements
-- **KPIs to Track:**
-  - Voucher utilization rate
-  - Car/driver utilization rate
-  - Average trip duration/distance
-  - Meeting room occupancy rate
-  - License usage efficiency
-  - Cost per employee transportation
-  - Popular routes/times
-  - No-show rates
-- **Reports Needed:**
-  - Daily/weekly/monthly utilization reports
-  - Cost analysis reports
-  - Maintenance schedule (based on OBD data)
-  - Carbon footprint/sustainability metrics
-  - Department-wise allocation reports
-- **Data Retention:**
-  - How long to keep historical data?
-  - Archive policies
+## Integration
+- **Authentication**: ✅ Aksara SSO (OAuth 2.0 / OIDC)
+- **Employee Sync**: ✅ SCIM 2.0 from Aksara SSO
+- **Room Display**: Tablet/Raspberry Pi (QR code access)
 
-## 5. Hardware & Infrastructure
-- **Transportation IoT:**
-  - Arduino model and specifications
-  - GPS module specifications
-  - OBD-II reader compatibility (standard vs EV vehicles like BYD)
-  - Note: EVs may need different protocols (CANbus vs OBD-II)
-  - data transmission: SIM cards with internet 3G network
-  - Power supply: Car Battery
-  - Installation vendor
-- **Room Display:**
-  - Tablet specifications or Raspberry Pi Zero W?
-  - Mounting solutions
-  - Power over Ethernet (PoE) or battery?
-  - Display size requirements
-  - Touch screen functionality needed?
-  - QR code/NFC reader integration?
-
-## 6. Security & Compliance
-- Data privacy regulations (GDPR, local laws)
-- Employee location tracking consent
-- Data encryption (at rest and in transit)
-- Audit trail requirements
-- Backup and disaster recovery plan
-- Access control and authentication methods
-
-## 7. Scalability & Performance
-- Expected number of users (per entity/total)
-- Expected number of entities (companies)
-- Expected number of cars/drivers
-- Expected number of meeting rooms
-- Concurrent booking capacity
-- Real-time tracking data volume (GPS frequency)
-- Peak usage times
-
-## 8. Budget & Timeline
-- Development timeline and milestones
-- Budget for:
-  - Development
-  - Hardware (Arduino, tablets, accessories)
-  - Cloud infrastructure (MongoDB Atlas tier)
-  - External service subscriptions (ride-hailing APIs, video conferencing)
-  - Maintenance and support
-- ROI expectations
-
-## 9. Pilot & Rollout Plan
-- Pilot scope (which entity/location first?)
-- Pilot duration
-- Success criteria for pilot
-- Phased rollout approach
-- Training plan for admins and users
-- Change management strategy
-
-## 10. Support & Maintenance
-- Support hours (24/7 or business hours?)
-- SLA requirements
-- Maintenance windows
-- Incident escalation process
-- Help desk integration
-- User documentation requirements
+**See**: `DOCS/BUSINESS_PROCESS.md` for detailed workflows and decision points
