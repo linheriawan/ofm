@@ -2,13 +2,20 @@
 	import { onMount } from 'svelte';
 	import { slide } from 'svelte/transition';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import LocationPicker from '$lib/components/LocationPicker.svelte';
 	import { transportApi } from '$lib/client/api';
+	import '$lib/styles/transportation-booking.css';
 
-	let title = 'Request Transportation';
+	// Check if we're in edit mode
+	$: bookingId = $page.url.searchParams.get('id');
+	$: isEditMode = !!bookingId;
+	$: title = isEditMode ? 'View/Edit Transportation Request' : 'Request Transportation';
+
 	let isSubmitting = false;
 	let errorMessage = '';
 	let isLoadingCompanies = true;
+	let isLoadingBooking = false;
 
 	// Form state
 	let requestType: 'company-car' | 'voucher' = 'company-car';
@@ -63,9 +70,60 @@
 
 	let selectedVehicle = '';
 
+	// Load existing booking if in edit mode
+	async function loadBooking() {
+		if (!bookingId) return;
+
+		try {
+			isLoadingBooking = true;
+			const response = await fetch(`/api/v1/transport/requests/${bookingId}`);
+			const result = await response.json();
+
+			if (result.success && result.data) {
+				const booking = result.data;
+
+				// Pre-fill form fields
+				requestType = booking.type === 'company_car' ? 'company-car' : 'voucher';
+
+				const scheduleDate = new Date(booking.scheduledTime);
+				bookingDate = scheduleDate.toISOString().split('T')[0];
+				bookingTime = scheduleDate.toTimeString().slice(0, 5);
+
+				fromLocation = booking.pickup?.address || '';
+				fromLat = booking.pickup?.latitude || null;
+				fromLng = booking.pickup?.longitude || null;
+
+				toLocation = booking.destination?.address || '';
+				toLat = booking.destination?.latitude || null;
+				toLng = booking.destination?.longitude || null;
+
+				purpose = booking.purpose || '';
+				selectedPurposeId = booking.purposeId || '';
+				numberOfPassengers = booking.passengerCount || 1;
+
+				isRoundTrip = booking.isRoundTrip || false;
+				if (booking.returnTime) {
+					const returnDate = new Date(booking.returnTime);
+					returnDate = returnDate.toISOString().split('T')[0];
+					returnTime = returnDate.toTimeString().slice(0, 5);
+				}
+
+				notes = booking.specialRequirements || '';
+				selectedTransportCompanyId = booking.transportCompanyId || '';
+				selectedVehicle = booking.vehicleId || '';
+				driverShouldWait = booking.driverShouldWait || false;
+			}
+		} catch (error) {
+			console.error('Failed to load booking:', error);
+			errorMessage = 'Failed to load booking details. Please try again.';
+		} finally {
+			isLoadingBooking = false;
+		}
+	}
+
 	// Fetch transport companies and trip purposes on mount
 	onMount(async () => {
-		await Promise.all([loadTransportCompanies(), loadTripPurposes()]);
+		await Promise.all([loadTransportCompanies(), loadTripPurposes(), loadBooking()]);
 	});
 
 	async function loadTransportCompanies() {
@@ -188,16 +246,31 @@
 					: undefined
 			};
 
-			// Call API
-			const response = await transportApi.createRequest(requestBody);
+			// Call API (create or update)
+			let response;
+			if (isEditMode) {
+				// Update existing booking
+				response = await fetch(`/api/v1/transport/requests/${bookingId}`, {
+					method: 'PATCH',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(requestBody)
+				});
+				const result = await response.json();
+				response = result;
+			} else {
+				// Create new booking
+				response = await transportApi.createRequest(requestBody);
+			}
 
 			if (response.success && response.data) {
 				// Show success message
 				alert(
-					`Transportation request submitted successfully!\n\n` +
-					`Request Number: ${response.data.requestNumber}\n` +
-					`Status: Pending approval\n\n` +
-					`You will be notified once your request is approved.`
+					isEditMode
+						? `Transportation request updated successfully!\n\nRequest Number: ${response.data.requestNumber}`
+						: `Transportation request submitted successfully!\n\n` +
+								`Request Number: ${response.data.requestNumber}\n` +
+								`Status: Pending approval\n\n` +
+								`You will be notified once your request is approved.`
 				);
 
 				// Redirect to bookings page
@@ -246,13 +319,18 @@
 	<title>{title}</title>
 </svelte:head>
 
-<div class="request-page">
-	<div class="header">
-		<h1>Request Transportation</h1>
-		<p class="subtitle">Book a company car or request a transportation voucher</p>
+<div class="transport-request-page">
+	<div class="page-header">
+		<h1>{isEditMode ? 'View/Edit Transportation Request' : 'Request Transportation'}</h1>
+		<p class="page-subtitle">
+			{isEditMode ? 'View or modify your transportation request' : 'Book a company car or request a transportation voucher'}
+		</p>
 	</div>
 
-	<div class="form-container">
+	{#if isLoadingBooking}
+		<div class="loading">Loading booking details...</div>
+	{:else}
+	<div class="transport-form-container">
 		<!-- Error Message -->
 		{#if errorMessage}
 			<div class="alert alert-error">
@@ -458,14 +536,17 @@
 
 				<!-- Actions -->
 				<div class="form-actions">
-					<a href="/transportation" class="btn-secondary">Cancel</a>
+					<a href="/transportation/bookings" class="btn-secondary">Cancel</a>
 					<button type="submit" class="btn-primary" disabled={isSubmitting}>
-						{isSubmitting ? 'Submitting...' : 'Submit Request'}
+						{isSubmitting
+							? (isEditMode ? 'Updating...' : 'Submitting...')
+							: (isEditMode ? 'Update Request' : 'Submit Request')}
 					</button>
 				</div>
 			</form>
 		</div>
 	</div>
+	{/if}
 
 	<!-- Map Picker Modal -->
 	{#if showMapPicker}
@@ -492,518 +573,3 @@
 		</div>
 	{/if}
 </div>
-
-<style>
-	.request-page {
-		animation: fadeIn 0.3s ease-in;
-	}
-
-	@keyframes fadeIn {
-		from { opacity: 0; transform: translateY(10px); }
-		to { opacity: 1; transform: translateY(0); }
-	}
-
-	.header {
-		margin-bottom: 2rem;
-	}
-
-	.header h1 {
-		margin: 0;
-		font-size: 2rem;
-		color: #333;
-	}
-
-	.subtitle {
-		color: #666;
-		margin: 0.5rem 0 0 0;
-	}
-
-	.form-container {
-		display: flex;
-		flex-direction: column;
-		gap: 2rem;
-		max-width: 900px;
-	}
-
-	.card {
-		background: white;
-		border-radius: 12px;
-		padding: 2rem;
-		box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-	}
-
-	.card h2 {
-		margin: 0 0 1.5rem 0;
-		font-size: 1.5rem;
-		color: #333;
-	}
-
-	.card h3 {
-		margin: 2rem 0 1rem 0;
-		font-size: 1.2rem;
-		color: #333;
-	}
-
-	/* Type Selector */
-	.type-selector {
-		display: grid;
-		grid-template-columns: repeat(2, 1fr);
-		gap: 1.5rem;
-	}
-
-	.type-option {
-		cursor: pointer;
-	}
-
-	.type-option input {
-		display: none;
-	}
-
-	.type-card {
-		padding: 2rem;
-		border: 2px solid #e2e8f0;
-		border-radius: 12px;
-		text-align: center;
-		transition: all 0.2s;
-	}
-
-	.type-option.active .type-card {
-		border-color: #667eea;
-		background: #f0f4ff;
-	}
-
-	.type-icon {
-		font-size: 3rem;
-		margin-bottom: 1rem;
-	}
-
-	.type-card h3 {
-		margin: 0 0 0.5rem 0;
-		font-size: 1.2rem;
-		color: #333;
-	}
-
-	.type-card p {
-		margin: 0;
-		color: #666;
-		font-size: 0.9rem;
-	}
-
-	/* Form */
-	.form-grid {
-		display: grid;
-		grid-template-columns: repeat(2, 1fr);
-		gap: 1.5rem;
-	}
-
-	.form-group {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-	}
-
-	.form-group.full-width {
-		grid-column: 1 / -1;
-	}
-
-	label {
-		font-weight: 500;
-		color: #333;
-	}
-
-	.required {
-		color: #f56565;
-	}
-
-	input[type="text"],
-	input[type="date"],
-	input[type="time"],
-	input[type="number"],
-	select,
-	textarea {
-		padding: 0.75rem;
-		border: 2px solid #e2e8f0;
-		border-radius: 8px;
-		font-size: 1rem;
-		transition: border-color 0.2s;
-	}
-
-	select {
-		cursor: pointer;
-		background: white;
-	}
-
-	.purpose-fallback {
-		margin-top: 0.5rem;
-	}
-
-	input:focus, select:focus, textarea:focus {
-		outline: none;
-		border-color: #667eea;
-	}
-
-	/* Vehicle Selection */
-	.vehicle-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-		gap: 1rem;
-	}
-
-	.vehicle-card {
-		cursor: pointer;
-	}
-
-	.vehicle-card input {
-		display: none;
-	}
-
-	.vehicle-content {
-		padding: 1.5rem;
-		border: 2px solid #e2e8f0;
-		border-radius: 12px;
-		text-align: center;
-		transition: all 0.2s;
-	}
-
-	.vehicle-card.selected .vehicle-content {
-		border-color: #667eea;
-		background: #f0f4ff;
-	}
-
-	.vehicle-icon {
-		font-size: 2.5rem;
-		margin-bottom: 0.5rem;
-	}
-
-	.vehicle-content h4 {
-		margin: 0 0 0.25rem 0;
-		font-size: 1rem;
-		color: #333;
-	}
-
-	.vehicle-type, .vehicle-plate, .vehicle-capacity {
-		margin: 0.25rem 0;
-		font-size: 0.85rem;
-		color: #666;
-	}
-
-	/* Voucher/Provider Selection */
-	.provider-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-		gap: 1rem;
-	}
-
-	.provider-card {
-		cursor: pointer;
-	}
-
-	.provider-card.disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
-	.loading-message,
-	.empty-message {
-		padding: 2rem;
-		text-align: center;
-		color: #666;
-		background: #f8f9fa;
-		border-radius: 8px;
-	}
-
-	.loading-message p,
-	.empty-message p {
-		margin: 0;
-	}
-
-	.provider-card input {
-		display: none;
-	}
-
-	.provider-content {
-		padding: 1.5rem;
-		border: 2px solid #e2e8f0;
-		border-radius: 12px;
-		text-align: center;
-		transition: all 0.2s;
-	}
-
-	.provider-card.selected .provider-content {
-		border-color: #667eea;
-		background: #f0f4ff;
-	}
-
-	.provider-content h4 {
-		margin: 0 0 0.5rem 0;
-		font-size: 1.1rem;
-		color: #333;
-	}
-
-	.available-count {
-		margin: 0;
-		font-size: 0.9rem;
-		color: #666;
-	}
-
-	/* Actions */
-	.form-actions {
-		display: flex;
-		gap: 1rem;
-		justify-content: flex-end;
-		margin-top: 2rem;
-	}
-
-	.btn-primary, .btn-secondary {
-		padding: 0.75rem 2rem;
-		border-radius: 8px;
-		text-decoration: none;
-		font-weight: 500;
-		transition: all 0.2s;
-		border: none;
-		cursor: pointer;
-		font-size: 1rem;
-	}
-
-	.btn-primary {
-		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-		color: white;
-	}
-
-	.btn-secondary {
-		background: white;
-		color: #667eea;
-		border: 2px solid #667eea;
-	}
-
-	.btn-primary:hover, .btn-secondary:hover {
-		transform: translateY(-2px);
-		box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-	}
-
-	.btn-primary:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-		transform: none;
-	}
-
-	/* Alert */
-	.alert {
-		padding: 1rem 1.5rem;
-		border-radius: 8px;
-		display: flex;
-		align-items: center;
-		gap: 1rem;
-		margin-bottom: 1.5rem;
-		animation: slideDown 0.3s ease-out;
-	}
-
-	@keyframes slideDown {
-		from {
-			opacity: 0;
-			transform: translateY(-10px);
-		}
-		to {
-			opacity: 1;
-			transform: translateY(0);
-		}
-	}
-
-	.alert-error {
-		background: #fff5f5;
-		border: 2px solid #fc8181;
-		color: #c53030;
-	}
-
-	.alert-icon {
-		font-size: 1.5rem;
-	}
-
-	/* Location Input with Map Button */
-	.location-input-group {
-		display: flex;
-		gap: 0.5rem;
-	}
-
-	.location-input-group input {
-		flex: 1;
-	}
-
-	.btn-map {
-		padding: 0.75rem 1rem;
-		border: 2px solid #667eea;
-		border-radius: 8px;
-		background: white;
-		color: #667eea;
-		font-weight: 500;
-		cursor: pointer;
-		transition: all 0.2s;
-		white-space: nowrap;
-	}
-
-	.btn-map:hover {
-		background: #667eea;
-		color: white;
-		transform: translateY(-2px);
-	}
-
-	/* Driver Wait/Drop Option */
-	.driver-wait-option {
-		margin-top: 1.5rem;
-		padding: 1rem;
-		background: #f0f4ff;
-		border: 2px solid #667eea;
-		border-radius: 8px;
-	}
-
-	/* Round Trip Option */
-	.round-trip-option {
-		margin-top: 1.5rem;
-		padding: 1rem;
-		background: #f8f9fa;
-		border-radius: 8px;
-	}
-
-	.checkbox-label {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		cursor: pointer;
-		font-weight: 500;
-	}
-
-	.checkbox-label input[type="checkbox"] {
-		width: 20px;
-		height: 20px;
-		cursor: pointer;
-	}
-
-	.info-text {
-		color: #667eea;
-		font-size: 0.9rem;
-	}
-
-	.return-details {
-		margin-top: 1rem;
-		padding: 1rem;
-		background: white;
-		border: 2px solid #e2e8f0;
-		border-radius: 8px;
-	}
-
-	.return-details h4 {
-		margin: 0 0 1rem 0;
-		font-size: 1rem;
-		color: #333;
-	}
-
-	/* Modal Styles */
-	.modal-overlay {
-		position: fixed;
-		top: 0;
-		left: 0;
-		right: 0;
-		bottom: 0;
-		background: rgba(0, 0, 0, 0.5);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		z-index: 1000;
-		padding: 1rem;
-	}
-
-	.modal-content {
-		background: white;
-		border-radius: 12px;
-		width: 100%;
-		max-width: 800px;
-		max-height: 90vh;
-		display: flex;
-		flex-direction: column;
-		box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-	}
-
-	.modal-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		padding: 1.5rem;
-		border-bottom: 2px solid #e2e8f0;
-	}
-
-	.modal-header h2 {
-		margin: 0;
-		font-size: 1.5rem;
-		color: #333;
-	}
-
-	.btn-close {
-		background: none;
-		border: none;
-		font-size: 1.5rem;
-		cursor: pointer;
-		color: #666;
-		width: 32px;
-		height: 32px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		border-radius: 4px;
-		transition: all 0.2s;
-	}
-
-	.btn-close:hover {
-		background: #f0f0f0;
-		color: #333;
-	}
-
-	.modal-body {
-		padding: 1.5rem;
-		overflow-y: auto;
-		flex: 1;
-	}
-
-	.modal-footer {
-		padding: 1rem 1.5rem;
-		border-top: 2px solid #e2e8f0;
-		display: flex;
-		justify-content: flex-end;
-		gap: 1rem;
-	}
-
-	@media (max-width: 768px) {
-		.form-grid {
-			grid-template-columns: 1fr;
-		}
-
-		.type-selector {
-			grid-template-columns: 1fr;
-		}
-
-		.vehicle-grid {
-			grid-template-columns: 1fr;
-		}
-
-		.provider-grid {
-			grid-template-columns: 1fr;
-		}
-
-		.form-actions {
-			flex-direction: column;
-		}
-
-		.location-input-group {
-			flex-direction: column;
-		}
-
-		.btn-map {
-			width: 100%;
-		}
-
-		.modal-content {
-			max-width: 100%;
-			max-height: 100vh;
-			border-radius: 0;
-		}
-	}
-</style>

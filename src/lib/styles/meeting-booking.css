@@ -1,0 +1,336 @@
+/* ===================================
+   Meeting Booking Specific Styles
+   Used in: /meeting/book
+   =================================== */
+
+/* ===================================
+   LAYOUT
+   =================================== */
+
+.meeting-booking-page {
+	animation: fadeIn 0.3s ease-in;
+}
+
+.meeting-form-container {
+	display: flex;
+	flex-direction: column;
+	gap: 2rem;
+	max-width: 900px;
+}
+
+/* ===================================
+   TYPE SELECTOR (Online/Offline/Hybrid)
+   =================================== */
+
+.meeting-type-selector {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 1.5rem;
+}
+
+.meeting-type-option {
+	cursor: pointer;
+}
+
+.meeting-type-option input {
+	display: none;
+}
+
+.meeting-type-card {
+	padding: 2rem;
+	border: 2px solid #e2e8f0;
+	border-radius: 12px;
+	text-align: center;
+	transition: all 0.2s;
+}
+
+.meeting-type-option.active .meeting-type-card {
+	border-color: #48bb78;
+	background: #f0fff4;
+}
+
+.meeting-type-icon {
+	font-size: 3rem;
+	margin-bottom: 1rem;
+}
+
+.meeting-type-card h3 {
+	margin: 0 0 0.5rem 0;
+	font-size: 1.2rem;
+	color: #333;
+}
+
+.meeting-type-card p {
+	margin: 0;
+	color: #666;
+	font-size: 0.9rem;
+}
+
+/* ===================================
+   FORM ELEMENTS
+   =================================== */
+
+.helper-text {
+	font-weight: normal;
+	color: #48bb78;
+	font-size: 0.85rem;
+	margin-left: 0.5rem;
+}
+
+.duration-display {
+	padding: 0.75rem;
+	background: #f9f9f9;
+	border-radius: 8px;
+	font-weight: 600;
+	color: #48bb78;
+}
+
+/* Focus color override for meeting (green theme) */
+.meeting-booking-page input:focus,
+.meeting-booking-page textarea:focus,
+.meeting-booking-page .select-input:focus {
+	border-color: #48bb78;
+}
+
+/* ===================================
+   ROOM SELECTION
+   =================================== */
+
+.room-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+	gap: 1rem;
+}
+
+.room-card {
+	cursor: pointer;
+}
+
+.room-card input {
+	display: none;
+}
+
+.room-content {
+	padding: 1.5rem;
+	border: 2px solid #e2e8f0;
+	border-radius: 12px;
+	text-align: center;
+	transition: all 0.2s;
+}
+
+.room-card.selected .room-content {
+	border-color: #48bb78;
+	background: #f0fff4;
+}
+
+.room-icon {
+	font-size: 2.5rem;
+	margin-bottom: 0.5rem;
+}
+
+.room-content h4 {
+	margin: 0 0 0.25rem 0;
+	font-size: 1rem;
+	color: #333;
+}
+
+.room-floor,
+.room-capacity {
+	margin: 0.25rem 0;
+	font-size: 0.85rem;
+	color: #666;
+}
+
+.room-facilities {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.25rem;
+	margin-top: 0.5rem;
+	justify-content: center;
+}
+
+.facility-badge {
+	padding: 0.2rem 0.5rem;
+	background: #e2e8f0;
+	border-radius: 4px;
+	font-size: 0.75rem;
+	color: #666;
+}
+
+/* ===================================
+   PLATFORM SELECTION
+   =================================== */
+
+.platform-grid {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 1rem;
+}
+
+.platform-card {
+	cursor: pointer;
+}
+
+.platform-card input {
+	display: none;
+}
+
+.platform-content {
+	padding: 1.5rem;
+	border: 2px solid #e2e8f0;
+	border-radius: 12px;
+	text-align: center;
+	transition: all 0.2s;
+}
+
+.platform-card.selected .platform-content {
+	border-color: #48bb78;
+	background: #f0fff4;
+}
+
+.platform-content h4 {
+	margin: 0;
+	font-size: 1.1rem;
+	color: #333;
+}
+
+/* ===================================
+   PARTICIPANTS
+   =================================== */
+
+.participants-section,
+.facilities-section,
+.catering-section,
+.recurring-section {
+	margin-top: 2rem;
+}
+
+.input-with-button {
+	display: flex;
+	gap: 0.5rem;
+}
+
+.input-with-button input {
+	flex: 1;
+}
+
+.btn-add {
+	padding: 0.75rem 1.5rem;
+	background: #48bb78;
+	color: white;
+	border: none;
+	border-radius: 8px;
+	cursor: pointer;
+	font-weight: 500;
+	transition: background 0.2s;
+}
+
+.btn-add:hover {
+	background: #38a169;
+}
+
+.tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+	margin-top: 1rem;
+}
+
+.tag {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.5rem 1rem;
+	background: #e2e8f0;
+	border-radius: 20px;
+	color: #333;
+}
+
+.tag button {
+	background: none;
+	border: none;
+	color: #666;
+	font-size: 1.5rem;
+	cursor: pointer;
+	line-height: 1;
+	padding: 0;
+	margin: 0;
+}
+
+/* ===================================
+   FACILITIES
+   =================================== */
+
+.facilities-grid {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 1rem;
+}
+
+.facility-checkbox {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	cursor: pointer;
+}
+
+.facility-checkbox input {
+	width: 1.2rem;
+	height: 1.2rem;
+	cursor: pointer;
+}
+
+.checkbox-label {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	cursor: pointer;
+	font-weight: 500;
+}
+
+.checkbox-label input {
+	width: 1.2rem;
+	height: 1.2rem;
+	cursor: pointer;
+}
+
+.catering-items {
+	margin-top: 1rem;
+}
+
+/* ===================================
+   BUTTONS (Meeting theme - green)
+   =================================== */
+
+.meeting-booking-page .btn-primary {
+	background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+	color: white;
+}
+
+.meeting-booking-page .btn-secondary {
+	background: white;
+	color: #48bb78;
+	border: 2px solid #48bb78;
+}
+
+/* ===================================
+   RESPONSIVE
+   =================================== */
+
+@media (max-width: 768px) {
+	.meeting-type-selector {
+		grid-template-columns: 1fr;
+	}
+
+	.room-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.platform-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.facilities-grid {
+		grid-template-columns: 1fr;
+	}
+}

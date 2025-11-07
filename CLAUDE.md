@@ -409,6 +409,15 @@ Based on new requirements for Android apps and facility management, here's the r
 - **example_org_structure.md** - IAS organization structure
 
 ## Development Guidelines
+
+### Reusables Philosophy
+- **ALWAYS check `DOCS/REUSABLES.md` before writing new code**
+- This app has 20+ reusable modules: components, APIs, auth, DB utilities, specialized tools
+- **Do NOT rebuild**: modals, tables, location pickers, API wrappers, validation, CRUD operations
+- **Use standardized patterns**: API response format, REST endpoints, request numbering
+- **Keep code DRY**: If it exists in reusables, use it. No exceptions.
+
+### General Guidelines
 - **Update CLAUDE.md** as you complete tasks (mark with `[✅]`)
 - **Keep files small** - Max ~500 lines, use utils/libraries
 - **Use Svelte 5 syntax** - Use `onclick` not `on:click`

@@ -5,19 +5,48 @@
 		key: string;
 		label: string;
 		sortable?: boolean;
-		format?: (value: any) => string;
+		format?: (value: any, row?: any) => string;
+		render?: (value: any, row?: any) => any; // For custom HTML rendering
+	}
+
+	interface FilterField {
+		key: string;
+		label: string;
+		type: 'select' | 'text' | 'date' | 'daterange';
+		options?: { value: string; label: string }[]; // For select type
+		placeholder?: string;
+	}
+
+	interface ActionButton {
+		label: string;
+		class?: string; // CSS class for button styling
+		onClick: (item: any) => void;
+		show?: (item: any) => boolean; // Conditional visibility
 	}
 
 	interface Props {
 		title: string;
 		columns: Column[];
 		apiEndpoint: string;
+		filters?: FilterField[];
+		actions?: ActionButton[];
 		onEdit?: (item: any) => void;
 		onDelete?: (item: any) => void;
 		onAdd?: () => void;
+		addButtonLabel?: string;
 	}
 
-	let { title, columns, apiEndpoint, onEdit, onDelete, onAdd }: Props = $props();
+	let {
+		title,
+		columns,
+		apiEndpoint,
+		filters = [],
+		actions = [],
+		onEdit,
+		onDelete,
+		onAdd,
+		addButtonLabel = 'Add New'
+	}: Props = $props();
 
 	let data: any[] = $state([]);
 	let loading = $state(true);
@@ -27,21 +56,48 @@
 	let total = $state(0);
 	let limit = $state(10);
 
+	// Filter values state
+	let filterValues: Record<string, any> = $state({});
+
+	// Initialize filter values
+	onMount(() => {
+		filters.forEach((filter) => {
+			if (filter.type === 'daterange') {
+				filterValues[`${filter.key}_from`] = '';
+				filterValues[`${filter.key}_to`] = '';
+			} else {
+				filterValues[filter.key] = '';
+			}
+		});
+		fetchData();
+	});
+
 	async function fetchData() {
 		loading = true;
 		error = '';
 
 		try {
-			const response = await fetch(`${apiEndpoint}?page=${currentPage}&limit=${limit}`);
+			const params = new URLSearchParams({
+				page: currentPage.toString(),
+				limit: limit.toString()
+			});
+
+			// Add filter parameters
+			Object.entries(filterValues).forEach(([key, value]) => {
+				if (value) {
+					params.append(key, value);
+				}
+			});
+
+			const response = await fetch(`${apiEndpoint}?${params}`);
 			const result = await response.json();
 
 			if (result.success) {
 				data = result.data;
-				// Support both meta.total and direct total properties
 				total = result.meta?.total || result.total || 0;
 				totalPages = result.meta?.totalPages || result.totalPages || 1;
 			} else {
-				error = result.error || 'Failed to fetch data';
+				error = result.error?.message || result.error || 'Failed to fetch data';
 			}
 		} catch (err) {
 			error = 'Failed to fetch data';
@@ -49,6 +105,24 @@
 		} finally {
 			loading = false;
 		}
+	}
+
+	function applyFilters() {
+		currentPage = 1;
+		fetchData();
+	}
+
+	function clearFilters() {
+		filters.forEach((filter) => {
+			if (filter.type === 'daterange') {
+				filterValues[`${filter.key}_from`] = '';
+				filterValues[`${filter.key}_to`] = '';
+			} else {
+				filterValues[filter.key] = '';
+			}
+		});
+		currentPage = 1;
+		fetchData();
 	}
 
 	async function handleDelete(item: any) {
@@ -66,7 +140,7 @@
 			if (result.success) {
 				await fetchData();
 			} else {
-				alert(result.error || 'Failed to delete');
+				alert(result.error?.message || result.error || 'Failed to delete');
 			}
 		} catch (err) {
 			alert('Failed to delete');
@@ -88,9 +162,22 @@
 		}
 	}
 
-	onMount(() => {
-		fetchData();
-	});
+	function goToPage(page: number) {
+		if (page >= 1 && page <= totalPages) {
+			currentPage = page;
+			fetchData();
+		}
+	}
+
+	// Determine if row has any actions
+	function hasActions() {
+		return onEdit || onDelete || actions.length > 0;
+	}
+
+	// Check if specific action should be shown for item
+	function shouldShowAction(action: ActionButton, item: any): boolean {
+		return action.show ? action.show(item) : true;
+	}
 </script>
 
 <div class="data-table-container">
@@ -98,10 +185,58 @@
 		<h2>{title}</h2>
 		{#if onAdd}
 			<button class="btn-primary" onclick={onAdd}>
-				Add New
+				{addButtonLabel}
 			</button>
 		{/if}
 	</div>
+
+	<!-- Filters Panel -->
+	{#if filters.length > 0}
+		<div class="filters-panel">
+			<div class="filters-grid">
+				{#each filters as filter}
+					<div class="filter-group">
+						<label for={filter.key}>{filter.label}</label>
+						{#if filter.type === 'select'}
+							<select id={filter.key} bind:value={filterValues[filter.key]}>
+								<option value="">All</option>
+								{#each filter.options || [] as option}
+									<option value={option.value}>{option.label}</option>
+								{/each}
+							</select>
+						{:else if filter.type === 'daterange'}
+							<div class="daterange-inputs">
+								<input
+									type="date"
+									bind:value={filterValues[`${filter.key}_from`]}
+									placeholder="From"
+								/>
+								<span>to</span>
+								<input
+									type="date"
+									bind:value={filterValues[`${filter.key}_to`]}
+									placeholder="To"
+								/>
+							</div>
+						{:else if filter.type === 'date'}
+							<input type="date" id={filter.key} bind:value={filterValues[filter.key]} />
+						{:else}
+							<input
+								type="text"
+								id={filter.key}
+								bind:value={filterValues[filter.key]}
+								placeholder={filter.placeholder || `Filter by ${filter.label.toLowerCase()}`}
+							/>
+						{/if}
+					</div>
+				{/each}
+			</div>
+			<div class="filter-actions">
+				<button class="btn-apply" onclick={applyFilters}>Apply Filters</button>
+				<button class="btn-clear" onclick={clearFilters}>Clear</button>
+			</div>
+		</div>
+	{/if}
 
 	{#if loading}
 		<div class="loading">Loading...</div>
@@ -115,7 +250,7 @@
 						{#each columns as column}
 							<th>{column.label}</th>
 						{/each}
-						{#if onEdit || onDelete}
+						{#if hasActions()}
 							<th>Actions</th>
 						{/if}
 					</tr>
@@ -123,7 +258,7 @@
 				<tbody>
 					{#if data.length === 0}
 						<tr>
-							<td colspan={columns.length + (onEdit || onDelete ? 1 : 0)} class="no-data">
+							<td colspan={columns.length + (hasActions() ? 1 : 0)} class="no-data">
 								No data available
 							</td>
 						</tr>
@@ -132,22 +267,34 @@
 							<tr>
 								{#each columns as column}
 									<td>
-										{#if column.format}
-											{column.format(item[column.key])}
+										{#if column.render}
+											{@html column.render(item[column.key], item)}
+										{:else if column.format}
+											{column.format(item[column.key], item)}
 										{:else}
 											{item[column.key] || '-'}
 										{/if}
 									</td>
 								{/each}
-								{#if onEdit || onDelete}
+								{#if hasActions()}
 									<td class="actions">
 										{#if onEdit}
-											<button class="btn-edit" onclick={() => onEdit && onEdit(item)}>
+											<button class="btn-action btn-edit" onclick={() => onEdit && onEdit(item)}>
 												Edit
 											</button>
 										{/if}
+										{#each actions as action}
+											{#if shouldShowAction(action, item)}
+												<button
+													class="btn-action {action.class || 'btn-custom'}"
+													onclick={() => action.onClick(item)}
+												>
+													{action.label}
+												</button>
+											{/if}
+										{/each}
 										{#if onDelete}
-											<button class="btn-delete" onclick={() => handleDelete(item)}>
+											<button class="btn-action btn-delete" onclick={() => handleDelete(item)}>
 												Delete
 											</button>
 										{/if}
@@ -162,16 +309,17 @@
 
 		<div class="pagination">
 			<div class="pagination-info">
-				Showing {(currentPage - 1) * limit + 1} to {Math.min(currentPage * limit, total)} of {total} entries
+				Showing {(currentPage - 1) * limit + 1} to {Math.min(currentPage * limit, total)} of {total}
+				entries
 			</div>
 			<div class="pagination-controls">
-				<button onclick={prevPage} disabled={currentPage === 1}>
-					Previous
-				</button>
+				<button onclick={prevPage} disabled={currentPage === 1}>Previous</button>
+				<button onclick={() => goToPage(1)} disabled={currentPage === 1}>First</button>
 				<span class="page-number">Page {currentPage} of {totalPages}</span>
-				<button onclick={nextPage} disabled={currentPage === totalPages}>
-					Next
-				</button>
+				<button onclick={() => goToPage(totalPages)} disabled={currentPage === totalPages}
+					>Last</button
+				>
+				<button onclick={nextPage} disabled={currentPage === totalPages}>Next</button>
 			</div>
 		</div>
 	{/if}
@@ -183,6 +331,18 @@
 		border-radius: 12px;
 		padding: 1.5rem;
 		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+		animation: fadeIn 0.3s ease-in;
+	}
+
+	@keyframes fadeIn {
+		from {
+			opacity: 0;
+			transform: translateY(10px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
 	}
 
 	.table-header {
@@ -213,6 +373,97 @@
 		transform: translateY(-2px);
 	}
 
+	/* Filters Panel */
+	.filters-panel {
+		background: #f9fafb;
+		padding: 1.5rem;
+		border-radius: 8px;
+		margin-bottom: 1.5rem;
+		border: 1px solid #e2e8f0;
+	}
+
+	.filters-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+		gap: 1rem;
+		margin-bottom: 1rem;
+	}
+
+	.filter-group {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.filter-group label {
+		font-size: 0.875rem;
+		font-weight: 500;
+		color: #555;
+	}
+
+	.filter-group select,
+	.filter-group input {
+		padding: 0.75rem;
+		border: 1px solid #d1d5db;
+		border-radius: 6px;
+		font-size: 0.875rem;
+		background: white;
+	}
+
+	.daterange-inputs {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.daterange-inputs input {
+		flex: 1;
+		padding: 0.75rem;
+		border: 1px solid #d1d5db;
+		border-radius: 6px;
+		font-size: 0.875rem;
+	}
+
+	.daterange-inputs span {
+		font-size: 0.875rem;
+		color: #666;
+	}
+
+	.filter-actions {
+		display: flex;
+		gap: 0.5rem;
+		justify-content: flex-end;
+	}
+
+	.btn-apply,
+	.btn-clear {
+		padding: 0.75rem 1.5rem;
+		border: none;
+		border-radius: 6px;
+		font-weight: 500;
+		cursor: pointer;
+		transition: all 0.2s;
+	}
+
+	.btn-apply {
+		background: #667eea;
+		color: white;
+	}
+
+	.btn-apply:hover {
+		background: #5568d3;
+	}
+
+	.btn-clear {
+		background: #e5e7eb;
+		color: #333;
+	}
+
+	.btn-clear:hover {
+		background: #d1d5db;
+	}
+
+	/* Table Styles */
 	.loading,
 	.error {
 		text-align: center;
@@ -243,6 +494,7 @@
 		font-weight: 600;
 		color: #333;
 		border-bottom: 2px solid #e2e8f0;
+		white-space: nowrap;
 	}
 
 	td {
@@ -264,10 +516,10 @@
 	.actions {
 		display: flex;
 		gap: 0.5rem;
+		flex-wrap: wrap;
 	}
 
-	.btn-edit,
-	.btn-delete {
+	.btn-action {
 		padding: 0.5rem 1rem;
 		border: none;
 		border-radius: 6px;
@@ -278,23 +530,33 @@
 	}
 
 	.btn-edit {
-		background: #48bb78;
+		background: #0d6efd;
 		color: white;
 	}
 
 	.btn-edit:hover {
-		background: #38a169;
+		background: #0b5ed7;
 	}
 
 	.btn-delete {
-		background: #e53e3e;
+		background: #dc3545;
 		color: white;
 	}
 
 	.btn-delete:hover {
-		background: #c53030;
+		background: #bb2d3b;
 	}
 
+	.btn-custom {
+		background: #48bb78;
+		color: white;
+	}
+
+	.btn-custom:hover {
+		background: #38a169;
+	}
+
+	/* Pagination */
 	.pagination {
 		display: flex;
 		justify-content: space-between;
@@ -311,7 +573,7 @@
 
 	.pagination-controls {
 		display: flex;
-		gap: 1rem;
+		gap: 0.5rem;
 		align-items: center;
 	}
 
@@ -322,6 +584,7 @@
 		border-radius: 6px;
 		cursor: pointer;
 		transition: all 0.2s;
+		font-size: 0.875rem;
 	}
 
 	.pagination-controls button:hover:not(:disabled) {
@@ -337,6 +600,7 @@
 	.page-number {
 		font-weight: 500;
 		color: #333;
+		padding: 0 0.5rem;
 	}
 
 	@media (max-width: 768px) {
@@ -346,10 +610,18 @@
 			align-items: flex-start;
 		}
 
+		.filters-grid {
+			grid-template-columns: 1fr;
+		}
+
 		.pagination {
 			flex-direction: column;
 			gap: 1rem;
 			align-items: flex-start;
+		}
+
+		.pagination-controls {
+			flex-wrap: wrap;
 		}
 
 		.actions {

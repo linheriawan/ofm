@@ -65,13 +65,15 @@
 		'Sound System', 'Microphone', 'TV Display'
 	];
 
-	$: filteredRooms = meetingType === 'offline'
-		? availableRooms
-		: meetingType === 'hybrid'
-		? availableRooms.filter(r => r.hasVideoConf)
-		: [];
+	let filteredRooms = $derived(
+		meetingType === 'offline'
+			? availableRooms
+			: meetingType === 'hybrid'
+				? availableRooms.filter(r => r.hasVideoConf)
+				: []
+	);
 
-	$: duration = calculateDuration(startTime, endTime);
+	let duration = $derived(calculateDuration(startTime, endTime));
 
 	function calculateDuration(start: string, end: string): number {
 		const [startH, startM] = start.split(':').map(Number);
