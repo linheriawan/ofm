@@ -1,68 +1,73 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { slide } from 'svelte/transition';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 
-	let title = 'Book Meeting Room';
+	// Check if we're in edit mode
+	let bookingId = $derived($page.url.searchParams.get('id'));
+	let isEditMode = $derived(!!bookingId);
+	let title = $derived(isEditMode ? 'View/Edit Meeting Booking' : 'Book Meeting Room');
+
+	let isLoadingBooking = $state(false);
+	let errorMessage = $state('');
+	let isSubmitting = $state(false);
 
 	// Form state
-	let meetingType: 'online' | 'offline' | 'hybrid' = 'offline';
-	let meetingTitle = '';
-	let meetingDate = new Date().toISOString().split('T')[0];
-	let startTime = '09:00';
-	let endTime = '10:00';
-	let participantCount = 1;
-	let selectedRoom = '';
-	let platform: 'zoom' | 'google-meet' | 'teams' = 'zoom';
-	let participants: string[] = [];
-	let participantInput = '';
-	let externalParticipants: string[] = [];
-	let externalInput = '';
-	let cateringNeeded = false;
-	let cateringItems: string[] = [];
-	let cateringItem = '';
-	let facilitiesNeeded: string[] = [];
-	let notes = '';
-	let isRecurring = false;
-	let recurringPattern = 'weekly';
+	let meetingType = $state<'online' | 'offline' | 'hybrid'>('offline');
+	let meetingTitle = $state('');
+	let meetingDate = $state(new Date().toISOString().split('T')[0]);
+	let startTime = $state('09:00');
+	let endTime = $state('10:00');
+	let participantCount = $state(1);
+	let selectedRoom = $state('');
+	let platform = $state<'zoom' | 'google-meet' | 'teams'>('zoom');
+	let participants = $state<string[]>([]);
+	let participantInput = $state('');
+	let externalParticipants = $state<string[]>([]);
+	let externalInput = $state('');
+	let facilitiesNeeded = $state<string[]>([]);
+	let notes = $state('');
+	let isRecurring = $state(false);
+	let recurringPattern = $state('weekly');
 
-	// Mock data
-	let availableRooms = [
-		{
-			id: 'ROOM-A301',
-			name: 'Board Room A-301',
-			capacity: 20,
-			floor: '3',
-			facilities: ['projector', 'whiteboard', 'video-conference', 'ac'],
-			hasVideoConf: true
-		},
-		{
-			id: 'ROOM-A302',
-			name: 'Conference Room A-302',
-			capacity: 15,
-			floor: '3',
-			facilities: ['projector', 'whiteboard', 'video-conference'],
-			hasVideoConf: true
-		},
-		{
-			id: 'ROOM-B101',
-			name: 'Meeting Room B-101',
-			capacity: 10,
-			floor: '1',
-			facilities: ['tv', 'whiteboard'],
-			hasVideoConf: false
-		},
-		{
-			id: 'ROOM-B102',
-			name: 'Meeting Room B-102',
-			capacity: 8,
-			floor: '1',
-			facilities: ['tv', 'whiteboard', 'video-conference'],
-			hasVideoConf: true
+	// Rooms data - fetched from API
+	let availableRooms = $state<any[]>([]);
+	let isLoadingRooms = $state(false);
+
+	// Fetch rooms from API
+	async function fetchRooms() {
+		try {
+			isLoadingRooms = true;
+			const response = await fetch('/api/v1/rooms');
+			const result = await response.json();
+
+			if (result.success && result.data) {
+				// Map to expected format and filter only available rooms
+				availableRooms = result.data
+					.filter((room: any) => room.status === 'available')
+					.map((room: any) => ({
+						id: room.roomId,
+						_id: room._id,
+						name: room.roomName,
+						capacity: room.capacity,
+						floor: room.floor || 'N/A',
+						facilities: room.facilities || [],
+						hasVideoConf: room.hasVideoConference,
+						imageUrl: room.imageUrl
+					}));
+			}
+		} catch (error) {
+			console.error('Failed to fetch rooms:', error);
+		} finally {
+			isLoadingRooms = false;
 		}
-	];
+	}
 
 	let availableFacilities = [
 		'Projector', 'Whiteboard', 'Video Conference',
-		'Sound System', 'Microphone', 'TV Display'
+		'Sound System', 'Microphone', 'TV Display',
+		'Snack', 'Lunch'
 	];
 
 	let filteredRooms = $derived(
@@ -74,6 +79,58 @@
 	);
 
 	let duration = $derived(calculateDuration(startTime, endTime));
+
+	// Load existing booking if in edit mode
+	async function loadBooking() {
+		if (!bookingId) return;
+
+		try {
+			isLoadingBooking = true;
+			const response = await fetch(`/api/v1/meeting/requests/${bookingId}`);
+			const result = await response.json();
+
+			if (result.success && result.data) {
+				const booking = result.data;
+
+				// Pre-fill form fields
+				meetingType = booking.type || 'offline';
+				meetingTitle = booking.title || '';
+
+				const startDateTime = new Date(booking.startTime);
+				meetingDate = startDateTime.toISOString().split('T')[0];
+				startTime = startDateTime.toTimeString().slice(0, 5);
+
+				const endDateTime = new Date(booking.endTime);
+				endTime = endDateTime.toTimeString().slice(0, 5);
+
+				participantCount = booking.participantCount || 1;
+				selectedRoom = booking.roomId || '';
+				platform = booking.platform || 'zoom';
+				participants = booking.participants || [];
+				externalParticipants = booking.externalParticipants || [];
+				facilitiesNeeded = booking.requiredFacilities || [];
+
+				// Add Snack/Lunch to facilities if catering was required
+				if (booking.cateringRequired && !facilitiesNeeded.includes('Snack') && !facilitiesNeeded.includes('Lunch')) {
+					facilitiesNeeded = [...facilitiesNeeded, 'Snack'];
+				}
+
+				notes = booking.notes || '';
+			}
+		} catch (error) {
+			console.error('Failed to load booking:', error);
+			errorMessage = 'Failed to load booking details. Please try again.';
+		} finally {
+			isLoadingBooking = false;
+		}
+	}
+
+	onMount(async () => {
+		await Promise.all([
+			loadBooking(),
+			fetchRooms()
+		]);
+	});
 
 	function calculateDuration(start: string, end: string): number {
 		const [startH, startM] = start.split(':').map(Number);
@@ -105,17 +162,6 @@
 		externalParticipants = externalParticipants.filter((_, i) => i !== index);
 	}
 
-	function addCateringItem() {
-		if (cateringItem.trim()) {
-			cateringItems = [...cateringItems, cateringItem.trim()];
-			cateringItem = '';
-		}
-	}
-
-	function removeCateringItem(index: number) {
-		cateringItems = cateringItems.filter((_, i) => i !== index);
-	}
-
 	function toggleFacility(facility: string) {
 		if (facilitiesNeeded.includes(facility)) {
 			facilitiesNeeded = facilitiesNeeded.filter(f => f !== facility);
@@ -126,23 +172,29 @@
 
 	async function handleSubmit() {
 		if (!meetingTitle || !meetingDate || !startTime || !endTime) {
-			alert('Please fill all required fields');
+			errorMessage = 'Please fill all required fields';
 			return;
 		}
 
 		if ((meetingType === 'offline' || meetingType === 'hybrid') && !selectedRoom) {
-			alert('Please select a meeting room');
+			errorMessage = 'Please select a meeting room';
 			return;
 		}
 
 		if ((meetingType === 'offline' || meetingType === 'hybrid') && !participantCount) {
-			alert('Please specify the number of participants (required for GA to prepare snacks/lunch)');
+			errorMessage = 'Please specify the number of participants (required for GA to prepare snacks/lunch)';
 			return;
 		}
+
+		errorMessage = '';
+		isSubmitting = true;
 
 		// Construct date-time strings
 		const startDateTime = `${meetingDate}T${startTime}:00`;
 		const endDateTime = `${meetingDate}T${endTime}:00`;
+
+		// Check if Snack or Lunch is selected in facilities
+		const cateringRequired = facilitiesNeeded.includes('Snack') || facilitiesNeeded.includes('Lunch');
 
 		const requestData = {
 			type: meetingType,
@@ -154,9 +206,8 @@
 			platform: meetingType !== 'offline' ? platform : undefined,
 			participants,
 			externalParticipants,
-			cateringNeeded,
-			cateringItems: cateringNeeded ? cateringItems : undefined,
-			facilitiesNeeded: facilitiesNeeded.length > 0 ? facilitiesNeeded : undefined,
+			cateringRequired,
+			requiredFacilities: facilitiesNeeded.length > 0 ? facilitiesNeeded : undefined,
 			notes: notes || undefined,
 			isRecurring,
 			recurringPattern: isRecurring ? recurringPattern : undefined,
@@ -164,8 +215,13 @@
 		};
 
 		try {
-			const response = await fetch('/api/v1/meeting/requests', {
-				method: 'POST',
+			const url = isEditMode
+				? `/api/v1/meeting/requests/${bookingId}`
+				: '/api/v1/meeting/requests';
+			const method = isEditMode ? 'PATCH' : 'POST';
+
+			const response = await fetch(url, {
+				method,
 				headers: {
 					'Content-Type': 'application/json'
 				},
@@ -176,19 +232,21 @@
 
 			if (result.success) {
 				alert(
-					'Meeting room booked successfully!\n' +
-					`Booking ID: ${result.data.requestNumber}\n\n` +
-					'📧 Calendar invitations (.ics) will be sent to all participants via email.'
+					isEditMode
+						? 'Meeting booking updated successfully!'
+						: `Meeting room booked successfully!\n\nRequest Number: ${result.data.requestNumber}\nStatus: Pending approval\n\nYou will be notified once your request is approved.`
 				);
-				resetForm();
+
 				// Redirect to bookings page
-				window.location.href = '/meeting/bookings';
+				goto('/meeting/bookings');
 			} else {
-				alert(`Failed to book meeting: ${result.error?.message || 'Unknown error'}`);
+				errorMessage = result.error?.message || `Failed to ${isEditMode ? 'update' : 'book'} meeting`;
 			}
 		} catch (error) {
 			console.error('Error submitting booking:', error);
-			alert('An error occurred while booking the meeting. Please try again.');
+			errorMessage = `An error occurred while ${isEditMode ? 'updating' : 'booking'} the meeting. Please try again.`;
+		} finally {
+			isSubmitting = false;
 		}
 	}
 
@@ -197,8 +255,6 @@
 		selectedRoom = '';
 		participants = [];
 		externalParticipants = [];
-		cateringNeeded = false;
-		cateringItems = [];
 		facilitiesNeeded = [];
 		notes = '';
 		isRecurring = false;
@@ -211,11 +267,23 @@
 
 <div class="booking-page">
 	<div class="header">
-		<h1>Book Meeting Room</h1>
-		<p class="subtitle">Schedule online, offline, or hybrid meetings</p>
+		<h1>{isEditMode ? 'View/Edit Meeting Booking' : 'Book Meeting Room'}</h1>
+		<p class="subtitle">
+			{isEditMode ? 'View or modify your meeting booking' : 'Schedule online, offline, or hybrid meetings'}
+		</p>
 	</div>
 
+	{#if isLoadingBooking}
+		<div class="loading">Loading booking details...</div>
+	{:else}
 	<div class="form-container">
+		<!-- Error Message -->
+		{#if errorMessage}
+			<div class="alert alert-error">
+				<span class="alert-icon">⚠️</span>
+				<span>{errorMessage}</span>
+			</div>
+		{/if}
 		<!-- Meeting Type Selection -->
 		<div class="card">
 			<h2>Meeting Type</h2>
@@ -250,9 +318,9 @@
 		</div>
 
 		<!-- Meeting Details Form -->
-		<div class="card">
-			<h2>Meeting Details</h2>
-			<form on:submit|preventDefault={handleSubmit}>
+		<form on:submit|preventDefault={handleSubmit}>
+			<div class="card">
+				<h2>Meeting Details</h2>
 				<div class="form-grid">
 					<!-- Title -->
 					<div class="form-group full-width">
@@ -281,58 +349,118 @@
 						<div class="duration-display">{duration} minutes</div>
 					</div>
 
-					<!-- Participant Count (required for offline/hybrid) -->
-					{#if meetingType === 'offline' || meetingType === 'hybrid'}
-						<div class="form-group full-width" in:slide="{{ duration: 300 }}" out:slide="{{ duration: 300 }}">
-							<label for="participantCount">
-								Number of Participants <span class="required">*</span>
-								<span class="helper-text">(Required for GA to prepare snacks/lunch)</span>
-							</label>
-							<input
-								type="number"
-								id="participantCount"
-								bind:value={participantCount}
-								min="1"
-								max="100"
-								required
-							/>
-						</div>
-					{/if}
 				</div>
+			</div>
 
-				<!-- Room Selection (for offline/hybrid) -->
+			<!-- Participants Section -->
+			<div class="card">
+				<h2>Participants</h2>
+
 				{#if meetingType === 'offline' || meetingType === 'hybrid'}
-					<div class="room-selection" in:slide="{{ duration: 300 }}" out:slide="{{ duration: 300 }}">
-						<h3>Select Room</h3>
-						<div class="room-grid">
-							{#each filteredRooms as room}
-								<label class="room-card {selectedRoom === room.id ? 'selected' : ''}">
-									<input type="radio" bind:group={selectedRoom} value={room.id} />
-									<div class="room-content">
-										<div class="room-icon">🏢</div>
-										<h4>{room.name}</h4>
-										<p class="room-floor">Floor {room.floor}</p>
-										<p class="room-capacity">Capacity: {room.capacity}</p>
-										<div class="room-facilities">
-											{#each room.facilities.slice(0, 3) as facility}
-												<span class="facility-badge">{facility}</span>
-											{/each}
-											{#if room.facilities.length > 3}
-												<span class="facility-badge">+{room.facilities.length - 3}</span>
-											{/if}
-										</div>
-									</div>
-								</label>
-							{/each}
-						</div>
+					<div class="form-group" transition:slide={{ duration: 300 }}>
+						<label for="participantCount">
+							Number of Participants <span class="required">*</span>
+							<span class="helper-text">(Required for GA to prepare snacks/lunch)</span>
+						</label>
+						<input
+							type="number"
+							id="participantCount"
+							bind:value={participantCount}
+							min="1"
+							max="100"
+							required
+						/>
 					</div>
 				{/if}
 
-				<!-- Platform Selection (for online/hybrid) -->
-				{#if meetingType === 'online' || meetingType === 'hybrid'}
-					<div class="platform-selection" in:slide="{{ duration: 300 }}" out:slide="{{ duration: 300 }}">
-						<h3>Select Platform</h3>
-						<div class="platform-grid">
+				<div class="participants-subsection">
+					<h3>Internal Participants</h3>
+					<div class="input-with-button">
+						<input
+							type="text"
+							bind:value={participantInput}
+							placeholder="Enter employee name or email, then click Add"
+							on:keydown={(e) => e.key === 'Enter' && (e.preventDefault(), addParticipant())}
+						/>
+						<button type="button" class="btn-add" on:click={addParticipant}>Add</button>
+					</div>
+					<div class="tags">
+						{#each participants as participant, i}
+							<span class="tag">
+								{participant}
+								<button type="button" on:click={() => removeParticipant(i)}>×</button>
+							</span>
+						{/each}
+					</div>
+				</div>
+
+				<div class="participants-subsection">
+					<h3>External Participants</h3>
+					<div class="input-with-button">
+						<input
+							type="email"
+							bind:value={externalInput}
+							placeholder="Enter external email, then click Add"
+							on:keydown={(e) => e.key === 'Enter' && (e.preventDefault(), addExternalParticipant())}
+						/>
+						<button type="button" class="btn-add" on:click={addExternalParticipant}>Add</button>
+					</div>
+					<div class="tags">
+						{#each externalParticipants as participant, i}
+							<span class="tag">
+								{participant}
+								<button type="button" on:click={() => removeExternalParticipant(i)}>×</button>
+							</span>
+						{/each}
+					</div>
+				</div>
+			</div>
+
+			<!-- Room Selection (for offline/hybrid) -->
+			{#if meetingType === 'offline' || meetingType === 'hybrid'}
+				<div class="card" transition:slide={{ duration: 300 }}>
+					<h2>Select Room</h2>
+					{#if isLoadingRooms}
+						<div class="loading-rooms">Loading available rooms...</div>
+					{:else if filteredRooms.length === 0}
+						<div class="no-rooms">No rooms available for this meeting type</div>
+					{:else}
+						<div class="room-grid">
+								{#each filteredRooms as room}
+									<label class="room-card {selectedRoom === room.id ? 'selected' : ''}">
+										<input type="radio" bind:group={selectedRoom} value={room.id} />
+										<div class="room-content">
+											{#if room.imageUrl}
+												<div class="room-image">
+													<img src={room.imageUrl} alt={room.name} />
+												</div>
+											{:else}
+												<div class="room-icon">🏢</div>
+											{/if}
+											<h4>{room.name}</h4>
+											<p class="room-floor">Floor {room.floor}</p>
+											<p class="room-capacity">Capacity: {room.capacity}</p>
+											<div class="room-facilities">
+												{#each room.facilities.slice(0, 3) as facility}
+													<span class="facility-badge">{facility}</span>
+												{/each}
+												{#if room.facilities.length > 3}
+													<span class="facility-badge">+{room.facilities.length - 3}</span>
+												{/if}
+											</div>
+										</div>
+									</label>
+								{/each}
+						</div>
+					{/if}
+				</div>
+			{/if}
+
+			<!-- Platform Selection (for online/hybrid) -->
+			{#if meetingType === 'online' || meetingType === 'hybrid'}
+				<div class="card" transition:slide={{ duration: 300 }}>
+					<h2>Select Platform</h2>
+					<div class="platform-grid">
 							<label class="platform-card {platform === 'zoom' ? 'selected' : ''}">
 								<input type="radio" bind:group={platform} value="zoom" />
 								<div class="platform-content">
@@ -353,58 +481,15 @@
 									<h4>MS Teams</h4>
 								</div>
 							</label>
-						</div>
-					</div>
-				{/if}
-
-				<!-- Participants -->
-				<div class="participants-section">
-					<h3>Internal Participants</h3>
-					<div class="input-with-button">
-						<input
-							type="text"
-							bind:value={participantInput}
-							placeholder="Enter employee name or email"
-							on:keydown={(e) => e.key === 'Enter' && (e.preventDefault(), addParticipant())}
-						/>
-						<button type="button" class="btn-add" on:click={addParticipant}>Add</button>
-					</div>
-					<div class="tags">
-						{#each participants as participant, i}
-							<span class="tag">
-								{participant}
-								<button type="button" on:click={() => removeParticipant(i)}>×</button>
-							</span>
-						{/each}
 					</div>
 				</div>
+			{/if}
 
-				<div class="participants-section">
-					<h3>External Participants</h3>
-					<div class="input-with-button">
-						<input
-							type="email"
-							bind:value={externalInput}
-							placeholder="Enter external email"
-							on:keydown={(e) => e.key === 'Enter' && (e.preventDefault(), addExternalParticipant())}
-						/>
-						<button type="button" class="btn-add" on:click={addExternalParticipant}>Add</button>
-					</div>
-					<div class="tags">
-						{#each externalParticipants as participant, i}
-							<span class="tag">
-								{participant}
-								<button type="button" on:click={() => removeExternalParticipant(i)}>×</button>
-							</span>
-						{/each}
-					</div>
-				</div>
-
-				<!-- Facilities (for offline/hybrid) -->
-				{#if meetingType === 'offline' || meetingType === 'hybrid'}
-					<div class="facilities-section" in:slide="{{ duration: 300 }}" out:slide="{{ duration: 300 }}">
-						<h3>Additional Facilities</h3>
-						<div class="facilities-grid">
+			<!-- Facilities (for offline/hybrid) -->
+			{#if meetingType === 'offline' || meetingType === 'hybrid'}
+				<div class="card" transition:slide={{ duration: 300 }}>
+					<h2>Additional Facilities</h2>
+					<div class="facilities-grid">
 							{#each availableFacilities as facility}
 								<label class="facility-checkbox">
 									<input
@@ -415,41 +500,14 @@
 									<span>{facility}</span>
 								</label>
 							{/each}
-						</div>
 					</div>
+				</div>
+			{/if}
 
-					<!-- Catering -->
-					<div class="catering-section">
-						<label class="checkbox-label">
-							<input type="checkbox" bind:checked={cateringNeeded} />
-							<span>Catering Needed</span>
-						</label>
+			<!-- Recurring & Notes -->
+			<div class="card">
+				<h2>Additional Options</h2>
 
-						{#if cateringNeeded}
-							<div class="catering-items" in:slide="{{ duration: 300 }}">
-								<div class="input-with-button">
-									<input
-										type="text"
-										bind:value={cateringItem}
-										placeholder="e.g., Coffee & snacks, Lunch boxes"
-										on:keydown={(e) => e.key === 'Enter' && (e.preventDefault(), addCateringItem())}
-									/>
-									<button type="button" class="btn-add" on:click={addCateringItem}>Add</button>
-								</div>
-								<div class="tags">
-									{#each cateringItems as item, i}
-										<span class="tag">
-											{item}
-											<button type="button" on:click={() => removeCateringItem(i)}>×</button>
-										</span>
-									{/each}
-								</div>
-							</div>
-						{/if}
-					</div>
-				{/if}
-
-				<!-- Recurring -->
 				<div class="recurring-section">
 					<label class="checkbox-label">
 						<input type="checkbox" bind:checked={isRecurring} />
@@ -467,19 +525,24 @@
 				</div>
 
 				<!-- Notes -->
-				<div class="form-group full-width">
+				<div class="form-group full-width" style="margin-top: 1.5rem;">
 					<label for="notes">Additional Notes</label>
 					<textarea id="notes" bind:value={notes} rows="3" placeholder="Any special requirements or notes..."></textarea>
 				</div>
+			</div>
 
-				<!-- Actions -->
-				<div class="form-actions">
-					<a href="/meeting" class="btn-secondary">Cancel</a>
-					<button type="submit" class="btn-primary">Book Meeting Room</button>
-				</div>
-			</form>
-		</div>
+			<!-- Actions -->
+			<div class="form-actions">
+				<a href="/meeting/bookings" class="btn-secondary">Cancel</a>
+				<button type="submit" class="btn-primary" disabled={isSubmitting}>
+					{isSubmitting
+						? (isEditMode ? 'Updating...' : 'Submitting...')
+						: (isEditMode ? 'Update Booking' : 'Book Meeting Room')}
+				</button>
+			</div>
+		</form>
 	</div>
+	{/if}
 </div>
 
 <style>
@@ -490,6 +553,32 @@
 	@keyframes fadeIn {
 		from { opacity: 0; transform: translateY(10px); }
 		to { opacity: 1; transform: translateY(0); }
+	}
+
+	.loading {
+		padding: 3rem;
+		text-align: center;
+		color: #666;
+		font-size: 1.125rem;
+	}
+
+	.alert {
+		padding: 1rem;
+		border-radius: 8px;
+		margin-bottom: 1.5rem;
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+	}
+
+	.alert-error {
+		background: #fff5f5;
+		border: 1px solid #fc8181;
+		color: #c53030;
+	}
+
+	.alert-icon {
+		font-size: 1.25rem;
 	}
 
 	.header {
@@ -516,9 +605,10 @@
 
 	.card {
 		background: white;
-		border-radius: 12px;
+		border-radius: unset;
+		box-shadow: unset;
 		padding: 2rem;
-		box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+		border-bottom:1px 8px rgba(0,0,0,0.08);
 	}
 
 	.card h2 {
@@ -664,11 +754,47 @@
 	.room-card.selected .room-content {
 		border-color: #48bb78;
 		background: #f0fff4;
+		box-shadow: 0 4px 12px rgba(72, 187, 120, 0.2);
+	}
+
+	.room-card:hover:not(.selected) .room-content {
+		border-color: #cbd5e0;
+		transform: translateY(-2px);
+		box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+	}
+
+	.room-card.selected:hover .room-content {
+		transform: translateY(-2px);
+		box-shadow: 0 4px 16px rgba(72, 187, 120, 0.3);
 	}
 
 	.room-icon {
 		font-size: 2.5rem;
 		margin-bottom: 0.5rem;
+	}
+
+	.room-image {
+		width: 100%;
+		height: 120px;
+		margin-bottom: 0.75rem;
+		border-radius: 8px;
+		overflow: hidden;
+		background: #f3f4f6;
+	}
+
+	.room-image img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
+	}
+
+	.loading-rooms,
+	.no-rooms {
+		padding: 2rem;
+		text-align: center;
+		color: #666;
+		font-size: 1rem;
 	}
 
 	.room-content h4 {
@@ -734,7 +860,24 @@
 	}
 
 	/* Participants */
-	.participants-section, .facilities-section, .catering-section, .recurring-section {
+	.participants-subsection {
+		margin-top: 1.5rem;
+		padding-top: 1.5rem;
+		border-top: 1px solid #e2e8f0;
+	}
+
+	.participants-subsection:first-of-type {
+		border-top: none;
+		padding-top: 0;
+	}
+
+	.participants-subsection h3 {
+		margin: 0 0 1rem 0;
+		font-size: 1.1rem;
+		color: #333;
+	}
+
+	.facilities-section, .recurring-section {
 		margin-top: 2rem;
 	}
 
@@ -822,10 +965,6 @@
 		width: 1.2rem;
 		height: 1.2rem;
 		cursor: pointer;
-	}
-
-	.catering-items {
-		margin-top: 1rem;
 	}
 
 	/* Actions */

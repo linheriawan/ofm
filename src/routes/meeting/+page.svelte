@@ -1,11 +1,12 @@
 <script lang="ts">
-	import type { Room, MeetingBooking } from '$lib/types';
+	import type { Room } from '$lib/types';
+	import type { MeetingRequest } from '$lib/server/db/schemas';
 
 	let title = 'Meeting Room Management';
 
 	// State
 	let rooms: Room[] = $state([]);
-	let bookings: MeetingBooking[] = $state([]);
+	let bookings: MeetingRequest[] = $state([]);
 	let loading = $state(true);
 
 	// Statistics
@@ -44,7 +45,7 @@
 			tomorrow.setDate(tomorrow.getDate() + 1);
 
 			const bookingsRes = await fetch(
-				`/api/meeting-bookings?fromDate=${today.toISOString()}&limit=20`
+				`/api/v1/meeting/requests?limit=20`
 			);
 			const bookingsData = await bookingsRes.json();
 			if (bookingsData.success) {
@@ -61,11 +62,11 @@
 				todayStats.ongoing = todayBookings.filter((b) => {
 					const start = new Date(b.startTime);
 					const end = new Date(b.endTime);
-					return start <= now && end >= now && b.status === 'ongoing';
+					return start <= now && end >= now && b.status === 'in_progress';
 				}).length;
 				todayStats.upcoming = todayBookings.filter((b) => {
 					const start = new Date(b.startTime);
-					return start > now && b.status === 'scheduled';
+					return start > now && (b.status === 'approved' || b.status === 'assigned');
 				}).length;
 				todayStats.completed = todayBookings.filter((b) => b.status === 'completed').length;
 			}

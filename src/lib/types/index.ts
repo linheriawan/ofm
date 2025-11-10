@@ -202,6 +202,11 @@ export interface MeetingRoom extends BaseDocument {
 	imageUrl?: string;
 }
 
+/**
+ * @deprecated Use MeetingRequest from '$lib/server/db/schemas' instead.
+ * This type is kept for backward compatibility only.
+ * The system now uses meeting_requests collection instead of meeting_bookings.
+ */
 export interface MeetingBooking extends BaseDocument {
 	bookingId: string;
 	companyId: string;

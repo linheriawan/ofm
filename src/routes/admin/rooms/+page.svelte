@@ -18,8 +18,12 @@
 		facilities: [] as string[],
 		hasVideoConference: false,
 		tabletDeviceId: '',
-		status: 'available'
+		status: 'available',
+		imageUrl: ''
 	});
+
+	let imagePreview = $state('');
+	let uploadError = $state('');
 
 	const columns = [
 		{ key: 'roomId', label: 'Room ID' },
@@ -28,7 +32,12 @@
 		{ key: 'floor', label: 'Floor' },
 		{ key: 'capacity', label: 'Capacity' },
 		{ key: 'roomType', label: 'Type' },
-		{ key: 'status', label: 'Status' }
+		{ key: 'status', label: 'Status' },
+		{
+			key: 'imageUrl',
+			label: 'Photo',
+			render: (value: string) => value ? '📷' : '-'
+		}
 	];
 
 	function openAddModal() {
@@ -51,8 +60,11 @@
 			facilities: room.facilities || [],
 			hasVideoConference: room.hasVideoConference,
 			tabletDeviceId: room.tabletDeviceId || '',
-			status: room.status
+			status: room.status,
+			imageUrl: room.imageUrl || ''
 		};
+		imagePreview = room.imageUrl || '';
+		uploadError = '';
 		isModalOpen = true;
 	}
 
@@ -69,8 +81,53 @@
 			facilities: [],
 			hasVideoConference: false,
 			tabletDeviceId: '',
-			status: 'available'
+			status: 'available',
+			imageUrl: ''
 		};
+		imagePreview = '';
+		uploadError = '';
+	}
+
+	// Handle image upload - converts to base64 for MongoDB storage
+	// TODO: Migrate to S3 storage later for better scalability
+	async function handleImageUpload(event: Event) {
+		const input = event.target as HTMLInputElement;
+		const file = input.files?.[0];
+
+		if (!file) return;
+
+		// Validate file type
+		if (!file.type.startsWith('image/')) {
+			uploadError = 'Please upload an image file (jpg, png, etc.)';
+			return;
+		}
+
+		// Validate file size (max 500KB for base64 storage)
+		const maxSize = 500 * 1024; // 500KB
+		if (file.size > maxSize) {
+			uploadError = `Image too large (${(file.size / 1024).toFixed(0)}KB). Please use an image smaller than 500KB.`;
+			return;
+		}
+
+		uploadError = '';
+
+		// Convert to base64
+		const reader = new FileReader();
+		reader.onload = (e) => {
+			const base64 = e.target?.result as string;
+			formData.imageUrl = base64;
+			imagePreview = base64;
+		};
+		reader.onerror = () => {
+			uploadError = 'Failed to read image file';
+		};
+		reader.readAsDataURL(file);
+	}
+
+	function removeImage() {
+		formData.imageUrl = '';
+		imagePreview = '';
+		uploadError = '';
 	}
 
 	async function handleSubmit(event: Event) {
@@ -179,6 +236,39 @@
 			</div>
 		</div>
 
+		<!-- Room Photo Upload -->
+		<div class="photo-section">
+			<label class="photo-label">Room Photo</label>
+			<p class="photo-hint">Upload a photo of the meeting room (max 500KB, jpg/png)</p>
+
+			{#if imagePreview}
+				<div class="image-preview">
+					<img src={imagePreview} alt="Room preview" />
+					<button type="button" class="btn-remove-image" onclick={removeImage} title="Remove image">
+						✕
+					</button>
+				</div>
+			{:else}
+				<div class="upload-area">
+					<input
+						type="file"
+						id="roomImage"
+						accept="image/*"
+						onchange={handleImageUpload}
+						class="file-input"
+					/>
+					<label for="roomImage" class="upload-label">
+						<span class="upload-icon">📷</span>
+						<span>Click to upload room photo</span>
+					</label>
+				</div>
+			{/if}
+
+			{#if uploadError}
+				<div class="upload-error">{uploadError}</div>
+			{/if}
+		</div>
+
 		<div class="form-actions">
 			<button type="button" class="btn-secondary" onclick={closeModal}>Cancel</button>
 			<button type="submit" class="btn-primary">{editingRoom ? 'Update' : 'Create'} Room</button>
@@ -282,6 +372,112 @@
 
 	.btn-secondary:hover {
 		background: #e5e7eb;
+	}
+
+	/* Photo Upload Section */
+	.photo-section {
+		padding-top: 1rem;
+		border-top: 1px solid #e2e8f0;
+	}
+
+	.photo-label {
+		font-weight: 600;
+		color: #333;
+		font-size: 1rem;
+		display: block;
+		margin-bottom: 0.25rem;
+	}
+
+	.photo-hint {
+		color: #666;
+		font-size: 0.85rem;
+		margin: 0 0 1rem 0;
+	}
+
+	.upload-area {
+		position: relative;
+		border: 2px dashed #d1d5db;
+		border-radius: 8px;
+		padding: 2rem;
+		text-align: center;
+		transition: all 0.2s;
+		background: #fafafa;
+	}
+
+	.upload-area:hover {
+		border-color: #667eea;
+		background: #f9fafb;
+	}
+
+	.file-input {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		opacity: 0;
+		overflow: hidden;
+	}
+
+	.upload-label {
+		cursor: pointer;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.5rem;
+		color: #666;
+		font-weight: 500;
+	}
+
+	.upload-icon {
+		font-size: 2.5rem;
+	}
+
+	.image-preview {
+		position: relative;
+		border-radius: 8px;
+		overflow: hidden;
+		max-width: 400px;
+		border: 1px solid #e2e8f0;
+	}
+
+	.image-preview img {
+		width: 100%;
+		height: auto;
+		display: block;
+	}
+
+	.btn-remove-image {
+		position: absolute;
+		top: 0.5rem;
+		right: 0.5rem;
+		background: rgba(239, 68, 68, 0.9);
+		color: white;
+		border: none;
+		border-radius: 50%;
+		width: 32px;
+		height: 32px;
+		font-size: 1.25rem;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		transition: all 0.2s;
+		line-height: 1;
+		padding: 0;
+	}
+
+	.btn-remove-image:hover {
+		background: rgba(220, 38, 38, 1);
+		transform: scale(1.1);
+	}
+
+	.upload-error {
+		color: #ef4444;
+		background: #fef2f2;
+		padding: 0.75rem;
+		border-radius: 6px;
+		margin-top: 0.5rem;
+		font-size: 0.9rem;
+		border: 1px solid #fecaca;
 	}
 
 	@media (max-width: 768px) {

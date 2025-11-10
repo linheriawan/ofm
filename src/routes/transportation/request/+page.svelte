@@ -103,9 +103,9 @@
 
 				isRoundTrip = booking.isRoundTrip || false;
 				if (booking.returnTime) {
-					const returnDate = new Date(booking.returnTime);
-					returnDate = returnDate.toISOString().split('T')[0];
-					returnTime = returnDate.toTimeString().slice(0, 5);
+					const returnDateTime = new Date(booking.returnTime);
+					returnDate = returnDateTime.toISOString().split('T')[0];
+					returnTime = returnDateTime.toTimeString().slice(0, 5);
 				}
 
 				notes = booking.specialRequirements || '';

@@ -1,13 +1,8 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import DataTable from '$lib/components/DataTable.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import MeetingBookingForm from '$lib/components/MeetingBookingForm.svelte';
 
 	let title = 'Meeting Bookings - OFM';
-
-	// Modal state
-	let showFormModal = $state(false);
-	let selectedBooking: any | null = $state(null);
 
 	// DataTable columns with custom rendering
 	const columns = [
@@ -89,7 +84,7 @@
 		{
 			label: 'Edit',
 			class: 'btn-view',
-			onClick: openEditModal
+			onClick: openEditRequest
 		},
 		{
 			label: 'Cancel',
@@ -115,26 +110,12 @@
 		}
 	}
 
-	function openCreateModal() {
-		selectedBooking = null;
-		showFormModal = true;
+	function openCreateRequest() {
+		goto('/meeting/book');
 	}
 
-	function openEditModal(booking: any) {
-		selectedBooking = booking;
-		showFormModal = true;
-	}
-
-	function handleFormSuccess() {
-		showFormModal = false;
-		selectedBooking = null;
-		// DataTable will auto-refresh on next render
-		window.location.reload();
-	}
-
-	function closeModal() {
-		showFormModal = false;
-		selectedBooking = null;
+	function openEditRequest(booking: any) {
+		goto(`/meeting/book?id=${booking._id}`);
 	}
 
 	async function handleCancel(booking: any) {
@@ -171,24 +152,8 @@
 		apiEndpoint="/api/v1/meeting/requests"
 		{filters}
 		{actions}
-		onAdd={openCreateModal}
+		onAdd={openCreateRequest}
 		addButtonLabel="New Booking"
 	/>
 </div>
-
-<!-- Unified Form Modal (for Create/View/Edit) -->
-{#if showFormModal}
-	<Modal
-		isOpen={showFormModal}
-		title={selectedBooking ? 'Edit Meeting Booking' : 'Create Meeting Booking'}
-		onClose={closeModal}
-		width="80%"
-	>
-		<MeetingBookingForm
-			booking={selectedBooking}
-			onSuccess={handleFormSuccess}
-			onCancel={closeModal}
-		/>
-	</Modal>
-{/if}
 

@@ -73,10 +73,10 @@ The following collections will be created:
 
 ### Meeting Rooms
 - `meeting_rooms` - Available rooms
-- `meeting_bookings` - Room bookings
+- `meeting_requests` - Room booking requests (unified collection for all meeting bookings)
 - `meeting_licenses` - Video conferencing licenses
 - `facilities` - Room facilities
-- `attendance` - Meeting attendance
+- `meeting_attendance` - Meeting attendance
 
 ## Verifying the Data
 

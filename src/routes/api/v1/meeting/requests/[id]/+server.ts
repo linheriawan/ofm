@@ -1,5 +1,6 @@
 /**
- * Meeting Request Update API
+ * Meeting Request API
+ * GET /api/v1/meeting/requests/[id] - Get single meeting request
  * PATCH /api/v1/meeting/requests/[id] - Update meeting request (approve/reject/assign)
  * DELETE /api/v1/meeting/requests/[id] - Cancel meeting request
  */
@@ -11,6 +12,41 @@ import { success, error, ErrorCode } from '$lib/server/api/response';
 import { parseBody } from '$lib/server/api/validation';
 import { connectDB, getDB, collections } from '$lib/server/db/mongodb';
 import { ObjectId } from 'mongodb';
+
+/**
+ * GET /api/v1/meeting/requests/[id]
+ * Get single meeting request details
+ */
+export const GET: RequestHandler = async (event) => {
+	try {
+		const user = await requireAuth(event);
+		const { id } = event.params;
+
+		await connectDB();
+		const db = getDB();
+
+		// Fetch the meeting request
+		const request = await db.collection(collections.meetingRequests).findOne({
+			_id: new ObjectId(id)
+		});
+
+		if (!request) {
+			return json(error(ErrorCode.NOT_FOUND, 'Request not found'), { status: 404 });
+		}
+
+		// Only allow users to view their own requests (or admins can view all)
+		if (request.userId !== user.userId && !user.roles?.includes('admin')) {
+			return json(error(ErrorCode.FORBIDDEN, 'You can only view your own requests'), { status: 403 });
+		}
+
+		return json(success(request));
+
+	} catch (err: any) {
+		if (err instanceof Response) throw err;
+		console.error('Error fetching meeting request:', err);
+		return json(error(ErrorCode.INTERNAL_ERROR, 'Failed to fetch request', err.message), { status: 500 });
+	}
+};
 
 interface UpdateMeetingRequestBody {
 	action?: 'approve' | 'reject' | 'assign_room' | 'assign_license' | 'cancel';
