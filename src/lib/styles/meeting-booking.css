@@ -3,40 +3,99 @@
    Used in: /meeting/book
    =================================== */
 
-/* ===================================
-   LAYOUT
-   =================================== */
-
-.meeting-booking-page {
+.booking-page {
 	animation: fadeIn 0.3s ease-in;
 }
 
-.meeting-form-container {
+@keyframes fadeIn {
+	from { opacity: 0; transform: translateY(10px); }
+	to { opacity: 1; transform: translateY(0); }
+}
+
+.loading {
+	padding: 3rem;
+	text-align: center;
+	color: #666;
+	font-size: 1.125rem;
+}
+
+.alert {
+	padding: 1rem;
+	border-radius: 8px;
+	margin-bottom: 1.5rem;
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+}
+
+.alert-error {
+	background: #fff5f5;
+	border: 1px solid #fc8181;
+	color: #c53030;
+}
+
+.alert-icon {
+	font-size: 1.25rem;
+}
+
+.header {
+	margin-bottom: 2rem;
+}
+
+.header h1 {
+	margin: 0;
+	font-size: 2rem;
+	color: #333;
+}
+
+.subtitle {
+	color: #666;
+	margin: 0.5rem 0 0 0;
+}
+
+.form-container {
 	display: flex;
 	flex-direction: column;
 	gap: 2rem;
 	max-width: 900px;
 }
 
-/* ===================================
-   TYPE SELECTOR (Online/Offline/Hybrid)
-   =================================== */
+.card {
+	background: white;
+	border-radius: unset;
+	box-shadow: unset;
+	padding: 2rem;
+	border-bottom:1px 8px rgba(0,0,0,0.08);
+}
 
-.meeting-type-selector {
+.card h2 {
+	margin: 0 0 1.5rem 0;
+	font-size: 1.5rem;
+	color: #333;
+}
+
+.card h3 {
+	margin: 2rem 0 1rem 0;
+	font-size: 1.2rem;
+	color: #333;
+}
+
+/* Type Selector */
+.type-selector {
 	display: grid;
 	grid-template-columns: repeat(3, 1fr);
 	gap: 1.5rem;
 }
 
-.meeting-type-option {
+.type-option {
 	cursor: pointer;
 }
 
-.meeting-type-option input {
+.type-option input {
 	display: none;
 }
 
-.meeting-type-card {
+.type-card {
 	padding: 2rem;
 	border: 2px solid #e2e8f0;
 	border-radius: 12px;
@@ -44,37 +103,78 @@
 	transition: all 0.2s;
 }
 
-.meeting-type-option.active .meeting-type-card {
+.type-option.active .type-card {
 	border-color: #48bb78;
 	background: #f0fff4;
 }
 
-.meeting-type-icon {
+.type-icon {
 	font-size: 3rem;
 	margin-bottom: 1rem;
 }
 
-.meeting-type-card h3 {
+.type-card h3 {
 	margin: 0 0 0.5rem 0;
 	font-size: 1.2rem;
 	color: #333;
 }
 
-.meeting-type-card p {
+.type-card p {
 	margin: 0;
 	color: #666;
 	font-size: 0.9rem;
 }
 
-/* ===================================
-   FORM ELEMENTS
-   =================================== */
+/* Form */
+.form-grid {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 1.5rem;
+}
+
+.form-group {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.form-group.full-width {
+	grid-column: 1 / -1;
+}
+
+label {
+	font-weight: 500;
+	color: #333;
+}
+
+.required {
+	color: #f56565;
+}
 
 .helper-text {
 	font-weight: normal;
 	color: #48bb78;
 	font-size: 0.85rem;
 	margin-left: 0.5rem;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="date"],
+input[type="time"],
+input[type="number"],
+textarea,
+.select-input {
+	padding: 0.75rem;
+	border: 2px solid #e2e8f0;
+	border-radius: 8px;
+	font-size: 1rem;
+	transition: border-color 0.2s;
+}
+
+input:focus, textarea:focus, .select-input:focus {
+	outline: none;
+	border-color: #48bb78;
 }
 
 .duration-display {
@@ -85,17 +185,7 @@
 	color: #48bb78;
 }
 
-/* Focus color override for meeting (green theme) */
-.meeting-booking-page input:focus,
-.meeting-booking-page textarea:focus,
-.meeting-booking-page .select-input:focus {
-	border-color: #48bb78;
-}
-
-/* ===================================
-   ROOM SELECTION
-   =================================== */
-
+/* Room Selection */
 .room-grid {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -121,6 +211,18 @@
 .room-card.selected .room-content {
 	border-color: #48bb78;
 	background: #f0fff4;
+	box-shadow: 0 4px 12px rgba(72, 187, 120, 0.2);
+}
+
+.room-card:hover:not(.selected) .room-content {
+	border-color: #cbd5e0;
+	transform: translateY(-2px);
+	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.room-card.selected:hover .room-content {
+	transform: translateY(-2px);
+	box-shadow: 0 4px 16px rgba(72, 187, 120, 0.3);
 }
 
 .room-icon {
@@ -128,14 +230,90 @@
 	margin-bottom: 0.5rem;
 }
 
-.room-content h4 {
-	margin: 0 0 0.25rem 0;
-	font-size: 1rem;
-	color: #333;
+.room-image {
+	width: 100%;
+	height: 120px;
+	margin-bottom: 0.75rem;
+	border-radius: 8px;
+	overflow: hidden;
+	background: #f3f4f6;
 }
 
-.room-floor,
-.room-capacity {
+.room-image img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+
+/* Room image carousel */
+.room-image-carousel {
+	position: relative;
+	width: 100%;
+	height: 200px;
+	margin-bottom: 0.75rem;
+	border-radius: 8px;
+	overflow: hidden;
+	background: #f3f4f6;
+}
+
+.room-image-carousel img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+
+/* Room info overlay - positioned on top of carousel */
+.room-info-overlay {
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.65) 50%, rgba(0, 0, 0, 0.3) 80%, transparent 100%);
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-end;
+	padding: 1.25rem;
+	min-height: 90px;
+	color: white;
+	z-index: 5;
+	pointer-events: none;
+	h4{
+		margin: 0 0 0.25rem 0;
+		font-size: 1rem;
+		color:white;
+	}
+}
+
+.room-info-overlay h4 {
+	margin: 0 0 0.35rem 0;
+	font-size: 1.15rem;
+	font-weight: 700;
+	color: #ffffff;
+	text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8), 0 1px 3px rgba(0, 0, 0, 0.9);
+	letter-spacing: 0.01em;
+}
+
+.room-info-overlay .room-floor,
+.room-info-overlay .room-capacity {
+	margin: 0.15rem 0;
+	font-size: 0.9rem;
+	font-weight: 500;
+	color: #ffffff;
+	text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8), 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+.loading-rooms,
+.no-rooms {
+	padding: 2rem;
+	text-align: center;
+	color: #666;
+	font-size: 1rem;
+}
+
+
+.room-floor, .room-capacity {
 	margin: 0.25rem 0;
 	font-size: 0.85rem;
 	color: #666;
@@ -157,10 +335,7 @@
 	color: #666;
 }
 
-/* ===================================
-   PLATFORM SELECTION
-   =================================== */
-
+/* Platform Selection */
 .platform-grid {
 	display: grid;
 	grid-template-columns: repeat(3, 1fr);
@@ -194,14 +369,25 @@
 	color: #333;
 }
 
-/* ===================================
-   PARTICIPANTS
-   =================================== */
+/* Participants */
+.participants-subsection {
+	margin-top: 1.5rem;
+	padding-top: 1.5rem;
+	border-top: 1px solid #e2e8f0;
+}
 
-.participants-section,
-.facilities-section,
-.catering-section,
-.recurring-section {
+.participants-subsection:first-of-type {
+	border-top: none;
+	padding-top: 0;
+}
+
+.participants-subsection h3 {
+	margin: 0 0 1rem 0;
+	font-size: 1.1rem;
+	color: #333;
+}
+
+.facilities-section, .recurring-section {
 	margin-top: 2rem;
 }
 
@@ -257,10 +443,7 @@
 	margin: 0;
 }
 
-/* ===================================
-   FACILITIES
-   =================================== */
-
+/* Facilities */
 .facilities-grid {
 	display: grid;
 	grid-template-columns: repeat(2, 1fr);
@@ -294,31 +477,47 @@
 	cursor: pointer;
 }
 
-.catering-items {
-	margin-top: 1rem;
+/* Actions */
+.form-actions {
+	display: flex;
+	gap: 1rem;
+	justify-content: flex-end;
+	margin-top: 2rem;
 }
 
-/* ===================================
-   BUTTONS (Meeting theme - green)
-   =================================== */
+.btn-primary, .btn-secondary {
+	padding: 0.75rem 2rem;
+	border-radius: 8px;
+	text-decoration: none;
+	font-weight: 500;
+	transition: all 0.2s;
+	border: none;
+	cursor: pointer;
+	font-size: 1rem;
+}
 
-.meeting-booking-page .btn-primary {
+.btn-primary {
 	background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
 	color: white;
 }
 
-.meeting-booking-page .btn-secondary {
+.btn-secondary {
 	background: white;
 	color: #48bb78;
 	border: 2px solid #48bb78;
 }
 
-/* ===================================
-   RESPONSIVE
-   =================================== */
+.btn-primary:hover, .btn-secondary:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
 
 @media (max-width: 768px) {
-	.meeting-type-selector {
+	.form-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.type-selector {
 		grid-template-columns: 1fr;
 	}
 
@@ -332,5 +531,9 @@
 
 	.facilities-grid {
 		grid-template-columns: 1fr;
+	}
+
+	.form-actions {
+		flex-direction: column;
 	}
 }

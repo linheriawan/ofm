@@ -33,7 +33,8 @@ export const POST: RequestHandler = async ({ request }) => {
 			facilities: body.facilities || [],
 			hasVideoConference: body.hasVideoConference || false,
 			tabletDeviceId: body.tabletDeviceId,
-			status: body.status || 'available'
+			status: body.status || 'available',
+			imageUrls: body.imageUrls || []
 		};
 
 		const result = await createDocument<MeetingRoom>('meeting_rooms', room);

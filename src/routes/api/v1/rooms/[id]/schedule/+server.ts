@@ -2,17 +2,43 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDB, collections } from '$lib/server/db/mongodb';
 import type { MeetingRoom } from '$lib/types';
-import { ObjectId } from 'mongodb';
+import { verifyDeviceAccess } from '$lib/server/deviceAuth';
 
-export const GET: RequestHandler = async ({ params, url }) => {
+export const GET: RequestHandler = async ({ params, url, request }) => {
 	try {
-		const roomId = params.id;
+		const roomId = params.id; // This is the business roomId (e.g., "ROOM-B102"), not MongoDB _id
 		const date = url.searchParams.get('date') || new Date().toISOString().split('T')[0];
+
+		// Verify device access
+		const deviceId = request.headers.get('X-Device-ID');
+
+		// Only enforce device verification if deviceId is provided AND device exists in database
+		// This allows backward compatibility with non-device access
+		if (deviceId) {
+			const db = getDB();
+			// Query by roomId field, not _id
+			const room = await db.collection(collections.meetingRooms).findOne({ roomId });
+
+			if (room) {
+				const authorized = await verifyDeviceAccess(deviceId, room.roomId);
+
+				// Only block if device is registered but not authorized
+				// Allow unregistered devices to view (for testing/setup)
+				if (authorized === false) {
+					console.log('Device verification failed for:', deviceId, 'room:', room.roomId);
+					// Don't block - just log for now
+					// return json(
+					// 	{ success: false, error: 'Device not authorized for this room' },
+					// 	{ status: 403 }
+					// );
+				}
+			}
+		}
 
 		const db = getDB();
 
-		// Get room details
-		const room = await db.collection(collections.meetingRooms).findOne({ _id: new ObjectId(roomId) });
+		// Get room details - query by roomId field, not _id
+		const room = await db.collection(collections.meetingRooms).findOne({ roomId });
 
 		if (!room) {
 			return json({
@@ -73,7 +99,8 @@ export const GET: RequestHandler = async ({ params, url }) => {
 					floor: room.floor,
 					capacity: room.capacity,
 					facilities: room.facilities,
-					status: room.status
+					status: room.status,
+					videoBackgroundIds: room.videoBackgroundIds || []
 				},
 				current: currentMeeting || null,
 				next: nextMeeting || null,

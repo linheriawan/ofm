@@ -3,6 +3,8 @@
 	import { slide } from 'svelte/transition';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
+	import ImageCarousel from '$lib/components/ImageCarousel.svelte';
+	import '$lib/styles/meeting-booking.css';
 
 	// Check if we're in edit mode
 	let bookingId = $derived($page.url.searchParams.get('id'));
@@ -54,7 +56,7 @@
 						floor: room.floor || 'N/A',
 						facilities: room.facilities || [],
 						hasVideoConf: room.hasVideoConference,
-						imageUrl: room.imageUrl
+						imageUrls: room.imageUrls || (room.imageUrl ? [room.imageUrl] : []) // backward compatibility
 					}));
 			}
 		} catch (error) {
@@ -430,16 +432,33 @@
 									<label class="room-card {selectedRoom === room.id ? 'selected' : ''}">
 										<input type="radio" bind:group={selectedRoom} value={room.id} />
 										<div class="room-content">
-											{#if room.imageUrl}
-												<div class="room-image">
-													<img src={room.imageUrl} alt={room.name} />
+											{#if room.imageUrls && room.imageUrls.length > 0}
+												<div class="room-image-carousel">
+													{#if room.imageUrls.length > 1}
+														<ImageCarousel
+															images={room.imageUrls}
+															alt={room.name}
+															autoplay={true}
+															interval={4000}
+															showDots={true}
+															showArrows={false}
+														/>
+													{:else}
+														<img src={room.imageUrls[0]} alt={room.name} />
+													{/if}
+													<!-- Room info overlay on carousel -->
+													<div class="room-info-overlay">
+														<h4>{room.name}</h4>
+														<p class="room-floor">Floor {room.floor}</p>
+														<p class="room-capacity">👥 {room.capacity} people</p>
+													</div>
 												</div>
 											{:else}
 												<div class="room-icon">🏢</div>
+												<h4>{room.name}</h4>
+												<p class="room-floor">Floor {room.floor}</p>
+												<p class="room-capacity">Capacity: {room.capacity}</p>
 											{/if}
-											<h4>{room.name}</h4>
-											<p class="room-floor">Floor {room.floor}</p>
-											<p class="room-capacity">Capacity: {room.capacity}</p>
 											<div class="room-facilities">
 												{#each room.facilities.slice(0, 3) as facility}
 													<span class="facility-badge">{facility}</span>
@@ -544,487 +563,3 @@
 	</div>
 	{/if}
 </div>
-
-<style>
-	.booking-page {
-		animation: fadeIn 0.3s ease-in;
-	}
-
-	@keyframes fadeIn {
-		from { opacity: 0; transform: translateY(10px); }
-		to { opacity: 1; transform: translateY(0); }
-	}
-
-	.loading {
-		padding: 3rem;
-		text-align: center;
-		color: #666;
-		font-size: 1.125rem;
-	}
-
-	.alert {
-		padding: 1rem;
-		border-radius: 8px;
-		margin-bottom: 1.5rem;
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-	}
-
-	.alert-error {
-		background: #fff5f5;
-		border: 1px solid #fc8181;
-		color: #c53030;
-	}
-
-	.alert-icon {
-		font-size: 1.25rem;
-	}
-
-	.header {
-		margin-bottom: 2rem;
-	}
-
-	.header h1 {
-		margin: 0;
-		font-size: 2rem;
-		color: #333;
-	}
-
-	.subtitle {
-		color: #666;
-		margin: 0.5rem 0 0 0;
-	}
-
-	.form-container {
-		display: flex;
-		flex-direction: column;
-		gap: 2rem;
-		max-width: 900px;
-	}
-
-	.card {
-		background: white;
-		border-radius: unset;
-		box-shadow: unset;
-		padding: 2rem;
-		border-bottom:1px 8px rgba(0,0,0,0.08);
-	}
-
-	.card h2 {
-		margin: 0 0 1.5rem 0;
-		font-size: 1.5rem;
-		color: #333;
-	}
-
-	.card h3 {
-		margin: 2rem 0 1rem 0;
-		font-size: 1.2rem;
-		color: #333;
-	}
-
-	/* Type Selector */
-	.type-selector {
-		display: grid;
-		grid-template-columns: repeat(3, 1fr);
-		gap: 1.5rem;
-	}
-
-	.type-option {
-		cursor: pointer;
-	}
-
-	.type-option input {
-		display: none;
-	}
-
-	.type-card {
-		padding: 2rem;
-		border: 2px solid #e2e8f0;
-		border-radius: 12px;
-		text-align: center;
-		transition: all 0.2s;
-	}
-
-	.type-option.active .type-card {
-		border-color: #48bb78;
-		background: #f0fff4;
-	}
-
-	.type-icon {
-		font-size: 3rem;
-		margin-bottom: 1rem;
-	}
-
-	.type-card h3 {
-		margin: 0 0 0.5rem 0;
-		font-size: 1.2rem;
-		color: #333;
-	}
-
-	.type-card p {
-		margin: 0;
-		color: #666;
-		font-size: 0.9rem;
-	}
-
-	/* Form */
-	.form-grid {
-		display: grid;
-		grid-template-columns: repeat(2, 1fr);
-		gap: 1.5rem;
-	}
-
-	.form-group {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-	}
-
-	.form-group.full-width {
-		grid-column: 1 / -1;
-	}
-
-	label {
-		font-weight: 500;
-		color: #333;
-	}
-
-	.required {
-		color: #f56565;
-	}
-
-	.helper-text {
-		font-weight: normal;
-		color: #48bb78;
-		font-size: 0.85rem;
-		margin-left: 0.5rem;
-	}
-
-	input[type="text"],
-	input[type="email"],
-	input[type="date"],
-	input[type="time"],
-	input[type="number"],
-	textarea,
-	.select-input {
-		padding: 0.75rem;
-		border: 2px solid #e2e8f0;
-		border-radius: 8px;
-		font-size: 1rem;
-		transition: border-color 0.2s;
-	}
-
-	input:focus, textarea:focus, .select-input:focus {
-		outline: none;
-		border-color: #48bb78;
-	}
-
-	.duration-display {
-		padding: 0.75rem;
-		background: #f9f9f9;
-		border-radius: 8px;
-		font-weight: 600;
-		color: #48bb78;
-	}
-
-	/* Room Selection */
-	.room-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-		gap: 1rem;
-	}
-
-	.room-card {
-		cursor: pointer;
-	}
-
-	.room-card input {
-		display: none;
-	}
-
-	.room-content {
-		padding: 1.5rem;
-		border: 2px solid #e2e8f0;
-		border-radius: 12px;
-		text-align: center;
-		transition: all 0.2s;
-	}
-
-	.room-card.selected .room-content {
-		border-color: #48bb78;
-		background: #f0fff4;
-		box-shadow: 0 4px 12px rgba(72, 187, 120, 0.2);
-	}
-
-	.room-card:hover:not(.selected) .room-content {
-		border-color: #cbd5e0;
-		transform: translateY(-2px);
-		box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-	}
-
-	.room-card.selected:hover .room-content {
-		transform: translateY(-2px);
-		box-shadow: 0 4px 16px rgba(72, 187, 120, 0.3);
-	}
-
-	.room-icon {
-		font-size: 2.5rem;
-		margin-bottom: 0.5rem;
-	}
-
-	.room-image {
-		width: 100%;
-		height: 120px;
-		margin-bottom: 0.75rem;
-		border-radius: 8px;
-		overflow: hidden;
-		background: #f3f4f6;
-	}
-
-	.room-image img {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-		display: block;
-	}
-
-	.loading-rooms,
-	.no-rooms {
-		padding: 2rem;
-		text-align: center;
-		color: #666;
-		font-size: 1rem;
-	}
-
-	.room-content h4 {
-		margin: 0 0 0.25rem 0;
-		font-size: 1rem;
-		color: #333;
-	}
-
-	.room-floor, .room-capacity {
-		margin: 0.25rem 0;
-		font-size: 0.85rem;
-		color: #666;
-	}
-
-	.room-facilities {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.25rem;
-		margin-top: 0.5rem;
-		justify-content: center;
-	}
-
-	.facility-badge {
-		padding: 0.2rem 0.5rem;
-		background: #e2e8f0;
-		border-radius: 4px;
-		font-size: 0.75rem;
-		color: #666;
-	}
-
-	/* Platform Selection */
-	.platform-grid {
-		display: grid;
-		grid-template-columns: repeat(3, 1fr);
-		gap: 1rem;
-	}
-
-	.platform-card {
-		cursor: pointer;
-	}
-
-	.platform-card input {
-		display: none;
-	}
-
-	.platform-content {
-		padding: 1.5rem;
-		border: 2px solid #e2e8f0;
-		border-radius: 12px;
-		text-align: center;
-		transition: all 0.2s;
-	}
-
-	.platform-card.selected .platform-content {
-		border-color: #48bb78;
-		background: #f0fff4;
-	}
-
-	.platform-content h4 {
-		margin: 0;
-		font-size: 1.1rem;
-		color: #333;
-	}
-
-	/* Participants */
-	.participants-subsection {
-		margin-top: 1.5rem;
-		padding-top: 1.5rem;
-		border-top: 1px solid #e2e8f0;
-	}
-
-	.participants-subsection:first-of-type {
-		border-top: none;
-		padding-top: 0;
-	}
-
-	.participants-subsection h3 {
-		margin: 0 0 1rem 0;
-		font-size: 1.1rem;
-		color: #333;
-	}
-
-	.facilities-section, .recurring-section {
-		margin-top: 2rem;
-	}
-
-	.input-with-button {
-		display: flex;
-		gap: 0.5rem;
-	}
-
-	.input-with-button input {
-		flex: 1;
-	}
-
-	.btn-add {
-		padding: 0.75rem 1.5rem;
-		background: #48bb78;
-		color: white;
-		border: none;
-		border-radius: 8px;
-		cursor: pointer;
-		font-weight: 500;
-		transition: background 0.2s;
-	}
-
-	.btn-add:hover {
-		background: #38a169;
-	}
-
-	.tags {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.5rem;
-		margin-top: 1rem;
-	}
-
-	.tag {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.5rem;
-		padding: 0.5rem 1rem;
-		background: #e2e8f0;
-		border-radius: 20px;
-		color: #333;
-	}
-
-	.tag button {
-		background: none;
-		border: none;
-		color: #666;
-		font-size: 1.5rem;
-		cursor: pointer;
-		line-height: 1;
-		padding: 0;
-		margin: 0;
-	}
-
-	/* Facilities */
-	.facilities-grid {
-		display: grid;
-		grid-template-columns: repeat(2, 1fr);
-		gap: 1rem;
-	}
-
-	.facility-checkbox {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		cursor: pointer;
-	}
-
-	.facility-checkbox input {
-		width: 1.2rem;
-		height: 1.2rem;
-		cursor: pointer;
-	}
-
-	.checkbox-label {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		cursor: pointer;
-		font-weight: 500;
-	}
-
-	.checkbox-label input {
-		width: 1.2rem;
-		height: 1.2rem;
-		cursor: pointer;
-	}
-
-	/* Actions */
-	.form-actions {
-		display: flex;
-		gap: 1rem;
-		justify-content: flex-end;
-		margin-top: 2rem;
-	}
-
-	.btn-primary, .btn-secondary {
-		padding: 0.75rem 2rem;
-		border-radius: 8px;
-		text-decoration: none;
-		font-weight: 500;
-		transition: all 0.2s;
-		border: none;
-		cursor: pointer;
-		font-size: 1rem;
-	}
-
-	.btn-primary {
-		background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
-		color: white;
-	}
-
-	.btn-secondary {
-		background: white;
-		color: #48bb78;
-		border: 2px solid #48bb78;
-	}
-
-	.btn-primary:hover, .btn-secondary:hover {
-		transform: translateY(-2px);
-		box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-	}
-
-	@media (max-width: 768px) {
-		.form-grid {
-			grid-template-columns: 1fr;
-		}
-
-		.type-selector {
-			grid-template-columns: 1fr;
-		}
-
-		.room-grid {
-			grid-template-columns: 1fr;
-		}
-
-		.platform-grid {
-			grid-template-columns: 1fr;
-		}
-
-		.facilities-grid {
-			grid-template-columns: 1fr;
-		}
-
-		.form-actions {
-			flex-direction: column;
-		}
-	}
-</style>

@@ -74,6 +74,8 @@ export const collections = {
 	meetingLicenses: 'meeting_licenses',
 	facilities: 'facilities',
 	catering: 'catering',
+	devices: 'devices',
+	backgroundVideos: 'background_videos',
 
 	// Facility Request Module
 	facilityRequests: 'facility_requests',

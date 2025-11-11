@@ -1,9 +1,12 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
+	import { browser } from '$app/environment';
 
 	// Get room ID from URL
 	const roomId = $page.params.roomId;
+	let deviceId = $state('');
 
 	let roomData = {
 		roomId: '',
@@ -16,21 +19,92 @@
 		nextMeeting: null as any,
 		todaySchedule: [] as any[],
 		isAvailable: true,
-		availableUntil: null as Date | null
+		availableUntil: null as Date | null,
+		videoBackgroundIds: [] as string[]
 	};
 
 	let currentTime = new Date();
 	let isCheckinMode = false;
-	let loading = true;
-	let error = '';
+	let loading = $state(true);
+	let error = $state('');
+	let isFullscreen = $state(false);
+
+	// Video background state
+	let backgroundVideos = $state<any[]>([]);
+	let currentVideoIndex = $state(0);
+	let videoElement = $state<HTMLVideoElement | null>(null);
+
+	// Check device assignment on mount
+	async function checkDeviceAssignment() {
+		console.log('🔍 Checking device assignment...');
+		if (!browser) {
+			console.log('❌ Not in browser, skipping');
+			return false;
+		}
+
+		// Get device ID from localStorage
+		deviceId = localStorage.getItem('deviceId') || '';
+		console.log('📱 Device ID from localStorage:', deviceId);
+
+		if (!deviceId) {
+			// No device ID - show error instead of redirecting for now
+			console.log('⚠️ No device ID found');
+			error = 'Device not registered. Please scan QR code to register this device.';
+			loading = false;
+			return false;
+		}
+
+		// Check if device is assigned to this room
+		try {
+			console.log('🌐 Fetching device assignment from API...');
+			const response = await fetch(`/api/v1/devices/${deviceId}/assignment`);
+			const result = await response.json();
+			console.log('📦 Device assignment result:', result);
+
+			if (result.success && result.data.assigned) {
+				// Check if assigned to correct room
+				if (result.data.roomId !== roomId) {
+					// Device is assigned to different room
+					console.warn(`⚠️ Device assigned to ${result.data.roomId}, not ${roomId}`);
+					error = `This device is assigned to room ${result.data.roomName || result.data.roomId}. Please use the correct device or reassign.`;
+					loading = false;
+					return false;
+				}
+				console.log('✅ Device is assigned to this room');
+				return true;
+			} else {
+				// Not assigned - allow access for now (testing mode)
+				console.log('⚠️ Device not assigned to any room, allowing access for testing');
+				return true; // Changed to true to skip device check temporarily
+			}
+		} catch (error) {
+			console.error('❌ Error checking device assignment:', error);
+			// Allow access if device API fails (for testing)
+			console.log('⚠️ Device check failed, allowing access anyway');
+			return true;
+		}
+	}
 
 	// Update current time every second and refresh data every 30 seconds
-	onMount(() => {
+	onMount(async () => {
+		console.log('🚀 onMount started');
+
+		// First check device assignment
+		const isAssigned = await checkDeviceAssignment();
+		console.log('✅ Device assignment check result:', isAssigned);
+
+		if (!isAssigned) {
+			console.log('❌ Device not assigned, stopping here');
+			return; // Will redirect, no need to continue
+		}
+
+		console.log('⏰ Setting up time interval');
 		const timeInterval = setInterval(() => {
 			currentTime = new Date();
 		}, 1000);
 
 		// Initial load
+		console.log('📥 Calling loadSchedule()...');
 		loadSchedule();
 
 		// Refresh data every 30 seconds
@@ -46,56 +120,132 @@
 
 	async function loadSchedule() {
 		try {
-			const response = await fetch(`/api/v1/rooms/${roomId}/schedule`);
-			const result = await response.json();
+			console.log('Loading schedule for room:', roomId, 'with deviceId:', deviceId);
 
-			if (result.success) {
+			// Send device ID in request header
+			const response = await fetch(`/api/v1/rooms/${roomId}/schedule`, {
+				headers: {
+					'X-Device-ID': deviceId || ''
+				}
+			});
+
+			console.log('Schedule API response status:', response.status);
+			const result = await response.json();
+			console.log('Schedule API result:', result);
+
+			// Check if device is not authorized
+			if (response.status === 403) {
+				console.error('Device not authorized:', result.error);
+				error = 'Device not authorized for this room';
+				loading = false;
+				return;
+			}
+
+			if (result.success && result.data) {
 				const data = result.data;
-				roomData.roomId = data.room.roomId;
-				roomData.roomName = data.room.roomName;
-				roomData.roomNumber = data.room.roomNumber || '';
-				roomData.floor = data.room.floor || '';
-				roomData.capacity = data.room.capacity;
-				roomData.todaySchedule = data.todaySchedule.map((booking: any) => ({
-					id: booking.bookingId,
-					title: booking.meetingTitle,
-					organizer: booking.organizerId,
+
+				// Safely populate room data
+				roomData.roomId = data.room?.roomId || '';
+				roomData.roomName = data.room?.roomName || 'Unknown Room';
+				roomData.roomNumber = data.room?.roomNumber || '';
+				roomData.floor = data.room?.floor || '';
+				roomData.capacity = data.room?.capacity || 0;
+				roomData.videoBackgroundIds = data.room?.videoBackgroundIds || [];
+
+				console.log('Room data populated:', {
+					roomName: roomData.roomName,
+					roomId: roomData.roomId,
+					videoCount: roomData.videoBackgroundIds.length
+				});
+
+				// Map schedule with safe access
+				roomData.todaySchedule = (data.todaySchedule || []).map((booking: any) => ({
+					id: booking.bookingId || booking._id,
+					title: booking.meetingTitle || 'Untitled Meeting',
+					organizer: booking.organizerId || 'Unknown',
 					startTime: new Date(booking.startTime),
 					endTime: new Date(booking.endTime),
-					participants: booking.participants.length,
-					status: booking.status
+					participants: (booking.participants || []).length,
+					status: booking.status || 'pending'
 				}));
+
+				// Safely map current meeting
 				roomData.currentMeeting = data.current ? {
-					id: data.current.bookingId,
-					title: data.current.meetingTitle,
-					organizer: data.current.organizerId,
+					id: data.current.bookingId || data.current._id,
+					title: data.current.meetingTitle || 'Untitled Meeting',
+					organizer: data.current.organizerId || 'Unknown',
 					startTime: new Date(data.current.startTime),
 					endTime: new Date(data.current.endTime),
-					participants: data.current.participants.length,
-					status: data.current.status
+					participants: (data.current.participants || []).length,
+					status: data.current.status || 'pending'
 				} : null;
+
+				// Safely map next meeting
 				roomData.nextMeeting = data.next ? {
-					id: data.next.bookingId,
-					title: data.next.meetingTitle,
-					organizer: data.next.organizerId,
+					id: data.next.bookingId || data.next._id,
+					title: data.next.meetingTitle || 'Untitled Meeting',
+					organizer: data.next.organizerId || 'Unknown',
 					startTime: new Date(data.next.startTime),
 					endTime: new Date(data.next.endTime),
-					participants: data.next.participants.length,
-					status: data.next.status
+					participants: (data.next.participants || []).length,
+					status: data.next.status || 'pending'
 				} : null;
-				roomData.isAvailable = data.isAvailable;
+
+				roomData.isAvailable = data.isAvailable !== false;
 				roomData.availableUntil = data.availableUntil ? new Date(data.availableUntil) : null;
 
 				updateRoomStatus();
+
+				// Load background videos if assigned
+				if (roomData.videoBackgroundIds.length > 0) {
+					console.log('Loading background videos...');
+					await loadBackgroundVideos();
+				} else {
+					console.log('No background videos assigned');
+				}
+
 				loading = false;
+				console.log('✅ Room data loaded successfully');
 			} else {
 				error = result.error || 'Failed to load schedule';
 				loading = false;
+				console.error('API returned error:', error);
 			}
 		} catch (err) {
-			error = 'Failed to connect to server';
+			console.error('❌ Error loading schedule:', err);
+			error = `Failed to connect to server: ${err instanceof Error ? err.message : 'Unknown error'}`;
 			loading = false;
-			console.error('Error loading schedule:', err);
+		}
+	}
+
+	async function loadBackgroundVideos() {
+		try {
+			console.log('Loading background videos:', roomData.videoBackgroundIds);
+
+			// Fetch video details for each assigned video ID
+			const videoPromises = roomData.videoBackgroundIds.map(async (videoId) => {
+				const response = await fetch(`/api/v1/videos/${videoId}`);
+				const result = await response.json();
+				if (result.success && result.data) {
+					return result.data;
+				}
+				return null;
+			});
+
+			const videos = await Promise.all(videoPromises);
+			backgroundVideos = videos.filter(v => v !== null && v.isActive);
+
+			console.log('Loaded background videos:', backgroundVideos);
+		} catch (err) {
+			console.error('Error loading background videos:', err);
+		}
+	}
+
+	function handleVideoEnd() {
+		// Move to next video when current one ends
+		if (backgroundVideos.length > 0) {
+			currentVideoIndex = (currentVideoIndex + 1) % backgroundVideos.length;
+			console.log('Switching to video index:', currentVideoIndex);
 		}
 	}
 
@@ -123,13 +273,56 @@
 		return `${formatTime(start)} - ${formatTime(end)}`;
 	}
 
+	let employeeIdInput = $state('');
+	let checkingIn = $state(false);
+	let checkinError = $state('');
+
 	function handleCheckin() {
 		isCheckinMode = true;
+		employeeIdInput = '';
+		checkinError = '';
 	}
 
-	function handleCheckinSubmit() {
-		alert('Check-in successful!');
-		isCheckinMode = false;
+	async function handleCheckinSubmit() {
+		if (!employeeIdInput.trim()) {
+			checkinError = 'Please enter your Employee ID';
+			return;
+		}
+
+		if (!roomData.currentMeeting) {
+			checkinError = 'No active meeting to check in to';
+			return;
+		}
+
+		checkingIn = true;
+		checkinError = '';
+
+		try {
+			const response = await fetch(`/api/v1/meetings/${roomData.currentMeeting.id}/checkin`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					employeeId: employeeIdInput.trim(),
+					method: 'manual'
+				})
+			});
+
+			const result = await response.json();
+
+			if (result.success) {
+				alert(`Check-in successful!\nMeeting: ${result.data.meetingTitle}`);
+				isCheckinMode = false;
+				// Refresh schedule to update meeting status
+				loadSchedule();
+			} else {
+				checkinError = result.error || 'Check-in failed';
+			}
+		} catch (error) {
+			console.error('Check-in error:', error);
+			checkinError = 'Failed to connect to server';
+		} finally {
+			checkingIn = false;
+		}
 	}
 </script>
 
@@ -137,10 +330,15 @@
 	<title>Room Display - {roomData.roomName || 'Loading...'}</title>
 </svelte:head>
 
-{#if loading}
+{#if loading===true}
 	<div class="loading-screen">
 		<div class="loading-spinner"></div>
 		<p>Loading room information...</p>
+		<div style="color: white; margin-top: 2rem; font-size: 0.9rem;">
+			<p>Room ID: {roomId}</p>
+			<p>Device ID: {deviceId || 'Not set'}</p>
+			<p>Check browser console (F12) for details</p>
+		</div>
 	</div>
 {:else if error}
 	<div class="error-screen">
@@ -151,6 +349,23 @@
 	</div>
 {:else}
 <div class="room-display {roomData.status}">
+	<!-- Video Background -->
+	{#if backgroundVideos.length > 0}
+		<div class="video-background">
+			<video
+				bind:this={videoElement}
+				src={backgroundVideos[currentVideoIndex]?.videoUrl}
+				autoplay
+				muted
+				onended={handleVideoEnd}
+				class="background-video"
+			></video>
+			<div class="video-overlay"></div>
+		</div>
+	{/if}
+
+	<!-- Content Wrapper -->
+	<div class="content-wrapper">
 	<!-- Header -->
 	<div class="header">
 		<div class="room-info">
@@ -238,27 +453,55 @@
 		<div class="modal">
 			<div class="modal-content">
 				<h2>Check In</h2>
+				{#if roomData.currentMeeting}
+					<p class="meeting-info">Meeting: <strong>{roomData.currentMeeting.title}</strong></p>
+				{/if}
 				<p>Scan your QR code or enter your employee ID</p>
 				<div class="qr-scanner">
 					<div class="scanner-frame">
-						📷 QR Scanner Active
+						📷 QR Scanner (Coming Soon)
 					</div>
 				</div>
-				<input type="text" placeholder="Or enter Employee ID" class="employee-id-input">
+				<input
+					type="text"
+					placeholder="Enter Employee ID (e.g., E12345)"
+					class="employee-id-input"
+					bind:value={employeeIdInput}
+					disabled={checkingIn}
+					onkeydown={(e) => e.key === 'Enter' && handleCheckinSubmit()}
+				/>
+				{#if checkinError}
+					<div class="checkin-error">
+						⚠️ {checkinError}
+					</div>
+				{/if}
 				<div class="modal-actions">
-					<button class="btn-cancel" onclick={() => isCheckinMode = false}>Cancel</button>
-					<button class="btn-submit" onclick={handleCheckinSubmit}>Check In</button>
+					<button
+						class="btn-cancel"
+						onclick={() => isCheckinMode = false}
+						disabled={checkingIn}
+					>
+						Cancel
+					</button>
+					<button
+						class="btn-submit"
+						onclick={handleCheckinSubmit}
+						disabled={checkingIn || !employeeIdInput.trim()}
+					>
+						{checkingIn ? 'Checking in...' : 'Check In'}
+					</button>
 				</div>
 			</div>
 		</div>
 	{/if}
+	</div> <!-- Close content-wrapper -->
 </div>
 {/if}
 
 <style>
 	/* Loading and Error States */
 	.loading-screen, .error-screen {
-		min-height: 100vh;
+		max-height: 100vh;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
@@ -325,23 +568,60 @@
 
 	/* Room Display */
 	.room-display {
-		min-height: 100vh;
-		padding: 2rem;
+		max-height: 100vh;
+		position: relative;
 		font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+		overflow: hidden;
+	}
+
+	/* Video Background */
+	.video-background {
+		position: fixed;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		z-index: 0;
+		overflow: hidden;
+	}
+
+	.background-video {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+
+	.video-overlay {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		background: rgba(0, 0, 0, 0.3);
+		z-index: 1;
+	}
+
+	/* Content Wrapper */
+	.content-wrapper {
+		position: relative;
+		z-index: 10;
+		max-height: 100vh;
+		padding: 2rem;
 		display: flex;
 		flex-direction: column;
 		gap: 2rem;
 	}
 
-	.room-display.available {
+	/* Gradient overlays for rooms without video */
+	.room-display.available:not(:has(.video-background)) .content-wrapper {
 		background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
 	}
 
-	.room-display.occupied {
+	.room-display.occupied:not(:has(.video-background)) .content-wrapper {
 		background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
 	}
 
-	.room-display.upcoming {
+	.room-display.upcoming:not(:has(.video-background)) .content-wrapper {
 		background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
 	}
 
@@ -350,7 +630,7 @@
 		justify-content: space-between;
 		align-items: flex-start;
 		padding: 2rem;
-		background: white;
+		background: rgba(255,255,255,.3);
 		border-radius: 16px;
 		box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 	}
@@ -392,7 +672,7 @@
 		align-items: center;
 		justify-content: center;
 		padding: 4rem 2rem;
-		background: white;
+		background: rgba(255,255,255,.3);
 		border-radius: 16px;
 		box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 		text-align: center;
@@ -418,7 +698,7 @@
 	.current-meeting, .upcoming-meeting, .next-meeting {
 		margin-top: 2rem;
 		padding: 2rem;
-		background: #f5f5f5;
+		background: rgba(255,255,255,0.5);
 		border-radius: 12px;
 		width: 100%;
 		max-width: 600px;
@@ -455,7 +735,7 @@
 
 	.schedule {
 		padding: 2rem;
-		background: white;
+		background: rgba(255,255,255,.3);
 		border-radius: 16px;
 		box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 	}
@@ -544,6 +824,18 @@
 		font-size: 2rem;
 	}
 
+	.meeting-info {
+		padding: 1rem;
+		background: #f0f4ff;
+		border-radius: 8px;
+		margin-bottom: 1rem;
+		color: #333;
+	}
+
+	.meeting-info strong {
+		color: #667eea;
+	}
+
 	.qr-scanner {
 		margin: 2rem 0;
 	}
@@ -563,7 +855,28 @@
 		font-size: 1.2rem;
 		border: 2px solid #ddd;
 		border-radius: 8px;
-		margin-bottom: 2rem;
+		margin-bottom: 1rem;
+		box-sizing: border-box;
+	}
+
+	.employee-id-input:focus {
+		outline: none;
+		border-color: #667eea;
+	}
+
+	.employee-id-input:disabled {
+		background: #f5f5f5;
+		cursor: not-allowed;
+	}
+
+	.checkin-error {
+		padding: 1rem;
+		background: #fef2f2;
+		border: 2px solid #fecaca;
+		border-radius: 8px;
+		color: #dc2626;
+		font-weight: 600;
+		margin-bottom: 1rem;
 	}
 
 	.modal-actions {
@@ -592,11 +905,20 @@
 		color: white;
 	}
 
-	.btn-cancel:hover, .btn-submit:hover {
+	.btn-cancel:hover:not(:disabled), .btn-submit:hover:not(:disabled) {
 		transform: scale(1.05);
 	}
 
+	.btn-cancel:disabled, .btn-submit:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
 	@media (max-width: 768px) {
+		.content-wrapper {
+			padding: 1rem;
+		}
+
 		.header {
 			flex-direction: column;
 			gap: 1rem;

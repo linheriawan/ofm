@@ -199,7 +199,23 @@ export interface MeetingRoom extends BaseDocument {
 	hasVideoConference: boolean;
 	tabletDeviceId?: string; // raspberry pi / tablet
 	status: 'available' | 'occupied' | 'maintenance' | 'inactive';
-	imageUrl?: string;
+	imageUrl?: string; // @deprecated - kept for backward compatibility
+	imageUrls?: string[]; // multiple room photos
+	videoBackgroundIds?: string[]; // references to BackgroundVideo documents
+	videoBackgroundUrls?: string[]; // direct video URLs (for backward compatibility)
+}
+
+// Background Videos (for room displays)
+export interface BackgroundVideo extends BaseDocument {
+	videoId: string;
+	videoName: string;
+	description?: string;
+	videoUrl: string; // Supabase storage URL
+	thumbnailUrl?: string; // preview thumbnail
+	duration?: number; // duration in seconds
+	fileSize?: number; // in bytes
+	areaTag?: string; // e.g., 'jakarta', 'surabaya', 'all'
+	isActive: boolean;
 }
 
 /**
@@ -319,6 +335,17 @@ export interface Position extends BaseDocument {
 	positionName: string;
 	level: number;
 	isActive: boolean;
+}
+
+// Devices (for room displays)
+export interface Device extends BaseDocument {
+	deviceId: string; // e.g., "DEV-abc123xyz"
+	roomId?: string; // which room it's assigned to
+	deviceName?: string; // friendly name (e.g., "Tablet - Board Room A")
+	assignedAt?: Date;
+	assignedBy?: string; // admin user ID
+	lastSeen: Date; // heartbeat timestamp
+	status: 'active' | 'inactive' | 'pending';
 }
 
 // Enums
