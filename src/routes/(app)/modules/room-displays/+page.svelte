@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import type { MeetingRoom } from '$lib/types';
+	import QRCode from '$lib/components/QRCode.svelte';
 
 	let title = 'Room Display Management - OFM';
 	let rooms: MeetingRoom[] = $state([]);
@@ -33,11 +34,6 @@
 
 	function getDisplayUrl(roomId: string) {
 		return `${baseUrl}/display/room/${roomId}`;
-	}
-
-	function getQRCodeUrl(url: string) {
-		// Using a free QR code API
-		return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(url)}`;
 	}
 
 	function copyToClipboard(text: string) {
@@ -74,8 +70,7 @@
 	{:else}
 		<div class="rooms-grid">
 			{#each rooms as room}
-				{@const displayUrl = getDisplayUrl(room._id?.toString() || '')}
-				{@const qrUrl = getQRCodeUrl(displayUrl)}
+				{@const displayUrl = getDisplayUrl(room.roomId || '')}
 
 				<div class="room-card">
 					<div class="room-header">
@@ -84,7 +79,9 @@
 					</div>
 
 					<div class="qr-section">
-						<img src={qrUrl} alt="QR Code for {room.roomName}" class="qr-code" />
+						<div class="qr-code">
+							<QRCode value={displayUrl} size={200} />
+						</div>
 						<p class="qr-hint">Scan to access room display</p>
 					</div>
 

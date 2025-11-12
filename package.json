@@ -11,13 +11,15 @@
     "check:watch": "svelte-kit sync && tsc --noEmit --watch",
     "db:seed": "bun run scripts/seed.ts",
     "test:api": "bun run scripts/test-api.ts",
-    "sync:scim": "bun run scripts/sync-from-scim.ts"
+    "sync:scim": "bun run scripts/sync-from-scim.ts",
+    "network": "sh scripts/show-network-url.sh"
   },
   "devDependencies": {
     "@sveltejs/adapter-auto": "^6.1.1",
     "@sveltejs/adapter-node": "^5.4.0",
     "@sveltejs/kit": "^2.46.5",
     "@types/bun": "latest",
+    "@types/qrcode": "^1.5.6",
     "svelte": "^5.39.12",
     "typescript": "^5.9.3",
     "vite": "^7.1.9"
@@ -26,6 +28,7 @@
     "@supabase/supabase-js": "^2.81.0",
     "leaflet": "^1.9.4",
     "mongodb": "^6.20.0",
+    "qrcode": "^1.5.4",
     "undici": "^7.16.0"
   }
 }
