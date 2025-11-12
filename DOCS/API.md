@@ -325,6 +325,97 @@ List all meeting requests with filters.
 
 **Response:** `200 OK`
 
+### Meeting Check-In (Attendance)
+
+**POST** `/api/v1/meetings/{id}/checkin`
+
+Record meeting attendance. Supports both internal employees and external guests. No invitation required - anyone can check in during the meeting window (15 minutes before to meeting end).
+
+**Path Parameters:**
+- `id` (string) - Meeting ID (MongoDB ObjectId)
+
+**Body:**
+```json
+// Internal employee check-in
+{
+  "userId": "123456",  // NIK (Nomor Induk Karyawan)
+  "method": "qr" | "manual",
+  "isExternal": false
+}
+
+// External guest check-in
+{
+  "name": "John Client",
+  "email": "john@client.com",  // optional
+  "method": "qr" | "manual",
+  "isExternal": true
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "message": "Check-in successful",
+  "data": {
+    "meetingId": "meeting123",
+    "meetingTitle": "Team Planning",
+    "type": "internal" | "external",
+    "userId": "123456",
+    "name": "Employee Name",
+    "email": "employee@company.com",
+    "checkinTime": "2025-01-12T10:30:00Z",
+    "method": "qr"
+  }
+}
+```
+
+**Error Responses:**
+- `404` - Meeting not found
+- `400` - Check-in window not open yet or meeting has ended
+- `400` - Employee not found (internal) or name missing (external)
+- `409` - Already checked in
+
+### Get Meeting Attendance
+
+**GET** `/api/v1/meetings/{id}/checkin`
+
+Retrieve attendance list for a meeting with statistics.
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "meetingId": "meeting123",
+    "meetingTitle": "Team Planning",
+    "startTime": "2025-01-12T10:00:00Z",
+    "endTime": "2025-01-12T11:00:00Z",
+    "totalInvited": 10,
+    "totalCheckedIn": 7,
+    "attendanceRate": 70.0,
+    "attendees": [
+      {
+        "type": "internal",
+        "userId": "123456",
+        "name": "Employee Name",
+        "email": "employee@company.com",
+        "checkinTime": "2025-01-12T10:05:00Z",
+        "method": "qr"
+      },
+      {
+        "type": "external",
+        "userId": null,
+        "name": "Guest Name",
+        "email": "guest@client.com",
+        "checkinTime": "2025-01-12T10:10:00Z",
+        "method": "manual"
+      }
+    ]
+  }
+}
+```
+
 ---
 
 ## 📦 Facility Module (NEW)

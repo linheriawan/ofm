@@ -94,9 +94,11 @@ I've successfully created a complete room display system for your meeting room t
 
   Display URL Format:
 
-  https://your-domain.com/display/room/{MONGODB_OBJECT_ID}
+  https://your-domain.com/display/room/{ROOM_ID}
 
-  Example: https://your-domain.com/display/room/6789abcdef123456
+  Example: https://your-domain.com/display/room/R101
+
+  Note: Uses custom room identifier (roomId) like "R101", "CONF-A", NOT MongoDB ObjectId
 
   Features for Tablets/Displays:
 
@@ -147,8 +149,94 @@ I've successfully created a complete room display system for your meeting room t
   File Structure:
 
   src/routes/
-  ├── api/rooms/[id]/schedule/+server.ts    # API endpoint
-  ├── display/room/[roomId]/+page.svelte    # Display page (updated)
-  └── admin/room-displays/+page.svelte      # QR code management
+  ├── api/v1/rooms/[id]/schedule/+server.ts    # API endpoint
+  ├── api/v1/meetings/[id]/checkin/+server.ts  # Attendance API
+  ├── (fullscreen)/display/room/[roomId]/+page.svelte  # Display page
+  └── (app)/modules/room-displays/+page.svelte          # QR code management
+
+## 5. Dual QR Code System
+
+The room display now shows TWO QR codes:
+
+1. **QUICK BOOK QR** (Always Visible)
+   - Location: Right sidebar, top section
+   - Purpose: Allows anyone to quickly book the room
+   - Points to: `/modules/meetings/new?roomId={roomId}`
+   - Always displayed regardless of room status
+
+2. **MARK ATTENDANCE QR** (During Meetings Only)
+   - Location: Right sidebar, below Quick Book QR
+   - Purpose: Allows meeting participants to check in
+   - Points to: Check-in page for current meeting
+   - Only visible when `currentMeeting` exists
+   - Includes "Manual Entry" button for fallback
+
+### Attendance Check-In Features:
+- Supports both internal employees (NIK) and external guests
+- No invitation requirement - anyone can check in during meeting window
+- Check-in window: 15 minutes before meeting start to meeting end
+- Manual entry option via modal with internal/external toggle
+
+## 6. Network Configuration for Smartphone Access
+
+To access the room display from smartphones on the same WiFi network:
+
+### Vite Configuration
+File: `vite.config.ts`
+
+```typescript
+export default defineConfig({
+  server: {
+    host: '0.0.0.0',  // Listen on all network interfaces
+    port: 5174,
+    cors: true
+  }
+});
+```
+
+### Get Network URLs
+Run the helper script to see all available network URLs:
+
+```bash
+bun run network
+```
+
+This will display:
+- Local access: `http://localhost:5174`
+- Network access: `http://192.168.x.x:5174`
+
+### Firewall Configuration (macOS)
+Allow incoming connections:
+
+```bash
+# Add firewall rule for Node/Bun
+sudo /usr/libexec/ApplicationFirewall/socketfilterfw --add $(which node)
+sudo /usr/libexec/ApplicationFirewall/socketfilterfw --unblock $(which node)
+```
+
+### Testing from Smartphone
+1. Ensure phone is on the SAME WiFi network
+2. Open browser on phone
+3. Visit: `http://<YOUR_MAC_IP>:5174/display/room/R101`
+4. Scan QR codes to test booking and attendance
+
+## 7. Field Mapping Notes
+
+### Important Field Names:
+- **Meeting Title**: Database uses `title` field (backward compatible with `meetingTitle`)
+- **Employee ID**: Use `userId` field (stores NIK - Nomor Induk Karyawan)
+- **Room Identifier**: Use `roomId` field (custom ID like "R101", NOT MongoDB `_id`)
+
+### Attendance Data Structure:
+```javascript
+attendees: [{
+  type: 'internal' | 'external',
+  userId: String | null,  // NIK for internal, null for external
+  name: String,
+  email: String,
+  checkinTime: Date,
+  method: 'qr' | 'manual'
+}]
+```
 
   The room display system is now fully functional and ready to be deployed on tablets or Raspberry Pi devices! 🎉

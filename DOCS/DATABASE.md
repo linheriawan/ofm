@@ -73,10 +73,49 @@ The following collections will be created:
 
 ### Meeting Rooms
 - `meeting_rooms` - Available rooms
-- `meeting_requests` - Room booking requests (unified collection for all meeting bookings)
+- `meeting_requests` - Room booking requests (unified collection for all meeting bookings, **includes embedded attendees array**)
 - `meeting_licenses` - Video conferencing licenses
 - `facilities` - Room facilities
-- `meeting_attendance` - Meeting attendance
+
+## Key Schema Structures
+
+### Meeting Requests with Attendance
+
+The `meeting_requests` collection stores meeting bookings AND attendance as an embedded array:
+
+```javascript
+{
+  _id: ObjectId,
+  title: String,              // Meeting title
+  roomId: String,             // Custom room identifier (e.g., "R101")
+  organizerId: String,
+  participants: [{
+    userId: String,           // NIK (Nomor Induk Karyawan)
+    email: String,
+    name: String
+  }],
+  startTime: Date,
+  endTime: Date,
+  status: String,
+  // Attendance tracking (embedded array)
+  attendees: [{
+    type: String,             // "internal" | "external"
+    userId: String,           // NIK for internal, null for external
+    name: String,             // Employee or guest name
+    email: String,            // Email address
+    checkinTime: Date,        // When they checked in
+    method: String            // "qr" | "manual"
+  }],
+  createdAt: Date,
+  updatedAt: Date
+}
+```
+
+**Field Notes:**
+- `userId` in users collection = NIK (Nomor Induk Karyawan / Employee ID Number)
+- `roomId` in meeting_rooms = Custom identifier like "R101", "CONF-A" (NOT MongoDB _id)
+- `attendees` array supports both internal employees and external guests
+- No invitation requirement for check-in - anyone can attend
 
 ## Verifying the Data
 
