@@ -1,5 +1,5 @@
-# Technology Stack
-
+# Development 
+## Technology Stack
 **Backend:**
 - Svelte 5 + SvelteKit (Web UI + API Server)
 - TypeScript (strict mode)
@@ -19,6 +19,12 @@
 
 **IoT:**
 - ~~Arduino + GPS module~~ → **Android App with GPS** (Driver App)
+
+## Documentation
+
+## Preparation
+
+## Testing
 
 ---
 

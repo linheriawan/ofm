@@ -12,7 +12,7 @@ export default defineConfig({
 	},
 	preview: {
 		host: '0.0.0.0', // Also expose preview server
-		port: 4173,
+		port: 4174,
 		strictPort: false
 	}
 });
