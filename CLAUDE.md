@@ -1,3 +1,48 @@
+# Office Facility Management (OFM) - Development Guide
+**Unified system for managing employee transportation, meeting rooms, and office facilities.**  
+
+## Core Functions
+1. Transportation Management
+- Voucher allocation (Gojek, Grab, etc.)
+- Company car scheduling with driver assignment
+- GPS tracking via Android Driver App
+- Asset and voucher utilization dashboard
+
+2. Meeting Room Booking
+- Online/offline/hybrid meeting support
+- Room reservation with facility preparation
+- Tablet display for room schedules
+- License and facility utilization tracking
+
+3. Multi-Entity Support
+- Holding company + subsidiaries
+- Regional admin scoping
+- Centralized reporting
+
+# Business Rules 
+## User Roles
+- **Super Admin** - Full system access
+- **Global Admin** - Multi-entity access
+- **Regional Admin** - Location-specific
+- **Employee** - Request and view own bookings
+- **Driver** - View assignments, confirm trips
+
+## Transportation Policies
+- **Cancellation**: Enable/update car status as available
+- **After-hours**: Requires advance booking
+- **Voucher Providers**: Gojek, Grab (managed via admin)
+
+## Meeting Room Policies
+- **Max Duration**: 8 hours
+- **Recurring Meetings**: Require Super Admin approval
+- **Cancellation**: Requires re-approval from admin
+- **Room Capacity**: Validated against participant count
+
+## Integration
+- **Authentication**: ✅ Aksara SSO (OAuth 2.0 / OIDC)
+- **Employee Sync**: ✅ SCIM 2.0 from Aksara SSO
+- **Room Display**: Tablet/Raspberry Pi (QR code access)
+
 # Development 
 ## Technology Stack
 **Backend:**
@@ -21,6 +66,32 @@
 - ~~Arduino + GPS module~~ → **Android App with GPS** (Driver App)
 
 ## Documentation
+See `DOCS/` folder:
+- `FEATURES.md` - Feature overview
+- `SSO_INTEGRATION.md` - OAuth 2.0 / OIDC setup
+- `DATA_SYNC_STRATEGY.md` - SSO ↔ OFM data architecture
+- `SCIM_INTEGRATION.md` - Employee sync setup guide
+- `DATABASE.md` - Database setup and schema
+- `API.md` - Complete API reference with 22+ endpoints
+- `SETTINGS_MANAGEMENT.md` - Database-backed configuration
+- `BUSINESS_PROCESS.md` - Business workflows with flowcharts
+- `ROOM_DISPLAY.md` - Tablet display system
+- `example_org_structure.md` - IAS organization structure
+
+## Development Guidelines
+
+### Reusables Philosophy
+- **ALWAYS check `DOCS/REUSABLES.md` before writing new code**
+- This app has 20+ reusable modules: components, APIs, auth, DB utilities, specialized tools
+- **Do NOT rebuild**: modals, tables, location pickers, API wrappers, validation, CRUD operations
+- **Use standardized patterns**: API response format, REST endpoints, request numbering
+- **Keep code DRY**: If it exists in reusables, use it. No exceptions.
+
+### General Guidelines
+- **Update CLAUDE.md** as you complete tasks (mark with `[✅]`)
+- **Keep files small** - Max ~500 lines, use utils/libraries
+- **Use Svelte 5 syntax** - Use `onclick` not `on:click`
+- **Reference DOCS/** - Don't duplicate technical details here
 
 ## Preparation
 
@@ -375,85 +446,3 @@ Based on new requirements for Android apps and facility management, here's the r
 
 ---
 
-# Project Objective
-
-**Office Facility Management (OFM)** - Unified system for managing employee transportation, meeting rooms, and office facilities.
-
-## Core Functions
-
-### 1. Transportation Management
-- Voucher allocation (Gojek, Grab, etc.)
-- Company car scheduling with driver assignment
-- GPS tracking via Android Driver App
-- Asset and voucher utilization dashboard
-
-### 2. Meeting Room Booking
-- Online/offline/hybrid meeting support
-- Room reservation with facility preparation
-- Tablet display for room schedules
-- License and facility utilization tracking
-
-### 3. Multi-Entity Support
-- Holding company + subsidiaries
-- Regional admin scoping
-- Centralized reporting
-
----
-
-# Documentation Reference
-
-## Technical Documentation (DOCS/)
-- **API.md** - Complete API reference with 22+ endpoints
-- **SCIM_INTEGRATION.md** - Employee sync setup guide
-- **SETTINGS_MANAGEMENT.md** - Database-backed configuration
-- **SSO_INTEGRATION.md** - OAuth 2.0 / OIDC setup
-- **DATA_SYNC_STRATEGY.md** - SSO ↔ OFM data architecture
-- **BUSINESS_PROCESS.md** - Business workflows with flowcharts
-- **ROOM_DISPLAY.md** - Tablet display system
-- **DATABASE.md** - Database setup and schema
-- **FEATURES.md** - Feature overview
-- **example_org_structure.md** - IAS organization structure
-
-## Development Guidelines
-
-### Reusables Philosophy
-- **ALWAYS check `DOCS/REUSABLES.md` before writing new code**
-- This app has 20+ reusable modules: components, APIs, auth, DB utilities, specialized tools
-- **Do NOT rebuild**: modals, tables, location pickers, API wrappers, validation, CRUD operations
-- **Use standardized patterns**: API response format, REST endpoints, request numbering
-- **Keep code DRY**: If it exists in reusables, use it. No exceptions.
-
-### General Guidelines
-- **Update CLAUDE.md** as you complete tasks (mark with `[✅]`)
-- **Keep files small** - Max ~500 lines, use utils/libraries
-- **Use Svelte 5 syntax** - Use `onclick` not `on:click`
-- **Reference DOCS/** - Don't duplicate technical details here
-
----
-
-# Business Rules (Configured)
-
-## User Roles
-- **Super Admin** - Full system access
-- **Global Admin** - Multi-entity access
-- **Regional Admin** - Location-specific
-- **Employee** - Request and view own bookings
-- **Driver** - View assignments, confirm trips
-
-## Transportation Policies
-- **Cancellation**: Enable/update car status as available
-- **After-hours**: Requires advance booking
-- **Voucher Providers**: Gojek, Grab (managed via admin)
-
-## Meeting Room Policies
-- **Max Duration**: 8 hours
-- **Recurring Meetings**: Require Super Admin approval
-- **Cancellation**: Requires re-approval from admin
-- **Room Capacity**: Validated against participant count
-
-## Integration
-- **Authentication**: ✅ Aksara SSO (OAuth 2.0 / OIDC)
-- **Employee Sync**: ✅ SCIM 2.0 from Aksara SSO
-- **Room Display**: Tablet/Raspberry Pi (QR code access)
-
-**See**: `DOCS/BUSINESS_PROCESS.md` for detailed workflows and decision points
