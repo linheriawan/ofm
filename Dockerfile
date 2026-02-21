@@ -3,6 +3,12 @@ FROM oven/bun:1 AS builder
 
 WORKDIR /app
 
+# Public env vars required at build time ($env/static/public)
+# These are safe to hardcode — they are exposed to the browser anyway
+ENV PUBLIC_SUPABASE_URL=https://kbmqzwstiupqxoiuwyrz.supabase.co
+ENV PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtibXF6d3N0aXVwcXhvaXV3eXJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE1NzYwNTAsImV4cCI6MjA3NzE1MjA1MH0.EOYqfNBYrXdZ1KPL5YG351VUFT9htEkzd5_7C_crRjs
+ENV PUBLIC_SUPABASE_BUCKET=ofm
+
 # Copy package files
 COPY package.json bun.lock ./
 

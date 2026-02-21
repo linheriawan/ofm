@@ -8,11 +8,9 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDB } from '$lib/server/db/mongodb';
-import { env } from '$env/dynamic/private';
+import { getSCIMConfig } from '$lib/server/settings';
 import crypto from 'crypto';
 import type { User } from '$lib/types';
-
-const WEBHOOK_SECRET = env.SCIM_WEBHOOK_SECRET || process.env.SCIM_WEBHOOK_SECRET || '';
 
 interface WebhookEvent {
 	event: 'user.created' | 'user.updated' | 'user.deleted' | 'group.created' | 'group.updated' | 'group.deleted';
@@ -27,13 +25,13 @@ interface WebhookEvent {
 /**
  * Verify webhook signature using HMAC SHA-256
  */
-function verifySignature(payload: string, signature: string | null): boolean {
-	if (!signature || !WEBHOOK_SECRET) {
+function verifySignature(payload: string, signature: string | null, webhookSecret: string): boolean {
+	if (!signature || !webhookSecret) {
 		console.warn('⚠️ Webhook signature verification disabled (missing secret)');
 		return true; // Allow in development, but log warning
 	}
 
-	const hmac = crypto.createHmac('sha256', WEBHOOK_SECRET);
+	const hmac = crypto.createHmac('sha256', webhookSecret);
 	hmac.update(payload);
 	const expectedSignature = `sha256=${hmac.digest('hex')}`;
 
@@ -161,11 +159,13 @@ async function handleGroupEvent(event: WebhookEvent): Promise<void> {
  */
 export const POST: RequestHandler = async ({ request }) => {
 	try {
+		const scimConfig = await getSCIMConfig();
+		const webhookSecret = scimConfig.webhookSecret || '';
 		const signature = request.headers.get('x-scim-signature');
 		const payload = await request.text();
 
 		// Verify signature
-		if (!verifySignature(payload, signature)) {
+		if (!verifySignature(payload, signature, webhookSecret)) {
 			console.error('❌ Invalid webhook signature');
 			return json({ error: 'Invalid signature' }, { status: 401 });
 		}

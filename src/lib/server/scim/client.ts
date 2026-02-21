@@ -5,7 +5,6 @@
  * for syncing organizational data from Aksara SSO to OFM.
  */
 
-import { env } from '$env/dynamic/private';
 import { request } from 'undici';
 import { getSCIMConfig } from '$lib/server/settings';
 
@@ -24,13 +23,13 @@ async function getConfig() {
 		return configCache;
 	}
 
-	// Try to get from database settings first
+	// Get from database settings (getSetting already falls back to env vars)
 	const dbConfig = await getSCIMConfig();
 
 	configCache = {
-		baseUrl: dbConfig.baseUrl || env.SSO_BASE_URL || process.env.SSO_BASE_URL || 'http://localhost:5173',
-		clientId: dbConfig.clientId || env.SCIM_CLIENT_ID || process.env.SCIM_CLIENT_ID || '',
-		clientSecret: dbConfig.clientSecret || env.SCIM_CLIENT_SECRET || process.env.SCIM_CLIENT_SECRET || ''
+		baseUrl: dbConfig.baseUrl || 'http://localhost:5173',
+		clientId: dbConfig.clientId || '',
+		clientSecret: dbConfig.clientSecret || ''
 	};
 
 	cacheTime = Date.now();
