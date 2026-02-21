@@ -6,6 +6,7 @@ out
 dist
 *.tgz
 .svelte-kit
+.claude
 build
 
 # code coverage

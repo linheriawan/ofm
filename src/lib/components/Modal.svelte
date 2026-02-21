@@ -65,6 +65,8 @@
 		overflow-y: auto;
 		box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
 		animation: slideUp 0.3s ease-out;
+		display: flex;
+		flex-direction: column;
 	}
 
 	@keyframes slideUp {
@@ -84,6 +86,11 @@
 		align-items: center;
 		padding: 1.5rem;
 		border-bottom: 1px solid #e2e8f0;
+		position: sticky;
+		top: 0;
+		background: white;
+		z-index: 10;
+		border-radius: 12px 12px 0 0;
 	}
 
 	.modal-header h3 {
@@ -115,6 +122,8 @@
 
 	.modal-body {
 		padding: 1.5rem;
+		flex: 1;
+		overflow-y: auto;
 	}
 
 	@media (max-width: 768px) {

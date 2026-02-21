@@ -345,6 +345,60 @@ db.webhookEvents.find({ status: 'failed' })
 
 ---
 
+## Quick Reference
+
+### Common Commands
+
+```bash
+# Manual sync (run from project root)
+bun run sync:scim
+
+# Test SCIM connection
+curl http://localhost:5173/scim/v2/ServiceProviderConfig
+
+# Get OAuth token manually
+curl -X POST http://localhost:5173/scim/v2/token \
+  -d "grant_type=client_credentials" \
+  -d "client_id=YOUR_CLIENT_ID" \
+  -d "client_secret=YOUR_CLIENT_SECRET"
+
+# Fetch users manually (with token from above)
+curl http://localhost:5173/scim/v2/Users \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+
+# Fetch groups manually
+curl http://localhost:5173/scim/v2/Groups \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+### Scheduled Sync (Production)
+
+#### Linux/macOS - Crontab
+
+Add to crontab (`crontab -e`):
+
+```bash
+# Sync every 6 hours
+0 */6 * * * cd /path/to/ofm && bun run sync:scim >> /var/log/ofm-scim.log 2>&1
+
+# Or sync daily at 2 AM
+0 2 * * * cd /path/to/ofm && bun run sync:scim >> /var/log/ofm-scim.log 2>&1
+```
+
+#### Windows - Task Scheduler
+
+1. Open Task Scheduler
+2. Create Basic Task
+3. Configure:
+   - **Program**: `bun`
+   - **Arguments**: `run sync:scim`
+   - **Start in**: `C:\path\to\ofm`
+   - **Trigger**: Daily at 2:00 AM (or every 6 hours)
+   - **Conditions**: Only if network is available
+4. Save and test
+
+---
+
 ## Troubleshooting
 
 ### Error: "SCIM_CLIENT_ID and SCIM_CLIENT_SECRET must be set"

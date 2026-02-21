@@ -325,6 +325,97 @@ List all meeting requests with filters.
 
 **Response:** `200 OK`
 
+### Meeting Check-In (Attendance)
+
+**POST** `/api/v1/meetings/{id}/checkin`
+
+Record meeting attendance. Supports both internal employees and external guests. No invitation required - anyone can check in during the meeting window (15 minutes before to meeting end).
+
+**Path Parameters:**
+- `id` (string) - Meeting ID (MongoDB ObjectId)
+
+**Body:**
+```json
+// Internal employee check-in
+{
+  "userId": "123456",  // NIK (Nomor Induk Karyawan)
+  "method": "qr" | "manual",
+  "isExternal": false
+}
+
+// External guest check-in
+{
+  "name": "John Client",
+  "email": "john@client.com",  // optional
+  "method": "qr" | "manual",
+  "isExternal": true
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "message": "Check-in successful",
+  "data": {
+    "meetingId": "meeting123",
+    "meetingTitle": "Team Planning",
+    "type": "internal" | "external",
+    "userId": "123456",
+    "name": "Employee Name",
+    "email": "employee@company.com",
+    "checkinTime": "2025-01-12T10:30:00Z",
+    "method": "qr"
+  }
+}
+```
+
+**Error Responses:**
+- `404` - Meeting not found
+- `400` - Check-in window not open yet or meeting has ended
+- `400` - Employee not found (internal) or name missing (external)
+- `409` - Already checked in
+
+### Get Meeting Attendance
+
+**GET** `/api/v1/meetings/{id}/checkin`
+
+Retrieve attendance list for a meeting with statistics.
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "meetingId": "meeting123",
+    "meetingTitle": "Team Planning",
+    "startTime": "2025-01-12T10:00:00Z",
+    "endTime": "2025-01-12T11:00:00Z",
+    "totalInvited": 10,
+    "totalCheckedIn": 7,
+    "attendanceRate": 70.0,
+    "attendees": [
+      {
+        "type": "internal",
+        "userId": "123456",
+        "name": "Employee Name",
+        "email": "employee@company.com",
+        "checkinTime": "2025-01-12T10:05:00Z",
+        "method": "qr"
+      },
+      {
+        "type": "external",
+        "userId": null,
+        "name": "Guest Name",
+        "email": "guest@client.com",
+        "checkinTime": "2025-01-12T10:10:00Z",
+        "method": "manual"
+      }
+    ]
+  }
+}
+```
+
 ---
 
 ## 📦 Facility Module (NEW)
@@ -476,10 +567,24 @@ GET /api/v1/transport/requests?status=pending&type=company_car&startDate=2025-10
 
 ## 🧪 Testing
 
-### Using cURL
+### Get Session Cookie
+
+To test API endpoints, you need authentication:
+
+1. **Via Browser:**
+   - Open DevTools (F12)
+   - Go to Application → Cookies
+   - Look for `ofm_session`
+   - Copy the value
+
+2. **Via Login:**
+   - Login at `http://localhost:5174`
+   - Use SSO credentials
+   - Cookie is automatically set
+
+### Test 1: Create Transport Request
 
 ```bash
-# Create transport request
 curl -X POST http://localhost:5174/api/v1/transport/requests \
   -H "Content-Type: application/json" \
   -H "Cookie: ofm_session=<your_session>" \
@@ -497,10 +602,49 @@ curl -X POST http://localhost:5174/api/v1/transport/requests \
     },
     "scheduledTime": "2025-10-25T09:00:00Z",
     "isRoundTrip": false,
-    "passengerCount": 1,
+    "passengerCount": 2,
     "purpose": "Client meeting"
   }'
 ```
+
+**Expected Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "_id": "507f1f77bcf86cd799439011",
+    "requestNumber": "TR-20251025-1234",
+    "status": "pending",
+    "type": "company_car",
+    ...
+  },
+  "meta": {
+    "timestamp": "2025-10-25T10:00:00.000Z"
+  }
+}
+```
+
+### Test 2: List Requests
+
+```bash
+curl http://localhost:5174/api/v1/transport/requests?page=1&limit=10 \
+  -H "Cookie: ofm_session=<your_session>"
+```
+
+### Verify in Database
+
+After creating requests, verify in MongoDB:
+
+```javascript
+// In MongoDB Compass or Atlas
+db.transportation_requests.find({}).limit(10)
+```
+
+**Should see:**
+- ✅ Correct `requestNumber` format (TR-YYYYMMDD-XXXX)
+- ✅ Status = "pending"
+- ✅ All required fields populated
+- ✅ Timestamps (`createdAt`, `updatedAt`)
 
 ### Using Postman
 

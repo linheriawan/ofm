@@ -1,344 +1,53 @@
 <script lang="ts">
 	import { page } from '$app/stores';
+	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 
-	let title = 'Dashboard - OFM';
+	$: user = $page.data.user;
+	$: isAuthenticated = !!user;
 
-	const user = $page.data.user;
-	let showCancelledMessage = false;
-	let errorMessage = '';
-
+	// Redirect authenticated users to the dashboard
 	onMount(() => {
-		// Check if user cancelled login or if there was an error
-		const urlParams = new URLSearchParams(window.location.search);
-
-		if (urlParams.get('cancelled') === 'true') {
-			showCancelledMessage = true;
-			// Clear the URL parameter after showing message
-			window.history.replaceState({}, '', '/');
-			// Auto-hide message after 5 seconds
-			setTimeout(() => {
-				showCancelledMessage = false;
-			}, 5000);
-		} else if (urlParams.get('error')) {
-			const error = urlParams.get('error');
-			const errorMessages: Record<string, string> = {
-				'invalid_request': 'Invalid authentication request. Please try again.',
-				'server_error': 'Server error during authentication. Please try again.',
-				'temporarily_unavailable': 'Authentication service is temporarily unavailable.'
-			};
-			errorMessage = errorMessages[error || ''] || `Authentication error: ${error}`;
-			// Clear the URL parameter
-			window.history.replaceState({}, '', '/');
-			// Auto-hide error after 8 seconds
-			setTimeout(() => {
-				errorMessage = '';
-			}, 8000);
+		if (isAuthenticated) {
+			goto('/dashboard');
 		}
 	});
-
-	// Mock data for dashboard
-	let stats = {
-		transportation: {
-			activeVehicles: 12,
-			totalVehicles: 15,
-			onDutyDrivers: 10,
-			pendingRequests: 5,
-			vouchersAvailable: 45
-		},
-		meeting: {
-			availableRooms: 8,
-			totalRooms: 12,
-			todayBookings: 15,
-			ongoingMeetings: 3,
-			activeLicenses: 10
-		}
-	};
-
-	let recentActivities = [
-		{ type: 'transport', message: 'Car booking requested by John Doe', time: '5 min ago' },
-		{ type: 'meeting', message: 'Meeting room A-301 booked for 2:00 PM', time: '12 min ago' },
-		{ type: 'transport', message: 'Voucher allocated to Jane Smith', time: '23 min ago' },
-		{ type: 'meeting', message: 'Hybrid meeting started in B-205', time: '35 min ago' },
-		{ type: 'transport', message: 'Vehicle maintenance completed - Car #7', time: '1 hour ago' }
-	];
-
-	let upcomingBookings = [
-		{ type: 'Meeting', title: 'Board Meeting', room: 'A-301', time: '14:00 - 16:00' },
-		{ type: 'Transport', title: 'Airport Transfer', vehicle: 'SUV-001', time: '15:30' },
-		{ type: 'Meeting', title: 'Team Sync', room: 'B-102', time: '16:00 - 17:00' }
-	];
 </script>
 
 <svelte:head>
-	<title>{title}</title>
+	<title>Login - OFM</title>
 </svelte:head>
 
-{#if !user}
-<div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-	<div class="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
-		<div class="text-center mb-8">
-			<h1 class="text-3xl font-bold text-gray-800 mb-2">Office Facility Management</h1>
-			<p class="text-gray-600">Transportation & Meeting Room Booking System</p>
+{#if !isAuthenticated}
+<div class="login-screen">
+	<div class="login-container">
+		<div class="logo-section">
+			<h1>OFM</h1>
+			<p class="subtitle">Office Facility Management</p>
 		</div>
 
-		{#if showCancelledMessage}
-		<div class="alert-warning mb-4">
-			<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-				<path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-			</svg>
-			<span>Login cancelled. Please sign in to continue.</span>
-		</div>
-		{/if}
+		<div class="login-card">
+			<h2>Welcome</h2>
+			<p class="welcome-text">Please select how you want to proceed</p>
 
-		{#if errorMessage}
-		<div class="alert-error mb-4">
-			<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-				<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-			</svg>
-			<span>{errorMessage}</span>
-		</div>
-		{/if}
-
-		<div class="space-y-4">
-			<a
-				href="/auth/login"
-				class="block w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition text-center font-semibold"
-			>
-				Sign in with SSO
-			</a>
-		</div>
-
-		<div class="mt-8 pt-6 border-t border-gray-200">
-			<h2 class="text-sm font-semibold text-gray-700 mb-3">Features:</h2>
-			<ul class="space-y-2 text-sm text-gray-600">
-				<li class="flex items-center">
-					<svg class="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-						<path
-							fill-rule="evenodd"
-							d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-							clip-rule="evenodd"
-						/>
-					</svg>
-					Transportation booking & voucher allocation
-				</li>
-				<li class="flex items-center">
-					<svg class="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-						<path
-							fill-rule="evenodd"
-							d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-							clip-rule="evenodd"
-						/>
-					</svg>
-					Meeting room scheduling
-				</li>
-				<li class="flex items-center">
-					<svg class="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-						<path
-							fill-rule="evenodd"
-							d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-							clip-rule="evenodd"
-						/>
-					</svg>
-					Online meeting integration
-				</li>
-				<li class="flex items-center">
-					<svg class="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-						<path
-							fill-rule="evenodd"
-							d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-							clip-rule="evenodd"
-						/>
-					</svg>
-					Real-time tracking & analytics
-				</li>
-			</ul>
-		</div>
-	</div>
-</div>
-{:else}
-<div class="dashboard">
-	<div class="header">
-		<h1>Dashboard</h1>
-		<p class="subtitle">Welcome back, {user.name || user.email}!</p>
-	</div>
-
-	<!-- Transportation Overview Section -->
-	<div class="section-header">
-		<h2>🚗 Transportation</h2>
-		<a href="/transportation/request" class="section-link">Request Transport →</a>
-	</div>
-	<div class="stats-grid">
-		<div class="stat-card transport">
-			<div class="stat-icon">🚗</div>
-			<div class="stat-content">
-				<h3>Active Vehicles</h3>
-				<div class="stat-value">{stats.transportation.activeVehicles}/{stats.transportation.totalVehicles}</div>
-				<p class="stat-label">Currently available</p>
-			</div>
-		</div>
-
-		<div class="stat-card transport">
-			<div class="stat-icon">👨‍✈️</div>
-			<div class="stat-content">
-				<h3>On-Duty Drivers</h3>
-				<div class="stat-value">{stats.transportation.onDutyDrivers}</div>
-				<p class="stat-label">Ready to serve</p>
-			</div>
-		</div>
-
-		<div class="stat-card transport">
-			<div class="stat-icon">🎫</div>
-			<div class="stat-content">
-				<h3>Pending Requests</h3>
-				<div class="stat-value">{stats.transportation.pendingRequests}</div>
-				<p class="stat-label">Awaiting approval</p>
-			</div>
-		</div>
-
-		<div class="stat-card transport">
-			<div class="stat-icon">🎟️</div>
-			<div class="stat-content">
-				<h3>Vouchers Available</h3>
-				<div class="stat-value">{stats.transportation.vouchersAvailable}</div>
-				<p class="stat-label">Gojek, Grab</p>
-			</div>
-		</div>
-	</div>
-
-	<!-- Meeting Rooms Overview Section -->
-	<div class="section-header" style="margin-top: 3rem;">
-		<h2>🏢 Meeting Rooms</h2>
-		<a href="/meeting/book" class="section-link">Book Room →</a>
-	</div>
-	<div class="stats-grid">
-		<div class="stat-card meeting">
-			<div class="stat-icon">🏢</div>
-			<div class="stat-content">
-				<h3>Available Rooms</h3>
-				<div class="stat-value">{stats.meeting.availableRooms}/{stats.meeting.totalRooms}</div>
-				<p class="stat-label">Ready to book</p>
-			</div>
-		</div>
-
-		<div class="stat-card meeting">
-			<div class="stat-icon">📅</div>
-			<div class="stat-content">
-				<h3>Today's Bookings</h3>
-				<div class="stat-value">{stats.meeting.todayBookings}</div>
-				<p class="stat-label">{stats.meeting.ongoingMeetings} ongoing</p>
-			</div>
-		</div>
-
-		<div class="stat-card meeting">
-			<div class="stat-icon">🎥</div>
-			<div class="stat-content">
-				<h3>Active Licenses</h3>
-				<div class="stat-value">{stats.meeting.activeLicenses}</div>
-				<p class="stat-label">Zoom, Meet, Teams</p>
-			</div>
-		</div>
-
-		<div class="stat-card meeting">
-			<div class="stat-icon">✅</div>
-			<div class="stat-content">
-				<h3>Ongoing Meetings</h3>
-				<div class="stat-value">{stats.meeting.ongoingMeetings}</div>
-				<p class="stat-label">In progress now</p>
-			</div>
-		</div>
-	</div>
-
-	<!-- Reports & Analytics Section -->
-	<div class="section-header" style="margin-top: 3rem;">
-		<h2>📊 Reports & Analytics</h2>
-	</div>
-	<div class="stats-grid">
-		<div class="stat-card report unavailable">
-			<div class="stat-icon">📈</div>
-			<div class="stat-content">
-				<h3>Transport Reports</h3>
-				<p class="report-description">Utilization and cost analytics</p>
-			</div>
-			<div class="coming-soon-badge">Coming Soon</div>
-		</div>
-
-		<div class="stat-card report unavailable">
-			<div class="stat-icon">📊</div>
-			<div class="stat-content">
-				<h3>Meeting Reports</h3>
-				<p class="report-description">Room occupancy and usage stats</p>
-			</div>
-			<div class="coming-soon-badge">Coming Soon</div>
-		</div>
-
-		<div class="stat-card report unavailable">
-			<div class="stat-icon">💰</div>
-			<div class="stat-content">
-				<h3>Financial Reports</h3>
-				<p class="report-description">Cost tracking and budget analysis</p>
-			</div>
-			<div class="coming-soon-badge">Coming Soon</div>
-		</div>
-	</div>
-
-	<!-- Main Content Grid -->
-	<div class="content-grid">
-		<!-- Quick Actions -->
-		<div class="card quick-actions">
-			<h2>Quick Actions</h2>
-			<div class="actions-grid">
-				<a href="/transportation/request" class="action-btn transport">
-					<span class="action-icon">🚗</span>
-					<span>Request Transport</span>
-				</a>
-				<a href="/meeting/calendar" class="action-btn transport">
-					<span class="action-icon">📅</span>
-					<span>Meeting Calendar</span>
-				</a>
-				<a href="/meeting/book" class="action-btn meeting">
-					<span class="action-icon">🎫</span>
-					<span>Book Meeting Room</span>
-				</a>
-				<a href="/transportation/tracking" class="action-btn admin">
-					<span class="action-icon">📊</span>
-					<span>Track Vehicles</span>
-				</a>
-			</div>
-		</div>
-
-		<!-- Recent Activities -->
-		<div class="card activities">
-			<h2>Recent Activities</h2>
-			<div class="activity-list">
-				{#each recentActivities as activity}
-					<div class="activity-item {activity.type}">
-						<div class="activity-icon">
-							{activity.type === 'transport' ? '🚗' : '🏢'}
+			<div class="login-options">
+				<form method="GET" action="/auth/login">
+					<button type="submit" class="login-btn primary">
+						<div class="btn-icon">👤</div>
+						<div class="btn-content">
+							<div class="btn-title">Staff Login</div>
+							<div class="btn-desc">Access the management system</div>
 						</div>
-						<div class="activity-content">
-							<p class="activity-message">{activity.message}</p>
-							<span class="activity-time">{activity.time}</span>
-						</div>
+					</button>
+				</form>
+
+				<a href="/display/assign" class="login-btn secondary">
+					<div class="btn-icon">📱</div>
+					<div class="btn-content">
+						<div class="btn-title">Setup Display Device</div>
+						<div class="btn-desc">Configure room tablet/display</div>
 					</div>
-				{/each}
-			</div>
-		</div>
-
-		<!-- Upcoming Bookings -->
-		<div class="card bookings">
-			<h2>Upcoming Bookings</h2>
-			<div class="booking-list">
-				{#each upcomingBookings as booking}
-					<div class="booking-item">
-						<div class="booking-type {booking.type.toLowerCase()}">{booking.type}</div>
-						<div class="booking-details">
-							<h4>{booking.title}</h4>
-							<p>{booking.room || booking.vehicle}</p>
-							<span class="booking-time">⏰ {booking.time}</span>
-						</div>
-					</div>
-				{/each}
+				</a>
 			</div>
 		</div>
 	</div>
@@ -346,515 +55,156 @@
 {/if}
 
 <style>
-	.min-h-screen {
+	.login-screen {
 		min-height: 100vh;
-	}
-
-	.flex {
 		display: flex;
-	}
-
-	.items-center {
 		align-items: center;
-	}
-
-	.justify-center {
 		justify-content: center;
+		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+		padding: 1rem;
 	}
 
-	.bg-gradient-to-br {
-		background: linear-gradient(to bottom right, #eff6ff, #e0e7ff);
-	}
-
-	.bg-white {
-		background: white;
-	}
-
-	.p-8 {
-		padding: 2rem;
-	}
-
-	.rounded-lg {
-		border-radius: 0.5rem;
-	}
-
-	.shadow-lg {
-		box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-	}
-
-	.max-w-md {
-		max-width: 28rem;
-	}
-
-	.w-full {
+	.login-container {
+		max-width: 500px;
 		width: 100%;
 	}
 
-	.text-center {
+	.logo-section {
 		text-align: center;
-	}
-
-	.text-3xl {
-		font-size: 1.875rem;
-		line-height: 2.25rem;
-	}
-
-	.text-sm {
-		font-size: 0.875rem;
-		line-height: 1.25rem;
-	}
-
-	.font-bold {
-		font-weight: 700;
-	}
-
-	.font-semibold {
-		font-weight: 600;
-	}
-
-	.text-gray-800 {
-		color: #1f2937;
-	}
-
-	.text-gray-700 {
-		color: #374151;
-	}
-
-	.text-gray-600 {
-		color: #4b5563;
-	}
-
-	.text-green-500 {
-		color: #10b981;
-	}
-
-	.mb-2 {
-		margin-bottom: 0.5rem;
-	}
-
-	.mb-3 {
-		margin-bottom: 0.75rem;
-	}
-
-	.mb-8 {
 		margin-bottom: 2rem;
-	}
-
-	.mt-8 {
-		margin-top: 2rem;
-	}
-
-	.pt-6 {
-		padding-top: 1.5rem;
-	}
-
-	.space-y-4 > * + * {
-		margin-top: 1rem;
-	}
-
-	.space-y-2 > * + * {
-		margin-top: 0.5rem;
-	}
-
-	.border-t {
-		border-top-width: 1px;
-	}
-
-	.border-gray-200 {
-		border-color: #e5e7eb;
-	}
-
-	.block {
-		display: block;
-	}
-
-	.bg-indigo-600 {
-		background-color: #4f46e5;
-	}
-
-	.bg-indigo-600:hover {
-		background-color: #4338ca;
-	}
-
-	.text-white {
 		color: white;
 	}
 
-	.px-6 {
-		padding-left: 1.5rem;
-		padding-right: 1.5rem;
-	}
-
-	.py-3 {
-		padding-top: 0.75rem;
-		padding-bottom: 0.75rem;
-	}
-
-	.transition {
-		transition: all 0.2s;
-	}
-
-	a {
-		text-decoration: none;
-	}
-
-	.w-4 {
-		width: 1rem;
-	}
-
-	.h-4 {
-		height: 1rem;
-	}
-
-	.w-5 {
-		width: 1.25rem;
-	}
-
-	.h-5 {
-		height: 1.25rem;
-	}
-
-	.mr-2 {
-		margin-right: 0.5rem;
-	}
-
-	.mb-4 {
-		margin-bottom: 1rem;
-	}
-
-	button {
-		cursor: pointer;
-		border: none;
-		background: none;
-	}
-
-	.alert-warning {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		padding: 0.75rem 1rem;
-		background-color: #fef3c7;
-		border: 1px solid #f59e0b;
-		border-radius: 0.5rem;
-		color: #92400e;
-		font-size: 0.875rem;
-		animation: slideDown 0.3s ease-out;
-	}
-
-	.alert-error {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		padding: 0.75rem 1rem;
-		background-color: #fee2e2;
-		border: 1px solid #ef4444;
-		border-radius: 0.5rem;
-		color: #991b1b;
-		font-size: 0.875rem;
-		animation: slideDown 0.3s ease-out;
-	}
-
-	@keyframes slideDown {
-		from {
-			opacity: 0;
-			transform: translateY(-10px);
-		}
-		to {
-			opacity: 1;
-			transform: translateY(0);
-		}
-	}
-
-	.dashboard {
-		animation: fadeIn 0.3s ease-in;
-	}
-
-	@keyframes fadeIn {
-		from { opacity: 0; transform: translateY(10px); }
-		to { opacity: 1; transform: translateY(0); }
-	}
-
-	.header {
-		margin-bottom: 2rem;
-	}
-
-	.header h1 {
+	.logo-section h1 {
+		font-size: 4rem;
 		margin: 0;
-		font-size: 2rem;
-		color: #333;
+		font-weight: 700;
+		text-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 	}
 
 	.subtitle {
-		color: #666;
+		font-size: 1.2rem;
 		margin: 0.5rem 0 0 0;
+		opacity: 0.95;
 	}
 
-	.section-header {
+	.login-card {
+		background: white;
+		border-radius: 20px;
+		padding: 3rem 2.5rem;
+		box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+		text-align: center;
+	}
+
+	.login-card h2 {
+		margin: 0 0 0.5rem 0;
+		font-size: 2rem;
+		color: #333;
+	}
+
+	.welcome-text {
+		color: #666;
+		margin: 0 0 2.5rem 0;
+		font-size: 1rem;
+	}
+
+	.login-options {
 		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		margin-bottom: 1.5rem;
-		padding-bottom: 0.75rem;
-		border-bottom: 2px solid #e2e8f0;
+		flex-direction: column;
+		gap: 1rem;
 	}
 
-	.section-header h2 {
+	.login-options form {
 		margin: 0;
-		font-size: 1.5rem;
-		color: #333;
+		width: 100%;
+		display: block;
 	}
 
-	.section-link {
-		color: #667eea;
-		text-decoration: none;
-		font-weight: 500;
-		transition: color 0.2s;
-	}
-
-	.section-link:hover {
-		color: #764ba2;
-	}
-
-	.stats-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-		gap: 1.5rem;
-		margin-bottom: 2rem;
-	}
-
-	.stat-card {
-		background: white;
-		border-radius: 12px;
-		padding: 1.5rem;
+	.login-btn {
 		display: flex;
-		gap: 1rem;
-		box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-		transition: transform 0.2s, box-shadow 0.2s;
-		border-left: 4px solid;
-	}
-
-	.stat-card:hover {
-		transform: translateY(-2px);
-		box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-	}
-
-	.stat-card.transport {
-		border-color: #667eea;
-	}
-
-	.stat-card.meeting {
-		border-color: #48bb78;
-	}
-
-	.stat-card.report {
-		border-color: #f6ad55;
-		position: relative;
-	}
-
-	.stat-card.unavailable {
-		opacity: 0.6;
-		cursor: not-allowed;
-		background: #f9fafb;
-	}
-
-	.coming-soon-badge {
-		position: absolute;
-		top: 1rem;
-		right: 1rem;
-		background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-		color: white;
-		padding: 0.25rem 0.75rem;
-		border-radius: 12px;
-		font-size: 0.75rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.5px;
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-	}
-
-	.report-description {
-		margin: 0.5rem 0 0 0;
-		font-size: 0.85rem;
-		color: #888;
-		line-height: 1.4;
-	}
-
-	.stat-icon {
-		font-size: 2.5rem;
-	}
-
-	.stat-content h3 {
-		margin: 0 0 0.5rem 0;
-		font-size: 0.9rem;
-		color: #666;
-		font-weight: 500;
-	}
-
-	.stat-value {
-		font-size: 2rem;
-		font-weight: 700;
-		color: #333;
-	}
-
-	.stat-label {
-		margin: 0.25rem 0 0 0;
-		font-size: 0.85rem;
-		color: #888;
-	}
-
-	.content-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-		gap: 1.5rem;
-	}
-
-	.card {
-		background: white;
-		border-radius: 12px;
-		padding: 1.5rem;
-		box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-	}
-
-	.card h2 {
-		margin: 0 0 1.5rem 0;
-		font-size: 1.25rem;
-		color: #333;
-	}
-
-	.actions-grid {
-		display: grid;
-		grid-template-columns: repeat(2, 1fr);
-		gap: 1rem;
-	}
-
-	.action-btn {
-		display: flex;
-		flex-direction: column;
 		align-items: center;
-		gap: 0.5rem;
+		gap: 1.5rem;
 		padding: 1.5rem;
-		border-radius: 8px;
+		border-radius: 12px;
 		text-decoration: none;
-		color: white;
-		font-weight: 500;
-		transition: all 0.2s;
+		transition: all 0.3s;
+		text-align: left;
+		border: 2px solid transparent;
+		width: 100%;
+		cursor: pointer;
+		font-family: inherit;
+		box-sizing: border-box;
 	}
 
-	.action-btn:hover {
-		transform: translateY(-2px);
-		box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+	button.login-btn {
+		background: none;
+		font-size: 1rem;
 	}
 
-	.action-btn.transport {
+	.login-btn.primary {
 		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-	}
-
-	.action-btn.meeting {
-		background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
-	}
-
-	.action-btn.admin {
-		background: linear-gradient(135deg, #f6ad55 0%, #ed8936 100%);
-	}
-
-	.action-icon {
-		font-size: 2rem;
-	}
-
-	.activity-list {
-		display: flex;
-		flex-direction: column;
-		gap: 1rem;
-	}
-
-	.activity-item {
-		display: flex;
-		gap: 1rem;
-		padding: 1rem;
-		border-radius: 8px;
-		background: #f9f9f9;
-	}
-
-	.activity-icon {
-		font-size: 1.5rem;
-	}
-
-	.activity-content {
-		flex: 1;
-	}
-
-	.activity-message {
-		margin: 0 0 0.25rem 0;
-		color: #333;
-	}
-
-	.activity-time {
-		font-size: 0.85rem;
-		color: #888;
-	}
-
-	.booking-list {
-		display: flex;
-		flex-direction: column;
-		gap: 1rem;
-	}
-
-	.booking-item {
-		display: flex;
-		gap: 1rem;
-		padding: 1rem;
-		border-radius: 8px;
-		border: 1px solid #e2e8f0;
-	}
-
-	.booking-type {
-		padding: 0.25rem 0.75rem;
-		border-radius: 6px;
-		font-size: 0.85rem;
-		font-weight: 500;
-		height: fit-content;
 		color: white;
 	}
 
-	.booking-type.meeting {
-		background: #48bb78;
+	.login-btn.primary:hover {
+		transform: translateY(-3px);
+		box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
 	}
 
-	.booking-type.transport {
-		background: #667eea;
+	.login-btn.secondary {
+		background: #f9fafb;
+		color: #333;
+		border-color: #e5e7eb;
 	}
 
-	.booking-details {
+	.login-btn.secondary:hover {
+		background: #f0f4ff;
+		border-color: #667eea;
+		transform: translateY(-3px);
+		box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+	}
+
+	.btn-icon {
+		font-size: 2.5rem;
+		flex-shrink: 0;
+	}
+
+	.btn-content {
 		flex: 1;
 	}
 
-	.booking-details h4 {
-		margin: 0 0 0.25rem 0;
-		color: #333;
+	.btn-title {
+		font-size: 1.2rem;
+		font-weight: 700;
+		margin-bottom: 0.25rem;
 	}
 
-	.booking-details p {
-		margin: 0 0 0.5rem 0;
-		color: #666;
+	.btn-desc {
 		font-size: 0.9rem;
+		opacity: 0.8;
 	}
 
-	.booking-time {
-		font-size: 0.85rem;
-		color: #888;
+	.login-btn.secondary .btn-desc {
+		color: #666;
 	}
 
 	@media (max-width: 768px) {
-		.stats-grid {
-			grid-template-columns: 1fr;
+		.logo-section h1 {
+			font-size: 3rem;
 		}
 
-		.content-grid {
-			grid-template-columns: 1fr;
+		.login-card {
+			padding: 2rem 1.5rem;
 		}
 
-		.actions-grid {
-			grid-template-columns: 1fr;
+		.login-btn {
+			flex-direction: column;
+			text-align: center;
+			gap: 1rem;
+		}
+
+		.btn-icon {
+			font-size: 3rem;
 		}
 	}
 </style>

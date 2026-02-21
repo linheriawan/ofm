@@ -105,10 +105,10 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const isAuthRoute = pathname.startsWith('/auth');
 	const isDisplayRoute = pathname.startsWith('/display'); // Public route for room displays
 	const isApiRoute = pathname.startsWith('/api');
-	const isHomePage = pathname === '/';
+	const isLoginPage = pathname === '/';
 
 	// Define public routes
-	const isPublicRoute = isAuthRoute || isDisplayRoute || isApiRoute || isHomePage;
+	const isPublicRoute = isAuthRoute || isDisplayRoute || isApiRoute || isLoginPage;
 
 	// Redirect to login if accessing protected route without authentication
 	if (!isPublicRoute && !event.locals.user) {

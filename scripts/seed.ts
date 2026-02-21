@@ -20,7 +20,7 @@ async function seedDatabase() {
 		await db.collection('vouchers').deleteMany({});
 		
 		await db.collection('transportation_requests').deleteMany({});
-		await db.collection('meeting_bookings').deleteMany({});
+		await db.collection('meeting_requests').deleteMany({});
 
 		// Seed Locations
 		console.log('📍 Seeding locations...');
@@ -372,49 +372,55 @@ async function seedDatabase() {
 		];
 		await db.collection('transportation_requests').insertMany(transportRequests);
 
-		const meetingBookings = [
+		const meetingRequests = [
 			{
 				_id: new ObjectId(),
-				bookingId: 'MTG-001',
+				requestNumber: 'MR-001',
+				userId: 'USR-001',
+				userName: 'John Doe',
+				userEmail: 'john.doe@ias.co.id',
 				companyId: 'IAS',
-				roomId: 'ROOM-A301',
-				organizerId: 'USR-001',
-				meetingTitle: 'Board Meeting',
-				meetingType: 'offline',
+				title: 'Board Meeting',
+				description: 'Monthly board meeting',
+				type: 'offline',
 				startTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 14, 0),
 				endTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 16, 0),
 				duration: 120,
+				participantCount: 3,
 				participants: ['USR-001', 'USR-002', 'USR-003'],
-				status: 'scheduled',
-				isRecurring: false,
-				cateringNeeded: true,
-				approvalRequired: false,
+				roomId: 'ROOM-A301',
+				cateringRequired: true,
+				status: 'approved',
 				createdAt: new Date(),
-				updatedAt: new Date()
+				updatedAt: new Date(),
+				createdBy: 'USR-001'
 			},
 			{
 				_id: new ObjectId(),
-				bookingId: 'MTG-002',
+				requestNumber: 'MR-002',
+				userId: 'USR-002',
+				userName: 'Jane Smith',
+				userEmail: 'jane.smith@ias.co.id',
 				companyId: 'IAS',
-				roomId: 'ROOM-B102',
-				organizerId: 'USR-002',
-				meetingTitle: 'Team Sync',
-				meetingType: 'hybrid',
+				title: 'Team Sync',
+				description: 'Weekly team synchronization',
+				type: 'hybrid',
 				startTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 16, 0),
 				endTime: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 17, 0),
 				duration: 60,
+				participantCount: 2,
 				participants: ['USR-002', 'USR-003'],
-				meetingLink: 'https://zoom.us/j/123456789',
+				roomId: 'ROOM-B102',
 				platform: 'zoom',
-				status: 'scheduled',
-				isRecurring: false,
-				cateringNeeded: false,
-				approvalRequired: false,
+				meetingLink: 'https://zoom.us/j/123456789',
+				cateringRequired: false,
+				status: 'approved',
 				createdAt: new Date(),
-				updatedAt: new Date()
+				updatedAt: new Date(),
+				createdBy: 'USR-002'
 			}
 		];
-		await db.collection('meeting_bookings').insertMany(meetingBookings);
+		await db.collection('meeting_requests').insertMany(meetingRequests);
 
 		console.log('✅ Database seeding completed successfully!');
 		console.log(`
@@ -429,7 +435,7 @@ async function seedDatabase() {
 - Vouchers: ${vouchers.length}
 - Transport Requests: ${transportRequests.length}
 - Transport Bookings (Old): ${transportBookings.length}
-- Meeting Bookings: ${meetingBookings.length}
+- Meeting Requests: ${meetingRequests.length}
 		`);
 
 	} catch (error) {
