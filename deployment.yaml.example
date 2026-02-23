@@ -6,10 +6,11 @@ metadata:
   namespace: development
 type: Opaque
 stringData:
-  MONGODB_URI: "mongodb+srv://root:pass123word@devday.wmveufv.mongodb.net/?retryWrites=true&w=majority&appName=DevDay"
+  MONGODB_URI: "mongodb+srv://<user>:<password>@devday.wmveufv.mongodb.net/?retryWrites=true&w=majority&appName=DevDay"
   MONGODB_DB: "ofm_dev"
   SESSION_SECRET: "dev-session-secret-key-change-in-production"
   SSO_CLIENT_SECRET: "ofm-secret-2025"
+  SETTINGS_ENCRYPTION_KEY: "dev-enc-key-change-in-production"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -54,26 +55,28 @@ spec:
           value: "0.0.0.0"
         - name: NODE_ENV
           value: "production"
-        - name: APP_URL
-          value: "https://ofm.ias.id"
         - name: ORIGIN
-          value: "https://ofm.ias.id"
-        - name: SSO_ISSUER
-          value: "https://sso.ias.id"
+          value: "https://<the-domain.name>"
+        - name: SSO_BASE_URL
+          value: "https://<sso-domain.name>"
         - name: SSO_AUTHORIZATION_URL
-          value: "https://sso.ias.id/oauth/authorize"
+          value: "https://<sso-domain.name>/oauth/authorize"
         - name: SSO_TOKEN_URL
-          value: "https://sso.ias.id/oauth/token"
+          value: "https://<sso-domain.name>/oauth/token"
         - name: SSO_USERINFO_URL
-          value: "https://sso.ias.id/oauth/userinfo"
-        - name: SSO_JWKS_URL
-          value: "https://sso.ias.id/.well-known/jwks.json"
+          value: "https://<sso-domain.name>/oauth/userinfo"
         - name: SSO_CLIENT_ID
           value: "ofm-client"
         - name: SSO_REDIRECT_URI
-          value: "https://ofm.ias.id/auth/callback"
+          value: https://<sso-domain.name>/auth/callback
         - name: SSO_SCOPES
-          value: "openid email profile roles"
+          value: openid email profile roles
+        - name: PUBLIC_SUPABASE_URL
+          value: https://<your-project>.supabase.co
+        - name: PUBLIC_SUPABASE_ANON_KEY
+          value: <your-supabase-anon-key>
+        - name: PUBLIC_SUPABASE_BUCKET
+          value: ofm
         - name: MONGODB_URI
           valueFrom:
             secretKeyRef:
@@ -94,6 +97,11 @@ spec:
             secretKeyRef:
               name: ofm-secret
               key: SSO_CLIENT_SECRET
+        - name: SETTINGS_ENCRYPTION_KEY
+          valueFrom:
+            secretKeyRef:
+              key: SETTINGS_ENCRYPTION_KEY
+              name: ofm-secret        
         livenessProbe:
           httpGet:
             path: /
