@@ -102,16 +102,7 @@ Status values: `done`, `partial`, `planned`, `issue`
 
 ## Business Rules
 
-### Transportation
-- Cancellation re-enables car as available
-- After-hours requires advance booking
-- Voucher providers: Gojek, Grab (managed via admin)
-
-### Meeting Rooms
-- Max duration: 8 hours
-- Recurring meetings: require Super Admin approval
-- Cancellation: requires re-approval from admin
-- Room capacity validated against participant count
+See [M4](modules/M4-meeting.md) for meeting rules, [M5](modules/M5-transportation.md) for transportation rules.
 
 ## Development Guidelines
 

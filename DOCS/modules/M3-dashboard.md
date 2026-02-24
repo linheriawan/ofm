@@ -87,11 +87,4 @@ flowchart TD
 
 ---
 
-## Related Modules
-
-| Module | Relationship |
-|--------|-------------|
-| M2 (Admin) | Dashboard links to admin master data and approval workflows |
-| M4 (Meeting) | Meeting room stats and quick-action links |
-| M5 (Transportation) | Transportation stats and quick-action links |
-| M6 (Room Display) | Room status data feeds into dashboard overview |
+**Related:** [M2 Admin](M2-admin.md), [M4 Meeting](M4-meeting.md), [M5 Transport](M5-transportation.md)
