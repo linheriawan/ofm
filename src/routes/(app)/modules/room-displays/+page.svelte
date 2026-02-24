@@ -36,6 +36,10 @@
 		return `${baseUrl}/display/room/${roomId}`;
 	}
 
+	function getPreviewUrl(roomId: string) {
+		return `${baseUrl}/display/room/${roomId}?preview`;
+	}
+
 	function copyToClipboard(text: string) {
 		navigator.clipboard.writeText(text);
 		alert('URL copied to clipboard!');
@@ -71,6 +75,7 @@
 		<div class="rooms-grid">
 			{#each rooms as room}
 				{@const displayUrl = getDisplayUrl(room.roomId || '')}
+				{@const previewUrl = getPreviewUrl(room.roomId || '')}
 
 				<div class="room-card">
 					<div class="room-header">
@@ -105,7 +110,7 @@
 					</div>
 
 					<div class="actions">
-						<a href={displayUrl} target="_blank" class="btn-preview">
+						<a href={previewUrl} target="_blank" class="btn-preview">
 							Preview Display
 						</a>
 					</div>

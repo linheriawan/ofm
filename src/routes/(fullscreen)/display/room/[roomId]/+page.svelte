@@ -8,6 +8,7 @@
 
 	// Get room ID from URL
 	const roomId = $page.params.roomId;
+	const isPreviewMode = $page.url.searchParams.has('preview');
 	let deviceId = $state('');
 	let bookingUrl = $state('');
 	let attendanceUrl = $state('');
@@ -46,9 +47,15 @@
 			return false;
 		}
 
+		// Skip device check in preview mode (admin preview from room-displays page)
+		if (isPreviewMode) {
+			console.log('👁️ Preview mode - skipping device check');
+			return true;
+		}
+
 		// Get device ID from localStorage
 		deviceId = localStorage.getItem('deviceId') || '';
-		
+
 		if (!deviceId) {
 			// No device ID - show error instead of redirecting for now
 			error = 'Device not registered. Please scan QR code to register this device.';
@@ -394,6 +401,14 @@
 				class="background-video"
 			></video>
 			<div class="video-overlay"></div>
+		</div>
+	{/if}
+
+	<!-- Preview Mode Banner -->
+	{#if isPreviewMode}
+		<div class="preview-banner">
+			<span>PREVIEW MODE</span>
+			<button class="preview-close" onclick={() => window.close()}>Close</button>
 		</div>
 	{/if}
 
@@ -1430,6 +1445,43 @@
 	.btn-cancel:disabled, .btn-submit:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
+	}
+
+	/* Preview Mode Banner */
+	.preview-banner {
+		position: fixed;
+		top: 0;
+		left: 50%;
+		transform: translateX(-50%);
+		z-index: 2000;
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		padding: 0.4rem 1.2rem;
+		background: rgba(245, 158, 11, 0.9);
+		color: white;
+		font-size: 0.8rem;
+		font-weight: 700;
+		letter-spacing: 2px;
+		border-radius: 0 0 8px 8px;
+		backdrop-filter: blur(10px);
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+	}
+
+	.preview-close {
+		padding: 0.2rem 0.6rem;
+		background: rgba(255, 255, 255, 0.25);
+		color: white;
+		border: 1px solid rgba(255, 255, 255, 0.5);
+		border-radius: 4px;
+		font-size: 0.7rem;
+		font-weight: 600;
+		cursor: pointer;
+		letter-spacing: 0.5px;
+	}
+
+	.preview-close:hover {
+		background: rgba(255, 255, 255, 0.4);
 	}
 
 	/* Cache Status Indicator */
