@@ -12,7 +12,7 @@
 	let bookingUrl = $state('');
 	let attendanceUrl = $state('');
 
-	let roomData = {
+	let roomData = $state({
 		roomId: '',
 		roomName: '',
 		roomNumber: '',
@@ -25,13 +25,12 @@
 		isAvailable: true,
 		availableUntil: null as Date | null,
 		videoBackgroundIds: [] as string[]
-	};
+	});
 
 	let currentTime = $state(new Date());
 	let isCheckinMode = $state(false);
 	let loading = $state(true);
 	let error = $state('');
-	let isFullscreen = $state(false);
 	let cacheStatus = $state<string>(''); // Cache status message
 	let videosPreCached = $state(false);
 
@@ -84,7 +83,7 @@
 			return true;
 		}
 	}
-
+	
 	// Update current time every second and refresh data every 30 seconds
 	onMount(async () => {
 		// Set URLs for QR codes
@@ -247,7 +246,11 @@
 			cacheStatus = 'Failed to cache videos';
 		}
 	}
-
+	function toggleFullscreen(){
+		if(!!document.fullscreenElement){
+			document.exitFullscreen();
+		}else{document.documentElement.requestFullscreen();}
+	}
 	function handleVideoEnd() {
 		// Move to next video when current one ends
 		if (backgroundVideos.length > 0) {
@@ -417,13 +420,13 @@
 					<span class="room-number">#{roomData.roomNumber}</span>
 				{/if}
 			</div>
-			<div class="clock">
+			<div class="clock" onclick={location.reload()}>
 				<span class="time">{formatTime(currentTime)}</span>
 			</div>
 		</div>
 
 		<div class="top-left">
-			<div class="company-logo">
+			<div class="company-logo" onclick={toggleFullscreen}>
 				<!-- Company logo placeholder -->
 				{#if !logoError}
 					<img src="/logo.png" alt="Company Logo" onerror={() => logoError = true} />
@@ -771,15 +774,15 @@
 		grid-template-areas:
 			"top-left header header"
 			"left-bar main-area right-bar"
-			"bottom bottom right-bar"
+			"left-bar bottom right-bar"
 			"footer footer footer";
 		transition: grid-template-rows 0.3s ease;
 		overflow: hidden;
 	}
 
-	/* When meeting is active, expand 2nd bottom row */
+	/* When meeting is active, row 3 stays at 0 — second-footer is absolutely positioned */
 	.tv-frame-grid.has-meeting {
-		grid-template-rows: 6vh 1fr 8vh 6vh;
+		grid-template-rows: 6vh 1fr 0 6vh;
 	}
 
 	/* Fallback background for rooms without video */
@@ -795,7 +798,7 @@
 		justify-content: space-between;
 		align-items: center;
 		padding: 0 2rem;
-		overflow: hidden;
+		/* overflow: hidden; */
 		min-height: 0;
 	}
 
@@ -806,8 +809,9 @@
 	}
 
 	.room-name {
-		font-size: 1.6rem;
+		font-size: 3.6rem;
 		font-weight: 700;
+		padding: .3em 0 0 0;
 		color: white;
 		text-transform: uppercase;
 		letter-spacing: 2px;
@@ -1121,29 +1125,33 @@
 		box-shadow: 0 6px 12px rgba(0, 0, 0, 0.6);
 	}
 
-	/* 2nd Bottom Bar - Full Width, Auto-hide */
+	/* 2nd Bottom Bar - Absolute overlay, grows upward above the footer */
 	.second-footer {
-		grid-area: bottom;
-		background: rgba(20, 25, 30, 0.85);
-		backdrop-filter: blur(10px);
+		position: absolute;
+		left: 0;
+		right: 0;
+		bottom: 6vh;
 		display: flex;
 		align-items: center;
-		padding: 0 2rem;
-		overflow: hidden;
-		min-height: 0;
+		padding: 0 150px 0 calc(100px);
+		z-index: 15;
 	}
 
 	.meeting-info {
 		width: 100%;
 		display: flex;
-		align-items: center;
+		flex-direction: column;
+    	align-items: start;
 		gap: 2rem;
-		overflow: hidden;
+		background: rgba(20, 25, 30, 0.65);
+		backdrop-filter: blur(10px);
+		padding:0 1em;
+		/* overflow: hidden; */
 		min-height: 0;
 	}
 
 	.meeting-title {
-		font-size: 1.8rem;
+		font-size: 4.8rem;
 		font-weight: 700;
 		color: white;
 		flex: 1;
@@ -1151,14 +1159,14 @@
 			0 0 8px rgba(0, 0, 0, 0.9),
 			0 2px 4px rgba(0, 0, 0, 0.7);
 		white-space: nowrap;
-		overflow: hidden;
+		/* overflow: hidden; */
 		text-overflow: ellipsis;
 	}
 
 	.meeting-details {
 		display: flex;
 		gap: 2rem;
-		font-size: 1rem;
+		font-size: 2rem;
 		color: #fbbf24;
 		font-weight: 500;
 		text-shadow:

@@ -62,7 +62,7 @@ export const GET: RequestHandler = async ({ params, url, request }) => {
 					$gte: startOfDay,
 					$lte: endOfDay
 				},
-				status: { $in: ['approved', 'assigned', 'in_progress'] }
+				status: { $in: ['scheduled', 'ongoing','approved'] }
 			})
 			.sort({ startTime: 1 })
 			.toArray();

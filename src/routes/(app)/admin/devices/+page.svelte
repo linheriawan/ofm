@@ -126,6 +126,8 @@
 				</div>
 			</div>
 		</div>
+		<input type="text" placeholder="Device ID"/>
+		
 	</div>
 
 	<DataTable
