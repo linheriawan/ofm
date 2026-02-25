@@ -2,16 +2,20 @@
 	import DataTable from '$lib/components/DataTable.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import type { User } from '$lib/types';
+	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 
 	let title = 'Users Management - OFM';
 	let isModalOpen = $state(false);
 	let editingUser: User | null = $state(null);
 	let roles: any[] = $state([]);
-	let companies: any[] = $state([]);
 	let departments: any[] = $state([]);
 	let locations: any[] = $state([]);
 	let users: any[] = $state([]); // For manager selection
+
+	// Company data comes from the layout server (hierarchy-aware)
+	const companyTree = $derived(($page.data.companyTree as any[]) ?? []);
+	const accessibleCompanies = $derived(($page.data.accessibleCompanies as any[]) ?? []);
 
 	let formData = $state({
 		userId: '',
@@ -20,16 +24,17 @@
 		firstName: '',
 		lastName: '',
 		phone: '',
-		companyId: 'IAS',
+		companyId: '',
 		departmentId: '',
 		locationId: '',
 		managerId: '',
 		roleIds: [] as string[],
+		companyAccess: [] as string[],
 		isActive: true
 	});
 
 	onMount(async () => {
-		await Promise.all([loadRoles(), loadCompanies(), loadDepartments(), loadLocations(), loadUsers()]);
+		await Promise.all([loadRoles(), loadDepartments(), loadLocations(), loadUsers()]);
 	});
 
 	async function loadRoles() {
@@ -41,18 +46,6 @@
 			}
 		} catch (error) {
 			console.error('Failed to load roles:', error);
-		}
-	}
-
-	async function loadCompanies() {
-		try {
-			const response = await fetch('/api/v1/companies?limit=100');
-			const result = await response.json();
-			if (result.success) {
-				companies = result.data || [];
-			}
-		} catch (error) {
-			console.error('Failed to load companies:', error);
 		}
 	}
 
@@ -116,11 +109,12 @@
 			firstName: user.firstName,
 			lastName: user.lastName,
 			phone: user.phone || '',
-			companyId: user.companyId || 'IAS',
+			companyId: user.companyId || '',
 			departmentId: user.departmentId || '',
 			locationId: user.locationId || '',
 			managerId: user.managerId || '',
 			roleIds: user.roleIds || [],
+			companyAccess: (user as any).companyAccess || [],
 			isActive: user.isActive
 		};
 		isModalOpen = true;
@@ -134,13 +128,22 @@
 			firstName: '',
 			lastName: '',
 			phone: '',
-			companyId: 'IAS',
+			companyId: '',
 			departmentId: '',
 			locationId: '',
 			managerId: '',
 			roleIds: [],
+			companyAccess: [],
 			isActive: true
 		};
+	}
+
+	function toggleCompanyAccess(companyId: string) {
+		if (formData.companyAccess.includes(companyId)) {
+			formData.companyAccess = formData.companyAccess.filter((id) => id !== companyId);
+		} else {
+			formData.companyAccess = [...formData.companyAccess, companyId];
+		}
 	}
 
 	function toggleRole(roleId: string) {
@@ -156,11 +159,17 @@
 		const url = editingUser ? `/api/v1/users/${editingUser._id}` : '/api/v1/users';
 		const method = editingUser ? 'PUT' : 'POST';
 
+		// Only send companyAccess for regional_admin role
+		const payload = {
+			...formData,
+			companyAccess: formData.roleIds.includes('regional_admin') ? formData.companyAccess : []
+		};
+
 		try {
 			const response = await fetch(url, {
 				method,
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(formData)
+				body: JSON.stringify(payload)
 			});
 
 			const result = await response.json();
@@ -232,8 +241,8 @@
 				<label for="companyId">Company *</label>
 				<select id="companyId" bind:value={formData.companyId} required>
 					<option value="">Select Company</option>
-					{#each companies as company}
-						<option value={company.companyId}>{company.name}</option>
+					{#each accessibleCompanies as company}
+						<option value={company.companyId}>{company.companyName}</option>
 					{/each}
 				</select>
 			</div>
@@ -297,6 +306,39 @@
 				{/each}
 			</div>
 		</div>
+
+		<!-- Company Access (shown only for regional_admin) -->
+		{#if formData.roleIds.includes('regional_admin')}
+			<div class="roles-section">
+				<h3>Company Access</h3>
+				<p class="section-hint">
+					Select which companies this admin can manage. Each company must be explicitly selected.
+				</p>
+				<div class="company-tree">
+					{#each companyTree as node}
+						<label
+							class="tree-item"
+							style="padding-left: {0.75 + node.level * 1.5}rem"
+							class:checked={formData.companyAccess.includes(node.companyId)}
+						>
+							{#if node.level > 0}<span class="tree-connector">↳</span>{/if}
+							<input
+								type="checkbox"
+								checked={formData.companyAccess.includes(node.companyId)}
+								onchange={() => toggleCompanyAccess(node.companyId)}
+							/>
+							<span class="tree-label">
+								<strong>{node.companyName}</strong>
+								<span class="tree-id">{node.companyId}</span>
+								{#if node.children.length > 0}
+									<span class="tree-children-badge">+{node.children.length} sub</span>
+								{/if}
+							</span>
+						</label>
+					{/each}
+				</div>
+			</div>
+		{/if}
 
 		<div class="form-actions">
 			<button type="button" class="btn-secondary" onclick={closeModal}>Cancel</button>
@@ -413,8 +455,79 @@
 		border-top: 1px solid #e2e8f0;
 	}
 
-	.roles-section h3 {
+	.section-hint {
 		margin: 0 0 1rem 0;
+		font-size: 0.85rem;
+		color: #6b7280;
+	}
+
+	.company-tree {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		padding: 0.5rem;
+		background: #f9fafb;
+		border: 1px solid #e5e7eb;
+		border-radius: 6px;
+		max-height: 280px;
+		overflow-y: auto;
+	}
+
+	.tree-item {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding-top: 0.4rem;
+		padding-bottom: 0.4rem;
+		padding-right: 0.75rem;
+		border-radius: 5px;
+		cursor: pointer;
+		transition: background 0.15s;
+	}
+
+	.tree-item:hover {
+		background: #ede9fe;
+	}
+
+	.tree-item.checked {
+		background: #ede9fe;
+	}
+
+	.tree-connector {
+		color: #9ca3af;
+		font-size: 0.8rem;
+		flex-shrink: 0;
+	}
+
+	.tree-label {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		flex: 1;
+	}
+
+	.tree-label strong {
+		font-size: 0.875rem;
+		color: #111;
+	}
+
+	.tree-id {
+		font-size: 0.75rem;
+		color: #9ca3af;
+		font-family: monospace;
+	}
+
+	.tree-children-badge {
+		font-size: 0.7rem;
+		background: #ddd6fe;
+		color: #5b21b6;
+		padding: 0.1rem 0.4rem;
+		border-radius: 10px;
+		font-weight: 600;
+	}
+
+	.roles-section h3 {
+		margin: 0 0 0.5rem 0;
 		font-size: 1rem;
 		color: #333;
 		font-weight: 600;

@@ -4,7 +4,7 @@
  * Syncs users and organizational units from Aksara SSO to OFM local database
  */
 
-import { getDB } from '$lib/server/db/mongodb';
+import { connectDB } from '$lib/server/db/mongodb';
 import { scimClient, type SCIMUser, type SCIMGroup } from './client';
 import type { User } from '$lib/types';
 
@@ -26,7 +26,7 @@ export async function syncOrganizationalUnits(groups: SCIMGroup[]): Promise<{
 	updated: number;
 	errors: string[];
 }> {
-	const db = getDB();
+	const db = await connectDB();
 	const orgUnitsCollection = db.collection('organizationalUnits');
 
 	let created = 0;
@@ -85,7 +85,7 @@ export async function syncUsers(users: SCIMUser[]): Promise<{
 	deactivated: number;
 	errors: string[];
 }> {
-	const db = getDB();
+	const db = await connectDB();
 	const usersCollection = db.collection<User>('users');
 
 	let created = 0;
@@ -224,7 +224,7 @@ export async function performFullSync(): Promise<SyncStats> {
 		}
 
 		// Store sync history
-		const db = getDB();
+		const db = await connectDB();
 		await db.collection('syncHistory').insertOne({
 			type: 'scim_full_sync',
 			startedAt: new Date(),
@@ -240,7 +240,7 @@ export async function performFullSync(): Promise<SyncStats> {
 		stats.errors.push(errorMsg);
 
 		// Store failed sync attempt
-		const db = getDB();
+		const db = await connectDB();
 		await db.collection('syncHistory').insertOne({
 			type: 'scim_full_sync',
 			startedAt: new Date(),
@@ -263,7 +263,7 @@ export async function getLastSyncInfo(): Promise<{
 	stats?: SyncStats;
 	error?: string;
 }> {
-	const db = getDB();
+	const db = await connectDB();
 	const lastSync = await db.collection('syncHistory')
 		.findOne(
 			{ type: 'scim_full_sync' },

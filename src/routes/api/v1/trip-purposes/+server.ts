@@ -78,9 +78,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const tripPurposesCollection = db.collection<TripPurpose>(collections.tripPurposes);
 
 		// Generate purposeId
-		const count = await tripPurposesCollection.countDocuments({
-			companyId: user.companyId || 'IAS'
-		});
+		const count = await tripPurposesCollection.countDocuments();
 		const purposeId = `TP-${String(count + 1).padStart(3, '0')}`;
 
 		const newPurpose: TripPurpose = {
@@ -91,7 +89,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			requiresApproval: requiresApproval || false,
 			isActive: true,
 			sortOrder: sortOrder || 999,
-			companyId: user.companyId || 'IAS',
+			companyId: user.companyId || '',
 			createdAt: new Date(),
 			updatedAt: new Date(),
 			createdBy: user.userId,

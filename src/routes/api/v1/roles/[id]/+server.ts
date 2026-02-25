@@ -12,7 +12,7 @@ export const PUT: RequestHandler = async ({ params, request }) => {
 			roleName: data.roleName,
 			description: data.description || '',
 			permissions: data.permissions || [],
-			companyId: data.companyId || undefined,
+			companyIds: Array.isArray(data.companyIds) ? data.companyIds : [],
 			isActive: data.isActive,
 			updatedAt: new Date()
 		};

@@ -19,10 +19,13 @@ async function initializeDB() {
 	}
 }
 
-// Initialize DB on startup
-initializeDB();
+// Initialize DB on startup — store promise so handle() can await it
+const dbInitPromise = initializeDB();
 
 export const handle: Handle = async ({ event, resolve }) => {
+	// Ensure DB is ready before any route handler runs (handles cold-start race condition)
+	await dbInitPromise;
+
 	const sessionCookie = event.cookies.get('ofm_session');
 
 	// Session validation
@@ -90,7 +93,11 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 						// Roles
 						roles: session.roles,
-						ssoRoles: session.ssoRoles
+						ssoRoles: session.ssoRoles,
+
+						// Multi-entity
+						companyAccess: session.companyAccess,
+						selectedCompanyId: session.selectedCompanyId
 					};
 				}
 			}

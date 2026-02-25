@@ -3,11 +3,11 @@
  * Run this once to initialize trip_purposes collection
  */
 
-import { getDB, collections } from './mongodb';
+import { connectDB, collections } from './mongodb';
 import type { TripPurpose } from './schemas';
 
 export async function seedTripPurposes(companyId: string = 'IAS') {
-	const db = getDB();
+	const db = await connectDB();
 	const tripPurposesCollection = db.collection<TripPurpose>(collections.tripPurposes);
 
 	// Check if already seeded

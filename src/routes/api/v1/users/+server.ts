@@ -42,6 +42,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			departmentId: body.departmentId,
 			positionId: body.positionId,
 			roleIds: body.roleIds || [],
+			companyAccess: body.companyAccess || [],
 			isActive: body.isActive !== undefined ? body.isActive : true
 		};
 

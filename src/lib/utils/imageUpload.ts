@@ -1,5 +1,5 @@
-import { supabase } from '$lib/supabase';
-import { PUBLIC_SUPABASE_BUCKET } from '$env/static/public';
+import { storage } from '$lib/storage';
+import { PUBLIC_STORAGE_BUCKET, PUBLIC_STORAGE_URL } from '$env/static/public';
 
 /**
  * Compress image using Canvas API before upload
@@ -75,13 +75,13 @@ async function compressImage(file: File): Promise<Blob> {
 }
 
 /**
- * Upload image to Supabase Storage
+ * Upload image to object storage
  * @param file - Image file to upload
  * @param folder - Folder path in bucket (e.g., 'rooms', 'vehicles')
  * @param fileName - Optional custom filename (will be sanitized)
  * @returns Public URL of uploaded image
  */
-export async function uploadImageToSupabase(
+export async function uploadImage(
 	file: File,
 	folder: string = 'rooms',
 	fileName?: string
@@ -99,23 +99,15 @@ export async function uploadImageToSupabase(
 
 		const filePath = `${folder}/${sanitizedFileName}`;
 
-		// Upload to Supabase Storage
-		const { data, error } = await supabase.storage
-			.from(PUBLIC_SUPABASE_BUCKET)
-			.upload(filePath, compressedBlob, {
-				contentType: 'image/jpeg',
-				upsert: false // Don't overwrite existing files
-			});
+		// Upload to storage
+		const { path, error } = await storage.upload(filePath, compressedBlob, 'image/jpeg');
 
 		if (error) {
-			console.error('Supabase upload error:', error);
-			return { url: '', error: error.message };
+			console.error('Storage upload error:', error);
+			return { url: '', error };
 		}
 
-		// Get public URL
-		const {
-			data: { publicUrl }
-		} = supabase.storage.from(PUBLIC_SUPABASE_BUCKET).getPublicUrl(data.path);
+		const publicUrl = storage.getPublicUrl(path);
 
 		console.log(`Uploaded image: ${file.name} → ${publicUrl}`);
 
@@ -130,42 +122,37 @@ export async function uploadImageToSupabase(
 }
 
 /**
- * Delete image from Supabase Storage
- * @param url - Public URL of the image to delete
+ * Delete a file from object storage
+ * @param url - Public URL of the file to delete
  */
-export async function deleteImageFromSupabase(url: string): Promise<boolean> {
+export async function deleteFromStorage(url: string): Promise<boolean> {
 	try {
-		// Extract path from URL
-		// URL format: https://xxx.supabase.co/storage/v1/object/public/[bucket]/folder/file.jpg
-		const bucketPath = `/${PUBLIC_SUPABASE_BUCKET}/`;
+		// Extract path after the bucket name
+		const bucketPath = `/${PUBLIC_STORAGE_BUCKET}/`;
 		const urlParts = url.split(bucketPath);
 		if (urlParts.length !== 2) {
-			console.error('Invalid Supabase URL format');
+			console.error('Invalid storage URL format');
 			return false;
 		}
 
 		const filePath = urlParts[1];
 
-		const { error } = await supabase.storage.from(PUBLIC_SUPABASE_BUCKET).remove([filePath]);
+		const ok = await storage.remove([filePath]);
+		if (!ok) return false;
 
-		if (error) {
-			console.error('Supabase delete error:', error);
-			return false;
-		}
-
-		console.log(`Deleted image: ${filePath}`);
+		console.log(`Deleted from storage: ${filePath}`);
 		return true;
 	} catch (error) {
-		console.error('Image delete error:', error);
+		console.error('Storage delete error:', error);
 		return false;
 	}
 }
 
 /**
- * Check if URL is a Supabase Storage URL
+ * Check if a URL points to our configured object storage
  */
-export function isSupabaseUrl(url: string): boolean {
-	return url.includes('.supabase.co/storage/');
+export function isStorageUrl(url: string): boolean {
+	return url.startsWith(PUBLIC_STORAGE_URL);
 }
 
 /**
@@ -176,13 +163,13 @@ export function isBase64Url(url: string): boolean {
 }
 
 /**
- * Upload video to Supabase Storage
+ * Upload video to object storage
  * @param file - Video file to upload
  * @param folder - Folder path in bucket (e.g., 'background-videos')
  * @param fileName - Optional custom filename (will be sanitized)
  * @returns Public URL of uploaded video
  */
-export async function uploadVideoToSupabase(
+export async function uploadVideo(
 	file: File,
 	folder: string = 'background-videos',
 	fileName?: string
@@ -212,23 +199,15 @@ export async function uploadVideoToSupabase(
 
 		const filePath = `${folder}/${sanitizedFileName}`;
 
-		// Upload to Supabase Storage
-		const { data, error } = await supabase.storage
-			.from(PUBLIC_SUPABASE_BUCKET)
-			.upload(filePath, file, {
-				contentType: file.type,
-				upsert: false // Don't overwrite existing files
-			});
+		// Upload to storage
+		const { path, error } = await storage.upload(filePath, file, file.type);
 
 		if (error) {
-			console.error('Supabase video upload error:', error);
-			return { url: '', error: error.message };
+			console.error('Storage video upload error:', error);
+			return { url: '', error };
 		}
 
-		// Get public URL
-		const {
-			data: { publicUrl }
-		} = supabase.storage.from(PUBLIC_SUPABASE_BUCKET).getPublicUrl(data.path);
+		const publicUrl = storage.getPublicUrl(path);
 
 		console.log(`Uploaded video: ${file.name} → ${publicUrl}`);
 

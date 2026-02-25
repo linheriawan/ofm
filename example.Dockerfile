@@ -5,9 +5,13 @@ WORKDIR /app
 
 # Public env vars required at build time ($env/static/public)
 # These are safe to hardcode — they are exposed to the browser anyway
-ENV PUBLIC_SUPABASE_URL=https://<your-project>.supabase.co
-ENV PUBLIC_SUPABASE_ANON_KEY=<your-supabase-anon-key>
-ENV PUBLIC_SUPABASE_BUCKET=<bucket-name>
+ENV PUBLIC_STORAGE_TYPE=s3
+ENV PUBLIC_STORAGE_BUCKET=<bucket-name>
+ENV PUBLIC_STORAGE_URL=https://<your-project>.supabase.co
+ENV PUBLIC_STORAGE_ANON_KEY=<your-supabase-anon-key>
+ENV STORAGE_KEY_ID=<>
+ENV STORAGE_SECRET_KEY=<>
+ENV STORAGE_REGION=ap-southeast-3
 
 # Copy package files
 COPY package.json bun.lock ./

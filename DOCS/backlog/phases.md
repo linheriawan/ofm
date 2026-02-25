@@ -41,7 +41,7 @@ Enable admins to approve and manage requests.
 - See: M7.7 in [track.csv](track.csv)
 
 ## Phase 6: Advanced Features — Planned
-- Multi-entity support
+- [✅] Multi-entity support
 - Advanced reporting and analytics
 - WhatsApp/Telegram notifications
 - Excel import/export

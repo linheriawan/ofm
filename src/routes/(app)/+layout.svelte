@@ -13,6 +13,34 @@
 	$: user = $page.data.user;
 	$: isAuthenticated = !!user;
 
+	// Multi-entity company switcher
+	$: accessibleCompanies = $page.data.accessibleCompanies ?? [];
+	$: selectedCompanyId = $page.data.selectedCompanyId ?? null;
+
+	async function switchCompany(event: Event) {
+		const select = event.target as HTMLSelectElement;
+		const companyId = select.value;
+		if (!companyId || companyId === selectedCompanyId) return;
+
+		try {
+			const response = await fetch('/api/v1/companies/select', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ companyId })
+			});
+			const result = await response.json();
+			if (result.success) {
+				window.location.reload();
+			} else {
+				alert(result.error?.message || 'Failed to switch company');
+				select.value = selectedCompanyId || '';
+			}
+		} catch {
+			alert('Failed to switch company');
+			select.value = selectedCompanyId || '';
+		}
+	}
+
 	function toggleMenu() {
 		isMenuOpen = !isMenuOpen;
 	}
@@ -155,11 +183,23 @@
 							<div class="dropdown-section-title">General</div>
 							<a href="/admin/settings" onclick={closeDropdowns}>⚙️ Settings</a>
 							<a href="/modules/users" onclick={closeDropdowns}>Users</a>
+							<a href="/modules/roles" onclick={closeDropdowns}>Roles &amp; Permissions</a>
 							<a href="/modules/locations" onclick={closeDropdowns}>Locations</a>
 						</div>
 					{/if}
 				</li>
 			</ul>
+
+			<!-- Company Switcher -->
+			{#if accessibleCompanies.length >= 1}
+				<div class="company-switcher">
+					<select value={selectedCompanyId} onchange={switchCompany}>
+						{#each accessibleCompanies as company}
+							<option value={company.companyId}>{company.companyName}</option>
+						{/each}
+					</select>
+				</div>
+			{/if}
 
 			<div class="user-menu">
 				<button class="user-menu-trigger" onclick={toggleUserMenu}>
@@ -383,6 +423,43 @@
 		height: 1px;
 		background: #e5e7eb;
 		margin: 0.5rem 0;
+	}
+
+	.company-switcher select {
+		background: rgba(255, 255, 255, 0.15);
+		color: white;
+		border: 1px solid rgba(255, 255, 255, 0.3);
+		padding: 0.4rem 0.75rem;
+		border-radius: 6px;
+		font-size: 0.85rem;
+		font-weight: 500;
+		cursor: pointer;
+		font-family: inherit;
+		max-width: 180px;
+	}
+
+	.company-switcher select option {
+		background: #4a5568;
+		color: white;
+	}
+
+	.company-switcher select:focus {
+		outline: none;
+		border-color: rgba(255, 255, 255, 0.6);
+	}
+
+	.company-badge {
+		background: rgba(255, 255, 255, 0.15);
+		color: white;
+		border: 1px solid rgba(255, 255, 255, 0.3);
+		padding: 0.4rem 0.75rem;
+		border-radius: 6px;
+		font-size: 0.85rem;
+		font-weight: 500;
+		white-space: nowrap;
+		max-width: 180px;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 
 	.user-menu {

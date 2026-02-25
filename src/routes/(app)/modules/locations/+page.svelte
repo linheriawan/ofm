@@ -2,13 +2,18 @@
 	import DataTable from '$lib/components/DataTable.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import type { Location } from '$lib/types';
+	import { page } from '$app/stores';
 
 	let title = 'Locations Management - OFM';
 	let isModalOpen = $state(false);
 	let editingLocation: Location | null = $state(null);
+
+	const accessibleCompanies = $derived(($page.data.accessibleCompanies as any[]) ?? []);
+	const selectedCompanyId = $derived(($page.data.selectedCompanyId as string) ?? '');
+
 	let formData = $state({
 		locationId: '',
-		companyId: 'IAS',
+		companyId: '',
 		locationName: '',
 		address: '',
 		city: '',
@@ -22,10 +27,10 @@
 
 	const columns = [
 		{ key: 'locationId', label: 'Location ID' },
+		{ key: 'companyId', label: 'Company' },
 		{ key: 'locationName', label: 'Location Name' },
 		{ key: 'city', label: 'City' },
 		{ key: 'province', label: 'Province' },
-		{ key: 'country', label: 'Country' },
 		{ key: 'isActive', label: 'Active', format: (val: boolean) => (val ? 'Yes' : 'No') }
 	];
 
@@ -39,7 +44,7 @@
 		editingLocation = location;
 		formData = {
 			locationId: location.locationId,
-			companyId: location.companyId || 'IAS',
+			companyId: location.companyId || '',
 			locationName: location.locationName,
 			address: location.address,
 			city: location.city,
@@ -56,7 +61,7 @@
 	function resetForm() {
 		formData = {
 			locationId: '',
-			companyId: 'IAS',
+			companyId: selectedCompanyId,
 			locationName: '',
 			address: '',
 			city: '',
@@ -128,6 +133,16 @@
 					bind:value={formData.locationId}
 					placeholder="Auto-generated"
 				/>
+			</div>
+
+			<div class="form-group full-width">
+				<label for="companyId">Company *</label>
+				<select id="companyId" bind:value={formData.companyId} required>
+					<option value="">Select Company</option>
+					{#each accessibleCompanies as company}
+						<option value={company.companyId}>{company.companyName}</option>
+					{/each}
+				</select>
 			</div>
 
 			<div class="form-group full-width">

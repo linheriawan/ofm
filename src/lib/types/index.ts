@@ -45,6 +45,7 @@ export interface User extends BaseDocument {
 	managerId?: string; // References another User._id
 	ssoUserId?: string; // SSO user ID for sync
 	roleIds: string[];
+	companyAccess?: string[]; // Companies accessible to regional admins
 	isActive: boolean;
 	lastLogin?: Date;
 }
@@ -54,7 +55,7 @@ export interface Role extends BaseDocument {
 	roleName: string;
 	description?: string;
 	permissions: string[];
-	companyId?: string; // null for global roles
+	companyIds?: string[]; // empty = global; specific IDs = scoped to those companies
 	isActive: boolean;
 }
 
@@ -210,7 +211,7 @@ export interface BackgroundVideo extends BaseDocument {
 	videoId: string;
 	videoName: string;
 	description?: string;
-	videoUrl: string; // Supabase storage URL
+	videoUrl: string; // Object storage URL
 	thumbnailUrl?: string; // preview thumbnail
 	duration?: number; // duration in seconds
 	fileSize?: number; // in bytes

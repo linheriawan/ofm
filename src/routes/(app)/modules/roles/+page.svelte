@@ -2,19 +2,28 @@
 	import DataTable from '$lib/components/DataTable.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import type { Role } from '$lib/types';
+	import { page } from '$app/stores';
+	import { onMount } from 'svelte';
 
 	let title = 'Roles & Permissions - OFM';
 	let isModalOpen = $state(false);
 	let isPermissionsModalOpen = $state(false);
 	let editingRole: Role | null = $state(null);
+
+	// Company tree comes from the layout server (hierarchy-aware)
+	const companyTree = $derived(($page.data.companyTree as any[]) ?? []);
+
 	let formData = $state({
 		roleId: '',
 		roleName: '',
 		description: '',
 		permissions: [] as string[],
-		companyId: '',
+		companyIds: [] as string[], // empty = global; specific IDs = scoped
 		isActive: true
 	});
+
+	// Roles are mostly global; company column shows per-role scope
+	const rolesEndpoint = '/api/v1/roles';
 
 	// Available permissions by module
 	const availablePermissions = [
@@ -83,6 +92,11 @@
 		{ key: 'roleName', label: 'Role Name' },
 		{ key: 'description', label: 'Description' },
 		{
+			key: 'companyIds',
+			label: 'Scope',
+			format: (val: string[]) => (!val || val.length === 0) ? 'Global' : val.join(', ')
+		},
+		{
 			key: 'permissions',
 			label: 'Permissions',
 			format: (val: string[]) => val ? `${val.length} permissions` : '0 permissions'
@@ -103,7 +117,7 @@
 			roleName: role.roleName,
 			description: role.description || '',
 			permissions: role.permissions || [],
-			companyId: role.companyId || '',
+			companyIds: role.companyIds || [],
 			isActive: role.isActive
 		};
 		isModalOpen = true;
@@ -119,9 +133,17 @@
 			roleName: '',
 			description: '',
 			permissions: [],
-			companyId: '',
+			companyIds: [],
 			isActive: true
 		};
+	}
+
+	function toggleCompanyId(companyId: string) {
+		if (formData.companyIds.includes(companyId)) {
+			formData.companyIds = formData.companyIds.filter((id) => id !== companyId);
+		} else {
+			formData.companyIds = [...formData.companyIds, companyId];
+		}
 	}
 
 	function togglePermission(permissionId: string) {
@@ -193,7 +215,7 @@
 	<DataTable
 		title="Roles & Permissions"
 		{columns}
-		apiEndpoint="/api/v1/roles"
+		apiEndpoint={rolesEndpoint}
 		onAdd={openAddModal}
 		onEdit={openEditModal}
 	/>
@@ -258,14 +280,42 @@
 				</div>
 			</div>
 
-			<div class="form-group">
-				<label for="companyId">Company ID (Optional)</label>
-				<input
-					type="text"
-					id="companyId"
-					bind:value={formData.companyId}
-					placeholder="Leave empty for global role"
-				/>
+			<div class="form-group full-width">
+				<label>
+					Company Scope
+					<span class="label-hint">— leave all unchecked for a global role. Role applies to selected companies only.</span>
+				</label>
+				<div class="company-tree">
+					{#each companyTree as node}
+						<label
+							class="tree-item"
+							style="padding-left: {0.75 + node.level * 1.5}rem"
+							class:checked={formData.companyIds.includes(node.companyId)}
+						>
+							{#if node.level > 0}<span class="tree-connector">↳</span>{/if}
+							<input
+								type="checkbox"
+								checked={formData.companyIds.includes(node.companyId)}
+								onchange={() => toggleCompanyId(node.companyId)}
+							/>
+							<span class="tree-label">
+								<strong>{node.companyName}</strong>
+								<span class="tree-id">{node.companyId}</span>
+								{#if node.children.length > 0}
+									<span class="tree-children-badge">+{node.children.length} sub</span>
+								{/if}
+							</span>
+						</label>
+					{/each}
+					{#if companyTree.length === 0}
+						<span class="text-muted" style="padding: 0.5rem">No companies available</span>
+					{/if}
+				</div>
+				{#if formData.companyIds.length === 0}
+					<p class="scope-hint">Global — applies to all companies</p>
+				{:else}
+					<p class="scope-hint">Scoped to: {formData.companyIds.join(', ')}</p>
+				{/if}
 			</div>
 
 			<div class="form-group checkbox-group">
@@ -428,6 +478,75 @@
 		border-radius: 12px;
 		font-size: 0.75rem;
 		font-weight: 500;
+	}
+
+	.label-hint {
+		font-weight: 400;
+		color: #9ca3af;
+		font-size: 0.8rem;
+	}
+
+	.company-tree {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		padding: 0.5rem;
+		background: #f9fafb;
+		border: 1px solid #e5e7eb;
+		border-radius: 6px;
+		max-height: 220px;
+		overflow-y: auto;
+	}
+
+	.tree-item {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding-top: 0.4rem;
+		padding-bottom: 0.4rem;
+		padding-right: 0.75rem;
+		border-radius: 5px;
+		cursor: pointer;
+		transition: background 0.15s;
+	}
+
+	.tree-item:hover { background: #ede9fe; }
+	.tree-item.checked { background: #ede9fe; }
+
+	.tree-connector {
+		color: #9ca3af;
+		font-size: 0.8rem;
+		flex-shrink: 0;
+	}
+
+	.tree-label {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		flex: 1;
+	}
+
+	.tree-label strong { font-size: 0.875rem; color: #111; }
+
+	.tree-id {
+		font-size: 0.75rem;
+		color: #9ca3af;
+		font-family: monospace;
+	}
+
+	.tree-children-badge {
+		font-size: 0.7rem;
+		background: #ddd6fe;
+		color: #5b21b6;
+		padding: 0.1rem 0.4rem;
+		border-radius: 10px;
+		font-weight: 600;
+	}
+
+	.scope-hint {
+		margin: 0.4rem 0 0;
+		font-size: 0.8rem;
+		color: #667eea;
 	}
 
 	.text-muted {

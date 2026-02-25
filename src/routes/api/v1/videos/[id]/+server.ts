@@ -62,7 +62,7 @@ export const DELETE: RequestHandler = async ({ params }) => {
 	try {
 		const db = getDB();
 
-		// First get the video to retrieve the videoUrl for deletion from Supabase
+		// First get the video to retrieve the videoUrl for deletion from storage
 		const video = await db
 			.collection<BackgroundVideo>(collections.backgroundVideos)
 			.findOne({ _id: new ObjectId(params.id) });
@@ -74,8 +74,8 @@ export const DELETE: RequestHandler = async ({ params }) => {
 		// Delete from database
 		await db.collection(collections.backgroundVideos).deleteOne({ _id: new ObjectId(params.id) });
 
-		// TODO: Delete from Supabase storage (implement later)
-		// await deleteVideoFromSupabase(video.videoUrl);
+		// TODO: Delete from storage (implement later)
+		// await deleteFromStorage(video.videoUrl);
 
 		return json({ success: true, message: 'Video deleted successfully' });
 	} catch (error) {

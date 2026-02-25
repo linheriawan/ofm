@@ -1,10 +1,9 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDB } from '$lib/server/db/mongodb';
-import { ObjectId } from 'mongodb';
 import type { Role } from '$lib/types';
 
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async ({ url, locals }) => {
 	try {
 		const db = getDB();
 		const page = parseInt(url.searchParams.get('page') || '1');
@@ -12,12 +11,28 @@ export const GET: RequestHandler = async ({ url }) => {
 		const search = url.searchParams.get('search') || '';
 		const skip = (page - 1) * limit;
 
+		const isSuperAdmin =
+			locals.user?.roles.includes('super_admin') ||
+			locals.user?.roles.includes('global_admin');
+
 		const query: any = {};
 		if (search) {
 			query.$or = [
 				{ roleId: { $regex: search, $options: 'i' } },
 				{ roleName: { $regex: search, $options: 'i' } },
 				{ description: { $regex: search, $options: 'i' } }
+			];
+		}
+
+		// Company filter: only apply when NOT super/global admin.
+		// Matches roles that are global (empty/missing companyIds) OR contain the company.
+		const companyId = url.searchParams.get('companyId');
+		if (companyId && !isSuperAdmin) {
+			query.$or = [
+				...(query.$or || []),
+				{ companyIds: { $size: 0 } },
+				{ companyIds: { $exists: false } },
+				{ companyIds: companyId }
 			];
 		}
 
@@ -44,10 +59,7 @@ export const GET: RequestHandler = async ({ url }) => {
 	} catch (error) {
 		console.error('Error fetching roles:', error);
 		return json(
-			{
-				success: false,
-				error: { code: 'FETCH_ERROR', message: 'Failed to fetch roles' }
-			},
+			{ success: false, error: { code: 'FETCH_ERROR', message: 'Failed to fetch roles' } },
 			{ status: 500 }
 		);
 	}
@@ -62,10 +74,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const existing = await db.collection('roles').findOne({ roleId: data.roleId });
 		if (existing) {
 			return json(
-				{
-					success: false,
-					error: { code: 'DUPLICATE_ROLE', message: 'Role ID already exists' }
-				},
+				{ success: false, error: { code: 'DUPLICATE_ROLE', message: 'Role ID already exists' } },
 				{ status: 400 }
 			);
 		}
@@ -75,7 +84,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			roleName: data.roleName,
 			description: data.description || '',
 			permissions: data.permissions || [],
-			companyId: data.companyId || undefined,
+			companyIds: Array.isArray(data.companyIds) ? data.companyIds : [],
 			isActive: data.isActive !== undefined ? data.isActive : true,
 			createdAt: new Date(),
 			updatedAt: new Date()
@@ -83,17 +92,11 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		const result = await db.collection('roles').insertOne(newRole);
 
-		return json({
-			success: true,
-			data: { _id: result.insertedId, ...newRole }
-		});
+		return json({ success: true, data: { _id: result.insertedId, ...newRole } });
 	} catch (error) {
 		console.error('Error creating role:', error);
 		return json(
-			{
-				success: false,
-				error: { code: 'CREATE_ERROR', message: 'Failed to create role' }
-			},
+			{ success: false, error: { code: 'CREATE_ERROR', message: 'Failed to create role' } },
 			{ status: 500 }
 		);
 	}

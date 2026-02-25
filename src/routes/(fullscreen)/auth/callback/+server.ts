@@ -1,11 +1,12 @@
-import { redirect, error } from '@sveltejs/kit';
+import { redirect, error, isRedirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { exchangeCodeForTokens, getUserInfo } from '$lib/server/auth/oauth';
 import { createSession, setSessionCookie } from '$lib/server/auth/session';
 import { syncUserFromSSO } from '$lib/server/auth/sync';
 import { getOAuthState, deleteOAuthState } from '$lib/server/auth/oauth-state';
 
-export const GET: RequestHandler = async ({ url, cookies }) => {
+export const GET: RequestHandler = async (event) => {
+	const { url, cookies } = event;
 	const code = url.searchParams.get('code');
 	const state = url.searchParams.get('state');
 	const errorParam = url.searchParams.get('error');
@@ -64,9 +65,9 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 
 		// Load user roles from OFM database
 		console.log('🔐 Loading user roles...');
-		const { getDB } = await import('$lib/server/db/mongodb');
+		const { connectDB } = await import('$lib/server/db/mongodb');
 		const { ObjectId } = await import('mongodb');
-		const db = getDB();
+		const db = await connectDB();
 
 		let roleNames: string[] = [];
 		if (user.roleIds && user.roleIds.length > 0) {
@@ -80,18 +81,16 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 		const sessionToken = await createSession(userInfo, tokens, user.companyId, roleNames);
 		console.log('✅ Session created');
 
-		setSessionCookie({ cookies } as any, sessionToken);
+		setSessionCookie(event, sessionToken);
 		console.log('✅ Session cookie set');
 
 		console.log('✅ Authentication successful, redirecting to:', storedOAuthState.redirectPath);
 
-		throw redirect(302, storedOAuthState.redirectPath || '/');
+		redirect(302, storedOAuthState.redirectPath || '/');
 	} catch (err) {
+		// Re-throw SvelteKit redirects — they are not errors
+		if (isRedirect(err)) throw err;
 		console.error('❌ OAuth callback error:', err);
-		// Re-throw redirect errors
-		if (err && typeof err === 'object' && 'status' in err && err.status === 302) {
-			throw err;
-		}
 		throw error(500, `Authentication failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
 	}
 };

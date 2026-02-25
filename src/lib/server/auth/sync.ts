@@ -1,9 +1,9 @@
-import { getDB } from '$lib/server/db/mongodb';
+import { connectDB } from '$lib/server/db/mongodb';
 import type { UserInfo } from './oauth';
 import type { User } from '$lib/types';
 
 export async function syncUserFromSSO(userInfo: UserInfo): Promise<User> {
-	const db = getDB();
+	const db = await connectDB();
 	const usersCollection = db.collection<User>('users');
 
 	// Check for existing user by ssoUserId OR email
@@ -81,12 +81,12 @@ export async function syncUserFromSSO(userInfo: UserInfo): Promise<User> {
 }
 
 export async function getUserBySSOId(ssoUserId: string): Promise<User | null> {
-	const db = getDB();
+	const db = await connectDB();
 	return await db.collection<User>('users').findOne({ ssoUserId });
 }
 
 export async function updateUserLastLogin(userId: string): Promise<void> {
-	const db = getDB();
+	const db = await connectDB();
 	await db.collection('users').updateOne(
 		{ _id: userId },
 		{

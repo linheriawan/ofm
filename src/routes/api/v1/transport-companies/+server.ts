@@ -69,7 +69,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			billingContactEmail: body.billingContactEmail,
 			isActive: body.isActive !== false,
 			notes: body.notes,
-			companyId_org: user.companyId || 'IAS',
+			companyId_org: user.companyId || '',
 			createdAt: now,
 			updatedAt: now,
 			createdBy: user.userId,

@@ -1,5 +1,6 @@
 Code,Module,Type,Route,Status,Test,Issue
 M1,Login,page,/login,done,,
+,  Multi Company Session,Feature,,,,
 M2,Admin,page,/admin,partial,,
 M2.1,"  devices",page,/admin/devices,done,,
 M2.1.1,"    assign-device",page,/admin/assign-device,,,
@@ -10,16 +11,16 @@ M2.5,"  transport-companies",page,/admin/transport-companies,done,,
 M2.6,"  trip-purpose",page,/admin/trip-purpose,done,,
 M2.7,"  vehicles",page,/admin/vehicles,done,,
 M2.8,"  videos",page,/admin/videos,,,
-M2.9,"  vouchers",page,/admin/vouchers,done,,"How to deliver voucher codes? (email/web/push)"
+M2.9,"  vouchers",page,/admin/vouchers,done,,How to deliver voucher codes? (email/web/push)
 M3,Dashboard,page,/dashboard,done,,
-M4,Meeting,page,/meeting,partial,,"Do all meetings need approval? (recommend: configurable per room)"
+M4,Meeting,page,/meeting,partial,,Do all meetings need approval? (recommend: configurable per room)
 M4.1,"  book",page,/meeting/book,done,,
 M4.2,"  bookings",page,/meeting/bookings,done,,
 M4.3,"  calendar",page,/meeting/calendar,pending,,still placeholder
 M5,Transportation,page,/transportation,partial,,
-M5.1,"  booking",page,/transportation/booking,done,,"Auto-offer voucher when car unavailable? (recommend: admin decides)"
+M5.1,"  booking",page,/transportation/booking,done,,Auto-offer voucher when car unavailable? (recommend: admin decides)
 M5.2,"  request",page,/transportation/request,done,,
-M5.3,"  tracking",page,/transportation/tracking,planned,,"How to mark trip completed? (recommend: driver confirms + 12h auto)"
+M5.3,"  tracking",page,/transportation/tracking,planned,,How to mark trip completed? (recommend: driver confirms + 12h auto)
 M6,Room Display,page,/device,partial,,
 M6.1,"  auth",page,/device/auth,done,,
 M6.2,"  display",page,/device/display,done,,
@@ -41,7 +42,7 @@ M7.14,"  videos",api,/api/v1/videos,,,
 M7.15,"  meeting",api,/api/v1/meeting,done,,
 M7.16,"  meetings",api,/api/v1/meetings,done,,
 M7.17,"  transport",api,/api/v1/transport,done,,
-M7.18,"  drivers",api,/api/v1/drivers,done,,"When to notify drivers? (recommend: immediate + 2h reminder)"
+M7.18,"  drivers",api,/api/v1/drivers,done,,When to notify drivers? (recommend: immediate + 2h reminder)
 M7.19,"  vehicles",api,/api/v1/vehicles,done,,
 M7.20,"  trip-purposes",api,/api/v1/trip-purposes,done,,
 M7.21,"  transport-companies",api,/api/v1/transport-companies,done,,

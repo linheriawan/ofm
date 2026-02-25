@@ -2,15 +2,22 @@
 	import DataTable from '$lib/components/DataTable.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import type { MeetingRoom } from '$lib/types';
-	import { uploadImageToSupabase, deleteImageFromSupabase, isSupabaseUrl } from '$lib/utils/imageUpload';
+	import { uploadImage, deleteFromStorage, isStorageUrl } from '$lib/utils/imageUpload';
+	import { page } from '$app/stores';
 
 	let title = 'Meeting Rooms Management - OFM';
 	let isModalOpen = $state(false);
 	let editingRoom: MeetingRoom | null = $state(null);
+
+	const accessibleCompanies = $derived(($page.data.accessibleCompanies as any[]) ?? []);
+	const selectedCompanyId = $derived(($page.data.selectedCompanyId as string) ?? '');
+
+	let locations = $state<any[]>([]);
+
 	let formData = $state({
 		roomId: '',
-		companyId: 'IAS',
-		locationId: 'LOC-CGK',
+		companyId: '',
+		locationId: '',
 		roomName: '',
 		roomNumber: '',
 		floor: '',
@@ -24,6 +31,10 @@
 		videoBackgroundIds: [] as string[]
 	});
 
+	const filteredLocations = $derived(
+		formData.companyId ? locations.filter((l) => l.companyId === formData.companyId) : locations
+	);
+
 	let imagePreviews = $state<string[]>([]);
 	let uploadError = $state('');
 	let isUploading = $state(false);
@@ -35,6 +46,7 @@
 	const columns = [
 		{ key: 'roomId', label: 'Room ID' },
 		{ key: 'roomName', label: 'Room Name' },
+		{ key: 'locationId', label: 'Location' },
 		{ key: 'roomNumber', label: 'Room Number' },
 		{ key: 'floor', label: 'Floor' },
 		{ key: 'capacity', label: 'Capacity' },
@@ -49,6 +61,18 @@
 			}
 		}
 	];
+
+	async function loadLocations() {
+		try {
+			const response = await fetch('/api/v1/locations?limit=100');
+			const result = await response.json();
+			if (result.success) {
+				locations = result.data || [];
+			}
+		} catch (error) {
+			console.error('Failed to load locations:', error);
+		}
+	}
 
 	async function loadAvailableVideos() {
 		loadingVideos = true;
@@ -69,7 +93,7 @@
 		editingRoom = null;
 		resetForm();
 		isModalOpen = true;
-		await loadAvailableVideos();
+		await Promise.all([loadLocations(), loadAvailableVideos()]);
 	}
 
 	async function openEditModal(room: MeetingRoom) {
@@ -93,14 +117,14 @@
 		imagePreviews = room.imageUrls || (room.imageUrl ? [room.imageUrl] : []);
 		uploadError = '';
 		isModalOpen = true;
-		await loadAvailableVideos();
+		await Promise.all([loadLocations(), loadAvailableVideos()]);
 	}
 
 	function resetForm() {
 		formData = {
 			roomId: '',
-			companyId: 'IAS',
-			locationId: 'LOC-CGK',
+			companyId: selectedCompanyId,
+			locationId: '',
 			roomName: '',
 			roomNumber: '',
 			floor: '',
@@ -116,7 +140,7 @@
 		uploadError = '';
 	}
 
-	// Handle image upload - uploads to Supabase Storage
+	// Handle image upload - uploads to object storage
 	// Images are automatically compressed to max 1200px and 80% quality
 	async function handleImageUpload(event: Event) {
 		const input = event.target as HTMLInputElement;
@@ -144,8 +168,8 @@
 			}
 
 			try {
-				// Upload to Supabase Storage
-				const { url, error } = await uploadImageToSupabase(
+				// Upload to storage
+				const { url, error } = await uploadImage(
 					file,
 					formData.roomId || 'temp',
 					`${Date.now()}-${i}`
@@ -177,11 +201,11 @@
 	async function removeImage(index: number) {
 		const imageUrl = formData.imageUrls[index];
 
-		// Delete from Supabase if it's a Supabase URL
-		if (isSupabaseUrl(imageUrl)) {
-			const deleted = await deleteImageFromSupabase(imageUrl);
+		// Delete from storage if it is a storage URL
+		if (isStorageUrl(imageUrl)) {
+			const deleted = await deleteFromStorage(imageUrl);
 			if (!deleted) {
-				console.warn('Failed to delete image from Supabase, but removing from UI');
+				console.warn('Failed to delete image from storage, removing from UI');
 			}
 		}
 
@@ -256,6 +280,26 @@
 			<div class="form-group">
 				<label for="roomName">Room Name *</label>
 				<input type="text" id="roomName" bind:value={formData.roomName} required placeholder="Board Room A" />
+			</div>
+
+			<div class="form-group">
+				<label for="companyId">Company *</label>
+				<select id="companyId" bind:value={formData.companyId} required onchange={() => { formData.locationId = ''; }}>
+					<option value="">Select Company</option>
+					{#each accessibleCompanies as company}
+						<option value={company.companyId}>{company.companyName}</option>
+					{/each}
+				</select>
+			</div>
+
+			<div class="form-group">
+				<label for="locationId">Location *</label>
+				<select id="locationId" bind:value={formData.locationId} required>
+					<option value="">Select Location</option>
+					{#each filteredLocations as location}
+						<option value={location.locationId}>{location.locationName} — {location.city}</option>
+					{/each}
+				</select>
 			</div>
 
 			<div class="form-group">

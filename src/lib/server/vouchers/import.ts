@@ -3,7 +3,7 @@
  * Parses Gojek/Grab CSV files and imports voucher codes
  */
 
-import { getDB, collections } from '$lib/server/db/mongodb';
+import { connectDB, collections } from '$lib/server/db/mongodb';
 import type { Voucher } from '$lib/server/db/schemas';
 
 export interface ImportResult {
@@ -74,7 +74,7 @@ export async function importVouchers(
 	};
 
 	try {
-		const db = getDB();
+		const db = await connectDB();
 		const codes = parseVoucherCodes(csvContent);
 
 		if (codes.length === 0) {
@@ -137,7 +137,7 @@ export async function importVouchers(
  * Get voucher statistics
  */
 export async function getVoucherStats(companyId: string) {
-	const db = getDB();
+	const db = await connectDB();
 
 	const [total, available, used, expired] = await Promise.all([
 		db.collection(collections.vouchers).countDocuments({ companyId }),
@@ -183,7 +183,7 @@ export async function exportUsedVouchers(
 	billingMonth?: string,
 	provider?: string
 ) {
-	const db = getDB();
+	const db = await connectDB();
 
 	const query: any = {
 		companyId,

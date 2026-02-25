@@ -3,7 +3,7 @@
  * Handle application settings stored in database with encryption for sensitive values
  */
 
-import { getDB } from './db/mongodb';
+import { connectDB } from './db/mongodb';
 import { env } from '$env/dynamic/private';
 import crypto from 'crypto';
 import type { Setting } from './db/schemas/settings';
@@ -44,7 +44,7 @@ function decrypt(encrypted: string): string {
  * Initialize settings collection with default values
  */
 export async function initializeSettings(): Promise<void> {
-	const db = getDB();
+	const db = await connectDB();
 	const settingsCollection = db.collection<Setting>('settings');
 
 	for (const setting of DEFAULT_SETTINGS) {
@@ -67,7 +67,7 @@ export async function initializeSettings(): Promise<void> {
  * Automatically decrypts if it's a secret
  */
 export async function getSetting(key: string): Promise<string | null> {
-	const db = getDB();
+	const db = await connectDB();
 	const setting = await db.collection<Setting>('settings').findOne({ key });
 
 	if (!setting) {
@@ -105,7 +105,7 @@ export async function getSettings(keys: string[]): Promise<Record<string, string
  * Get all settings in a category
  */
 export async function getSettingsByCategory(category: string): Promise<Setting[]> {
-	const db = getDB();
+	const db = await connectDB();
 	const settings = await db.collection<Setting>('settings')
 		.find({ category: category as any })
 		.toArray();
@@ -126,7 +126,7 @@ export async function updateSetting(
 	value: string,
 	updatedBy?: string
 ): Promise<void> {
-	const db = getDB();
+	const db = await connectDB();
 	const settingsCollection = db.collection<Setting>('settings');
 
 	const setting = await settingsCollection.findOne({ key });

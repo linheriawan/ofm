@@ -1,4 +1,4 @@
-import { getDB, collections } from '$lib/server/db/mongodb';
+import { connectDB, collections } from '$lib/server/db/mongodb';
 import type { Device } from '$lib/types';
 
 /**
@@ -12,7 +12,7 @@ export async function verifyDeviceAccess(
 	roomId: string
 ): Promise<boolean> {
 	try {
-		const db = getDB();
+		const db = await connectDB();
 		const device = await db.collection<Device>(collections.devices).findOne({
 			deviceId,
 			roomId,
@@ -46,7 +46,7 @@ export async function verifyDeviceAccess(
  */
 export async function getDeviceAssignment(deviceId: string): Promise<Device | null> {
 	try {
-		const db = getDB();
+		const db = await connectDB();
 		const device = await db.collection<Device>(collections.devices).findOne({
 			deviceId,
 			status: { $in: ['active', 'pending'] }
@@ -66,7 +66,7 @@ export async function getDeviceAssignment(deviceId: string): Promise<Device | nu
  */
 export async function registerOrUpdateDevice(deviceId: string): Promise<Device> {
 	try {
-		const db = getDB();
+		const db = await connectDB();
 		const now = new Date();
 
 		const result = await db.collection<Device>(collections.devices).findOneAndUpdate(

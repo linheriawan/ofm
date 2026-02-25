@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { uploadVideoToSupabase, deleteImageFromSupabase, isSupabaseUrl } from '$lib/utils/imageUpload';
+	import { uploadVideo, deleteFromStorage, isStorageUrl } from '$lib/utils/imageUpload';
 	import DataTable from '$lib/components/DataTable.svelte';
 
 	let title = 'Background Videos - OFM';
@@ -132,8 +132,8 @@
 		uploadProgress = 'Uploading video to storage...';
 
 		try {
-			// Upload video to Supabase
-			const { url, error: uploadError } = await uploadVideoToSupabase(
+			// Upload video to storage
+			const { url, error: uploadError } = await uploadVideo(
 				formData.videoFile,
 				'background-videos'
 			);
@@ -233,9 +233,9 @@
 			const result = await response.json();
 
 			if (result.success) {
-				// Delete from Supabase storage
-				if (isSupabaseUrl(video.videoUrl)) {
-					await deleteImageFromSupabase(video.videoUrl);
+				// Delete from storage
+				if (isStorageUrl(video.videoUrl)) {
+					await deleteFromStorage(video.videoUrl);
 				}
 
 				alert('Video deleted successfully');

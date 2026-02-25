@@ -71,12 +71,18 @@ spec:
           value: https://<sso-domain.name>/auth/callback
         - name: SSO_SCOPES
           value: openid email profile roles
-        - name: PUBLIC_SUPABASE_URL
+        - name: PUBLIC_STORAGE_URL
           value: https://<your-project>.supabase.co
-        - name: PUBLIC_SUPABASE_ANON_KEY
+        - name: PUBLIC_STORAGE_ANON_KEY
           value: <your-supabase-anon-key>
-        - name: PUBLIC_SUPABASE_BUCKET
+        - name: PUBLIC_STORAGE_BUCKET
           value: ofm
+        - name: STORAGE_KEY_ID
+          value: <STORAGE_KEY_ID>
+        - name: STORAGE_SECRET_KEY
+          value: <STORAGE_SECRET_KEY>
+        - name: STORAGE_REGION
+          value: ap-southeast-3
         - name: MONGODB_URI
           valueFrom:
             secretKeyRef:

@@ -117,6 +117,10 @@ export interface SessionData {
 	roles: string[]; // OFM-specific roles
 	ssoRoles?: string[]; // Roles from SSO
 
+	// Multi-entity
+	companyAccess?: string[]; // Companies accessible to regional admins
+	selectedCompanyId?: string; // Active company context
+
 	tokens: OAuthTokens;
 	expiresAt: number;
 }
@@ -222,4 +226,16 @@ export function setSessionCookie(event: RequestEvent, sessionToken: string): voi
 
 export function clearSessionCookie(event: RequestEvent): void {
 	event.cookies.delete('ofm_session', { path: '/' });
+}
+
+export async function updateSelectedCompany(event: RequestEvent, companyId: string): Promise<void> {
+	const sessionCookie = event.cookies.get('ofm_session');
+	if (!sessionCookie) return;
+
+	const session = await getSession(sessionCookie);
+	if (!session) return;
+
+	session.selectedCompanyId = companyId;
+	const newToken = await encrypt(JSON.stringify(session));
+	setSessionCookie(event, newToken);
 }
