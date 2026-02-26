@@ -73,7 +73,7 @@
 
 		// Create assignment URL
 		const baseUrl = window.location.origin;
-		assignUrl = `${baseUrl}/admin/assign-device?deviceId=${deviceId}`;
+		assignUrl = `${baseUrl}/admin/devices/assign?deviceId=${deviceId}`;
 
 		// Generate QR code
 		qrCodeUrl = generateQRCode(assignUrl);

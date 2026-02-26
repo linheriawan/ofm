@@ -53,7 +53,7 @@
 	];
 
 	function handleReassign(device: any) {
-		goto(`/admin/assign-device?deviceId=${device.deviceId}`);
+		goto(`/admin/devices/assign?deviceId=${device.deviceId}`);
 	}
 
 	async function handleUnassign(device: any) {

@@ -129,7 +129,7 @@
 					</button>
 					{#if requestsDropdownOpen}
 						<div class="dropdown-menu">
-							<div class="dropdown-section-title">Booking Data</div>
+							<div class="dropdown-section-title">Booking</div>
 							<a href="/transportation/bookings" onclick={closeDropdowns}>Transport</a>
 							<a href="/meeting/bookings" onclick={closeDropdowns}>Meetings</a>
 							
@@ -137,6 +137,11 @@
 							<div class="dropdown-section-title">Summary</div>
 							<a href="/transportation/tracking" onclick={closeDropdowns}>Track Vehicles</a>
 							<a href="/meeting/calendar" onclick={closeDropdowns}>Room Calendar</a>
+							
+							<div class="dropdown-divider"></div>
+							<div class="dropdown-section-title">Approvals</div>
+							<a href="/modules/approvals" onclick={closeDropdowns}>Transportation </a>
+							<a href="/modules/meeting-approvals" onclick={closeDropdowns}>Meeting</a>
 						</div>
 					{/if}
 				</li>
@@ -152,14 +157,18 @@
 							<div class="dropdown-section-title">Transportation</div>
 							<a href="/admin/vehicles" onclick={closeDropdowns}>Vehicles</a>
 							<a href="/admin/drivers" onclick={closeDropdowns}>Drivers</a>
+							<a href="/admin/trip-purposes" onclick={closeDropdowns}>Trip Purposes</a>
 							<a href="/admin/transport-companies" onclick={closeDropdowns}>Transport Companies</a>
 							<a href="/admin/vouchers" onclick={closeDropdowns}>Vouchers</a>
-							<a href="/admin/trip-purposes" onclick={closeDropdowns}>Trip Purposes</a>
+
 							<div class="dropdown-divider"></div>
-							<div class="dropdown-section-title">Meeting Rooms</div>
-							<a href="/admin/rooms" onclick={closeDropdowns}>Meeting Rooms</a>
-							<a href="/admin/devices" onclick={closeDropdowns}>Display Devices</a>
-							<a href="/admin/videos" onclick={closeDropdowns}>Background Videos</a>
+							<div class="dropdown-section-title">Places</div>
+							<a href="/modules/companies" onclick={closeDropdowns}>Companies</a>
+							<a href="/modules/locations" onclick={closeDropdowns}>Locations</a>
+							<a href="/admin/rooms" onclick={closeDropdowns}>Rooms</a>
+							<a href="/admin/devices" onclick={closeDropdowns}>Devices</a>
+							<a href="/admin/videos" onclick={closeDropdowns}>Videos</a>
+							<a href="/modules/room-displays" onclick={closeDropdowns}>Room Displays</a>
 						</div>
 					{/if}
 				</li>
@@ -172,18 +181,19 @@
 					</button>
 					{#if configDropdownOpen}
 						<div class="dropdown-menu">
-							<div class="dropdown-section-title">Approvals</div>
-							<a href="/modules/approvals" onclick={closeDropdowns}>Transportation </a>
-							<a href="/modules/meeting-approvals" onclick={closeDropdowns}>Meeting</a>
-							<div class="user-menu-divider"></div>
 							<div class="dropdown-section-title">Modules</div>
-							<a href="/modules/room-displays" onclick={closeDropdowns}>Room Displays</a>
-							<a href="/modules/sync" onclick={closeDropdowns}>Data Sync</a>
 							<div class="dropdown-divider"></div>
-							<div class="dropdown-section-title">General</div>
 							<a href="/admin/settings" onclick={closeDropdowns}>⚙️ Settings</a>
+							<a href="/modules/approvals/config" onclick={closeDropdowns}>Workflow</a>
+							
+							<div class="dropdown-section-title">General</div>
+							<div class="dropdown-divider"></div>
 							<a href="/modules/users" onclick={closeDropdowns}>Users</a>
+							<a href="/modules/departements" onclick={closeDropdowns}>Departements</a>
+							<a href="/modules/positions" onclick={closeDropdowns}>Position</a>
 							<a href="/modules/roles" onclick={closeDropdowns}>Roles &amp; Permissions</a>
+							<a href="/modules/sync" onclick={closeDropdowns}>Data Sync</a>
+							
 							<a href="/modules/locations" onclick={closeDropdowns}>Locations</a>
 						</div>
 					{/if}
@@ -238,7 +248,7 @@
 								</div>
 							{/if}
 						</div>
-						<div class="user-menu-divider"></div>
+						<div class="dropdown-divider"></div>
 						<form method="POST" action="/auth/logout" style="margin: 0;">
 							<button type="submit" class="user-menu-logout">🚪 Logout</button>
 						</form>
@@ -525,12 +535,6 @@
 	.user-menu-item:hover {
 		background: #f0f4ff;
 		color: #667eea;
-	}
-
-	.user-menu-divider {
-		height: 1px;
-		background: #e5e7eb;
-		margin: 0.5rem 0;
 	}
 
 	.user-menu-logout {
