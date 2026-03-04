@@ -1,0 +1,113 @@
+import type { Cookies } from '@sveltejs/kit';
+import { encrypt, decrypt } from './session';
+
+interface OAuthState {
+	state: string;
+	codeVerifier: string;
+	redirectPath: string;
+	createdAt: number;
+}
+
+const STATE_EXPIRY = 10 * 60 * 1000; // 10 minutes
+
+const OAUTH_STATE_COOKIE = 'oauth_state';
+
+/**
+ * Save OAuth state in an encrypted cookie
+ * This persists across server restarts (important for dev mode with hot reload)
+ */
+export async function saveOAuthState(
+	cookies: Cookies,
+	state: string,
+	codeVerifier: string,
+	redirectPath: string
+): Promise<void> {
+	const oauthState: OAuthState = {
+		state,
+		codeVerifier,
+		redirectPath,
+		createdAt: Date.now()
+	};
+
+	const encrypted = await encrypt(JSON.stringify(oauthState));
+
+	cookies.set(OAUTH_STATE_COOKIE, encrypted, {
+		path: '/',
+		httpOnly: true,
+		secure: process.env.NODE_ENV === 'production',
+		sameSite: 'lax',
+		maxAge: STATE_EXPIRY / 1000 // Convert to seconds
+	});
+
+	console.log('📝 OAuth state saved to encrypted cookie');
+	console.log('   State:', state);
+	console.log('   Redirect path:', redirectPath);
+	console.log('   Encrypted length:', encrypted.length);
+	console.log('   Encrypted (first 50):', encrypted.substring(0, 50));
+}
+
+/**
+ * Retrieve and validate OAuth state from encrypted cookie
+ */
+export async function getOAuthState(cookies: Cookies, state: string): Promise<OAuthState | null> {
+	const encryptedState = cookies.get(OAUTH_STATE_COOKIE);
+
+	if (!encryptedState) {
+		console.log('❌ No OAuth state cookie found');
+		console.log('   Available cookies:', Object.keys(cookies.getAll()));
+		return null;
+	}
+
+	console.log('📦 Encrypted state cookie found');
+	console.log('   Length:', encryptedState.length);
+	console.log('   First 50 chars:', encryptedState.substring(0, 50));
+
+	try {
+		const decrypted = await decrypt(encryptedState);
+		console.log('✅ Successfully decrypted OAuth state');
+
+		const stored: OAuthState = JSON.parse(decrypted);
+
+		console.log('🔍 OAuth state retrieved from cookie');
+		console.log('   Expected state:', state);
+		console.log('   Stored state:', stored.state);
+		console.log('   State match:', stored.state === state);
+
+		// Validate state matches
+		if (stored.state !== state) {
+			console.log('❌ State mismatch');
+			return null;
+		}
+
+		// Check expiry
+		const age = Date.now() - stored.createdAt;
+		console.log('   State age (ms):', age);
+		console.log('   Max age (ms):', STATE_EXPIRY);
+
+		if (age > STATE_EXPIRY) {
+			console.log('❌ OAuth state expired');
+			return null;
+		}
+
+		console.log('✅ OAuth state validated successfully');
+		return stored;
+	} catch (error) {
+		console.error('❌ Failed to decrypt OAuth state:', error);
+		console.error('   Error type:', error instanceof Error ? error.constructor.name : typeof error);
+		if (error instanceof Error) {
+			console.error('   Error message:', error.message);
+			console.error('   Error stack:', error.stack);
+		}
+		return null;
+	}
+}
+
+/**
+ * Delete OAuth state cookie after successful validation
+ */
+export function deleteOAuthState(cookies: Cookies): void {
+	cookies.delete(OAUTH_STATE_COOKIE, {
+		path: '/'
+	});
+	console.log('🗑️  OAuth state cookie deleted');
+}
