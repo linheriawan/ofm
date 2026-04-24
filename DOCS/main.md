@@ -112,6 +112,3 @@ See [M4](modules/M4-meeting.md) for meeting rules, [M5](modules/M5-transportatio
 - Use standardized API response format and REST patterns
 - No style tags in Svelte components (global CSS only)
 
-## Source Documents
-
-Original documentation archived in `olds/` for reference. Conflicts between old docs have been resolved in the current module docs.

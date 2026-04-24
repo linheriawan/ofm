@@ -1,5 +1,7 @@
 # Development Phases
 
+* already in S3 <-- Room photos are currently base64-encoded in MongoDB `meeting_rooms.imageUrl`. 
+
 ## Phase 1: API Foundation — Done
 Build RESTful API to support both web and mobile clients.
 - 22+ endpoint groups implemented (`/api/v1/*`)
