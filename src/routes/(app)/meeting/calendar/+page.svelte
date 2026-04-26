@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+
 	let title = 'Meeting Room Calendar';
 
 	// Calendar state
@@ -7,45 +9,41 @@
 	let viewMode: 'day' | 'week' | 'month' = 'week';
 	let selectedRoom = 'all';
 
-	// Mock rooms
-	let rooms = [
-		{ id: 'ROOM-A301', name: 'Board Room A-301', color: '#667eea' },
-		{ id: 'ROOM-A302', name: 'Conference Room A-302', color: '#48bb78' },
-		{ id: 'ROOM-B101', name: 'Meeting Room B-101', color: '#f6ad55' },
-		{ id: 'ROOM-B102', name: 'Meeting Room B-102', color: '#ed64a6' },
-		{ id: 'ROOM-B205', name: 'Training Room B-205', color: '#4299e1' }
-	];
+	const COLORS = ['#667eea','#48bb78','#f6ad55','#ed64a6','#4299e1','#9f7aea','#f56565','#38b2ac'];
 
-	// Mock bookings
-	let bookings = [
-		{
-			id: 'MTG-001',
-			roomId: 'ROOM-A301',
-			title: 'Board Meeting',
-			startTime: new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 14, 0),
-			endTime: new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 16, 0),
-			organizer: 'John Smith',
-			participants: 8
-		},
-		{
-			id: 'MTG-002',
-			roomId: 'ROOM-B102',
-			title: 'Team Sync',
-			startTime: new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 16, 30),
-			endTime: new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 17, 30),
-			organizer: 'Jane Doe',
-			participants: 5
-		},
-		{
-			id: 'MTG-003',
-			roomId: 'ROOM-A302',
-			title: 'Client Meeting',
-			startTime: new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 10, 0),
-			endTime: new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 11, 30),
-			organizer: 'Bob Wilson',
-			participants: 12
+	interface CalendarRoom    { id: string; name: string; color: string; }
+	interface CalendarBooking { id: string; roomId: string; title: string; startTime: Date; endTime: Date; organizer: string; participants: number; }
+
+	let rooms: CalendarRoom[] = [];
+	let bookings: CalendarBooking[] = [];
+
+	onMount(async () => {
+		const [rRes, bRes] = await Promise.allSettled([
+			fetch('/api/v1/rooms?limit=1000').then(r => r.json()),
+			fetch('/api/v1/meeting/requests?limit=1000').then(r => r.json()),
+		]);
+
+		if (rRes.status === 'fulfilled' && rRes.value.success) {
+			rooms = (rRes.value.data ?? []).map((r: any, i: number) => ({
+				id: r._id,
+				name: r.roomName || r.roomId,
+				color: COLORS[i % COLORS.length]
+			}));
 		}
-	];
+		if (bRes.status === 'fulfilled' && bRes.value.success) {
+			bookings = (bRes.value.data ?? [])
+				.filter((b: any) => b.roomId)
+				.map((b: any) => ({
+					id: b._id,
+					roomId: b.roomId,
+					title: b.title,
+					startTime: new Date(b.startTime),
+					endTime: new Date(b.endTime),
+					organizer: b.userName || b.userEmail || '',
+					participants: b.participantCount || 0
+				}));
+		}
+	});
 
 	$: filteredBookings = selectedRoom === 'all'
 		? bookings

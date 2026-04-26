@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+
 	let title = 'Vehicle & Driver Schedule';
 
 	// Calendar state
@@ -6,56 +8,62 @@
 	let viewMode: 'vehicles' | 'drivers' = 'vehicles';
 	let selectedResource = 'all';
 
-	// Mock vehicles
-	let vehicles = [
-		{ id: 'VEH-SUV-001', name: 'Toyota Fortuner', type: 'SUV', licensePlate: 'B 1234 ABC', color: '#667eea' },
-		{ id: 'VEH-SED-001', name: 'Honda Accord', type: 'Sedan', licensePlate: 'B 5678 DEF', color: '#48bb78' },
-		{ id: 'VEH-MPV-001', name: 'Toyota Alphard', type: 'MPV', licensePlate: 'B 9012 GHI', color: '#f6ad55' },
-		{ id: 'VEH-EV-001', name: 'BYD Atto 3', type: 'EV', licensePlate: 'B 3456 JKL', color: '#ed64a6' }
-	];
+	const COLORS = ['#667eea','#48bb78','#f6ad55','#ed64a6','#4299e1','#9f7aea','#f56565','#38b2ac'];
 
-	// Mock drivers
-	let drivers = [
-		{ id: 'DRV-001', name: 'Budi Santoso', licenseNumber: 'SIM-12345678', color: '#4299e1' },
-		{ id: 'DRV-002', name: 'Ahmad Wijaya', licenseNumber: 'SIM-87654321', color: '#9f7aea' }
-	];
+	interface CalendarVehicle { id: string; name: string; type: string; licensePlate: string; color: string; }
+	interface CalendarDriver  { id: string; name: string; licenseNumber: string; color: string; }
+	interface CalendarBooking { id: string; vehicleId: string; driverId: string; requestor: string; startTime: Date; endTime: Date; fromLocation: string; toLocation: string; status: string; }
 
-	// Mock bookings
-	let bookings = [
-		{
-			id: 'TRP-001',
-			vehicleId: 'VEH-SUV-001',
-			driverId: 'DRV-001',
-			requestor: 'John Doe',
-			startTime: new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 15, 30),
-			endTime: new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 17, 0),
-			fromLocation: 'Office Jakarta',
-			toLocation: 'Airport',
-			status: 'scheduled'
-		},
-		{
-			id: 'TRP-002',
-			vehicleId: 'VEH-SED-001',
-			driverId: 'DRV-002',
-			requestor: 'Jane Smith',
-			startTime: new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 9, 0),
-			endTime: new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 10, 30),
-			fromLocation: 'Home',
-			toLocation: 'Office Jakarta',
-			status: 'in-progress'
-		},
-		{
-			id: 'TRP-003',
-			vehicleId: 'VEH-MPV-001',
-			driverId: 'DRV-001',
-			requestor: 'Bob Wilson',
-			startTime: new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 13, 0),
-			endTime: new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 15, 0),
-			fromLocation: 'Office',
-			toLocation: 'Client Site',
-			status: 'scheduled'
+	let vehicles: CalendarVehicle[] = [];
+	let drivers: CalendarDriver[] = [];
+	let bookings: CalendarBooking[] = [];
+
+	onMount(async () => {
+		const [vRes, dRes, bRes] = await Promise.allSettled([
+			fetch('/api/v1/vehicles?limit=1000').then(r => r.json()),
+			fetch('/api/v1/drivers?limit=1000').then(r => r.json()),
+			fetch('/api/v1/transport/requests?limit=1000').then(r => r.json()),
+		]);
+
+		if (vRes.status === 'fulfilled' && vRes.value.success) {
+			vehicles = (vRes.value.data ?? []).map((v: any, i: number) => ({
+				id: v._id,
+				name: `${v.brand} ${v.model}`,
+				type: v.vehicleType,
+				licensePlate: v.licensePlate,
+				color: COLORS[i % COLORS.length]
+			}));
 		}
-	];
+		if (dRes.status === 'fulfilled' && dRes.value.success) {
+			drivers = (dRes.value.data ?? []).map((d: any, i: number) => ({
+				id: d._id,
+				name: d.fullName || d.driverId,
+				licenseNumber: d.licenseNumber,
+				color: COLORS[i % COLORS.length]
+			}));
+		}
+		if (bRes.status === 'fulfilled' && bRes.value.success) {
+			bookings = (bRes.value.data ?? [])
+				.filter((b: any) => b.vehicleId || b.driverId)
+				.map((b: any) => {
+					const start = new Date(b.scheduledTime);
+					const end = b.returnTime
+						? new Date(b.returnTime)
+						: new Date(start.getTime() + 60 * 60 * 1000); // default 1h
+					return {
+						id: b._id,
+						vehicleId: b.vehicleId ?? '',
+						driverId: b.driverId ?? '',
+						requestor: b.userName || b.userEmail || b.requestNumber,
+						startTime: start,
+						endTime: end,
+						fromLocation: b.pickup?.address ?? '',
+						toLocation: b.destination?.address ?? '',
+						status: b.status
+					};
+				});
+		}
+	});
 
 	$: resources = viewMode === 'vehicles' ? vehicles : drivers;
 	$: filteredBookings = selectedResource === 'all'

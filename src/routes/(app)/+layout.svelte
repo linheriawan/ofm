@@ -156,7 +156,6 @@
 						<div class="dropdown-menu">
 							<div class="dropdown-section-title">Transportation</div>
 							<a href="/admin/vehicles" onclick={closeDropdowns}>Vehicles</a>
-							<a href="/admin/drivers" onclick={closeDropdowns}>Drivers</a>
 							<a href="/admin/trip-purposes" onclick={closeDropdowns}>Trip Purposes</a>
 							<a href="/admin/transport-companies" onclick={closeDropdowns}>Transport Companies</a>
 							<a href="/admin/vouchers" onclick={closeDropdowns}>Vouchers</a>

@@ -1,14 +1,18 @@
 <script lang="ts">
 	import DataTable from '$lib/components/DataTable.svelte';
 	import Modal from '$lib/components/Modal.svelte';
+	import LookupModal from '$lib/components/LookupModal.svelte';
 	import type { Driver } from '$lib/types';
 
 	let title = 'Drivers Management - OFM';
 	let isModalOpen = $state(false);
 	let editingDriver: Driver | null = $state(null);
+	let selectedUserDisplay = $state('');
+
 	let formData = $state({
 		driverId: '',
 		userId: '',
+		userName: '',
 		companyId: 'IAS',
 		licenseNumber: '',
 		licenseExpiry: '',
@@ -17,9 +21,16 @@
 		rating: 0
 	});
 
+	const userColumns = [
+		{ key: 'userId', label: 'User ID' },
+		{ key: 'firstName', label: 'First Name' },
+		{ key: 'lastName', label: 'Last Name' },
+		{ key: 'email', label: 'Email' }
+	];
+
 	const columns = [
 		{ key: 'driverId', label: 'Driver ID' },
-		{ key: 'userId', label: 'User ID' },
+		{ key: 'userName', label: 'User', format: (val: string, row: any) => val || row.userId || '—' },
 		{ key: 'licenseNumber', label: 'License Number' },
 		{
 			key: 'licenseExpiry',
@@ -45,6 +56,7 @@
 		formData = {
 			driverId: driver.driverId,
 			userId: driver.userId,
+			userName: (driver as any).userName || '',
 			companyId: driver.companyId,
 			licenseNumber: driver.licenseNumber,
 			licenseExpiry: new Date(driver.licenseExpiry).toISOString().split('T')[0],
@@ -52,6 +64,7 @@
 			locationId: driver.locationId || 'LOC-CGK',
 			rating: driver.rating || 0
 		};
+		selectedUserDisplay = (driver as any).userName || driver.userId || '';
 		isModalOpen = true;
 	}
 
@@ -59,6 +72,7 @@
 		formData = {
 			driverId: '',
 			userId: '',
+			userName: '',
 			companyId: 'IAS',
 			licenseNumber: '',
 			licenseExpiry: '',
@@ -66,6 +80,7 @@
 			locationId: 'LOC-CGK',
 			rating: 0
 		};
+		selectedUserDisplay = '';
 	}
 
 	async function handleSubmit(event: Event) {
@@ -129,15 +144,21 @@
 			</div>
 
 			<div class="form-group full-width">
-				<label for="userId">User ID *</label>
-				<input
-					type="text"
-					id="userId"
+				<LookupModal
 					bind:value={formData.userId}
+					displayValue={selectedUserDisplay}
+					fetchEndpoint="/api/v1/users"
+					columns={userColumns}
+					label="Linked User *"
+					title="Select User"
+					placeholder="Click to select a user..."
 					required
-					placeholder="e.g. USR-004"
+					onSelect={(item) => {
+						formData.userId = item ? item._id : '';
+						formData.userName = item ? `${item.firstName} ${item.lastName}`.trim() || item.email : '';
+						selectedUserDisplay = formData.userName;
+					}}
 				/>
-				<small>Must reference an existing user</small>
 			</div>
 
 			<div class="form-group">

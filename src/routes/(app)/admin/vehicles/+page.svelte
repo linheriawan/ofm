@@ -1,11 +1,14 @@
 <script lang="ts">
 	import DataTable from '$lib/components/DataTable.svelte';
 	import Modal from '$lib/components/Modal.svelte';
+	import LookupModal from '$lib/components/LookupModal.svelte';
 	import type { Vehicle } from '$lib/types';
 
 	let title = 'Vehicles Management - OFM';
 	let isModalOpen = $state(false);
 	let editingVehicle: Vehicle | null = $state(null);
+	let selectedDriverDisplay = $state('');
+
 	let formData = $state({
 		vehicleId: '',
 		companyId: 'IAS',
@@ -21,8 +24,17 @@
 		locationId: 'LOC-CGK',
 		hasGPS: false,
 		hasOBD: false,
-		arduinoDeviceId: ''
+		arduinoDeviceId: '',
+		driverId: '',
+		driverName: ''
 	});
+
+	const driverColumns = [
+		{ key: 'userId', label: 'User ID' },
+		{ key: 'firstName', label: 'First Name' },
+		{ key: 'lastName', label: 'Last Name' },
+		{ key: 'email', label: 'Email' }
+	];
 
 	const columns = [
 		{ key: 'vehicleId', label: 'Vehicle ID' },
@@ -32,6 +44,7 @@
 		{ key: 'year', label: 'Year' },
 		{ key: 'vehicleType', label: 'Type' },
 		{ key: 'capacity', label: 'Capacity' },
+		{ key: 'driverName', label: 'Driver', format: (val: string, row: any) => val || row.driverId || '—' },
 		{
 			key: 'status',
 			label: 'Status',
@@ -62,8 +75,11 @@
 			locationId: vehicle.locationId || 'LOC-CGK',
 			hasGPS: vehicle.hasGPS,
 			hasOBD: vehicle.hasOBD,
-			arduinoDeviceId: vehicle.arduinoDeviceId || ''
+			arduinoDeviceId: vehicle.arduinoDeviceId || '',
+			driverId: (vehicle as any).driverId || '',
+			driverName: (vehicle as any).driverName || ''
 		};
+		selectedDriverDisplay = (vehicle as any).driverName || (vehicle as any).driverId || '';
 		isModalOpen = true;
 	}
 
@@ -83,8 +99,11 @@
 			locationId: 'LOC-CGK',
 			hasGPS: false,
 			hasOBD: false,
-			arduinoDeviceId: ''
+			arduinoDeviceId: '',
+			driverId: '',
+			driverName: ''
 		};
+		selectedDriverDisplay = '';
 	}
 
 	async function handleSubmit(event: Event) {
@@ -247,6 +266,23 @@
 				/>
 			</div>
 
+			<div class="form-group full-width">
+				<LookupModal
+					bind:value={formData.driverId}
+					displayValue={selectedDriverDisplay}
+					fetchEndpoint="/api/v1/users?role=driver"
+					columns={driverColumns}
+					label="Assigned Driver"
+					title="Select Driver"
+					placeholder="Click to assign a driver..."
+					onSelect={(item) => {
+						formData.driverId = item ? item._id : '';
+						formData.driverName = item ? `${item.firstName ?? ''} ${item.lastName ?? ''}`.trim() || item.email || '' : '';
+						selectedDriverDisplay = formData.driverName;
+					}}
+				/>
+			</div>
+
 			<div class="form-group checkbox-group">
 				<label>
 					<input type="checkbox" bind:checked={formData.hasGPS} />
@@ -305,6 +341,10 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.5rem;
+	}
+
+	.form-group.full-width {
+		grid-column: 1 / -1;
 	}
 
 	.form-group label {

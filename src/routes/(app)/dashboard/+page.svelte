@@ -8,66 +8,119 @@
 	let showCancelledMessage = false;
 	let errorMessage = '';
 
-	onMount(() => {
-		// Check if user cancelled login or if there was an error
-		const urlParams = new URLSearchParams(window.location.search);
+	let stats = {
+		transportation: { activeVehicles: 0, totalVehicles: 0, onDutyDrivers: 0, pendingRequests: 0, vouchersAvailable: 0 },
+		meeting: { availableRooms: 0, totalRooms: 0, todayBookings: 0, ongoingMeetings: 0, activeLicenses: 0 }
+	};
+	let recentActivities: { type: string; message: string; time: string }[] = [];
+	let upcomingBookings: { type: string; title: string; location: string; time: string }[] = [];
 
+	function timeAgo(date: Date): string {
+		const diff = Date.now() - date.getTime();
+		const mins = Math.floor(diff / 60000);
+		if (mins < 1) return 'just now';
+		if (mins < 60) return `${mins} min ago`;
+		const hrs = Math.floor(mins / 60);
+		if (hrs < 24) return `${hrs} hour${hrs > 1 ? 's' : ''} ago`;
+		return `${Math.floor(hrs / 24)} day${Math.floor(hrs / 24) > 1 ? 's' : ''} ago`;
+	}
+
+	async function loadStats() {
+		const [vehiclesRes, driversRes, transportRes, voucherRes, roomsRes, meetingRes] = await Promise.allSettled([
+			fetch('/api/v1/vehicles?limit=1000').then(r => r.json()),
+			fetch('/api/v1/drivers?limit=1000').then(r => r.json()),
+			fetch('/api/v1/transport/requests?status=pending&limit=1').then(r => r.json()),
+			fetch('/api/v1/vouchers/stats').then(r => r.json()),
+			fetch('/api/v1/rooms?limit=1000').then(r => r.json()),
+			fetch('/api/v1/meeting/requests?limit=1000').then(r => r.json()),
+		]);
+
+		if (vehiclesRes.status === 'fulfilled' && vehiclesRes.value.success) {
+			const vehicles = vehiclesRes.value.data ?? [];
+			stats.transportation.totalVehicles = vehicles.length;
+			stats.transportation.activeVehicles = vehicles.filter((v: any) => v.status === 'available').length;
+		}
+		if (driversRes.status === 'fulfilled' && driversRes.value.success) {
+			const drivers = driversRes.value.data ?? [];
+			stats.transportation.onDutyDrivers = drivers.filter((d: any) => d.status === 'on-duty').length;
+		}
+		if (transportRes.status === 'fulfilled' && transportRes.value.success) {
+			stats.transportation.pendingRequests = transportRes.value.pagination?.total ?? 0;
+		}
+		if (voucherRes.status === 'fulfilled' && voucherRes.value.success) {
+			stats.transportation.vouchersAvailable = voucherRes.value.data?.available ?? 0;
+		}
+		if (roomsRes.status === 'fulfilled' && roomsRes.value.success) {
+			const rooms = roomsRes.value.data ?? [];
+			stats.meeting.totalRooms = rooms.length;
+			stats.meeting.availableRooms = rooms.filter((r: any) => r.status === 'available').length;
+		}
+		if (meetingRes.status === 'fulfilled' && meetingRes.value.success) {
+			const meetings = meetingRes.value.data ?? [];
+			const now = new Date();
+			const todayStr = now.toDateString();
+			stats.meeting.todayBookings = meetings.filter((m: any) => new Date(m.startTime).toDateString() === todayStr).length;
+			stats.meeting.ongoingMeetings = meetings.filter((m: any) => {
+				const s = new Date(m.startTime), e = new Date(m.endTime);
+				return s <= now && now <= e;
+			}).length;
+		}
+		stats = stats; // trigger reactivity
+	}
+
+	async function loadRecentAndUpcoming() {
+		const [transportRes, meetingRes] = await Promise.allSettled([
+			fetch('/api/v1/transport/requests?limit=5&sort=-createdAt').then(r => r.json()),
+			fetch('/api/v1/meeting/requests?limit=5&sort=-createdAt').then(r => r.json()),
+		]);
+
+		const activities: typeof recentActivities = [];
+		const upcoming: typeof upcomingBookings = [];
+		const now = new Date();
+
+		if (transportRes.status === 'fulfilled' && transportRes.value.success) {
+			for (const t of transportRes.value.data ?? []) {
+				activities.push({ type: 'transport', message: `Transport request: ${t.pickup?.address} → ${t.destination?.address}`, time: timeAgo(new Date(t.createdAt)) });
+				const start = new Date(t.scheduledTime);
+				if (start > now) upcoming.push({ type: 'Transport', title: t.purpose || 'Transport', location: t.destination?.address ?? '', time: start.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) });
+			}
+		}
+		if (meetingRes.status === 'fulfilled' && meetingRes.value.success) {
+			for (const m of meetingRes.value.data ?? []) {
+				activities.push({ type: 'meeting', message: `Meeting "${m.title}" booked`, time: timeAgo(new Date(m.createdAt)) });
+				const start = new Date(m.startTime);
+				if (start > now) upcoming.push({ type: 'Meeting', title: m.title, location: m.roomId ?? '', time: `${start.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} - ${new Date(m.endTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}` });
+			}
+		}
+
+		activities.sort((a, b) => a.time.localeCompare(b.time));
+		recentActivities = activities.slice(0, 5);
+		upcomingBookings = upcoming.sort((a, b) => a.time.localeCompare(b.time)).slice(0, 5);
+	}
+
+	onMount(() => {
+		const urlParams = new URLSearchParams(window.location.search);
 		if (urlParams.get('cancelled') === 'true') {
 			showCancelledMessage = true;
-			// Clear the URL parameter after showing message
 			window.history.replaceState({}, '', '/');
-			// Auto-hide message after 5 seconds
-			setTimeout(() => {
-				showCancelledMessage = false;
-			}, 5000);
+			setTimeout(() => { showCancelledMessage = false; }, 5000);
 		} else if (urlParams.get('error')) {
-			const error = urlParams.get('error');
+			const err = urlParams.get('error');
 			const errorMessages: Record<string, string> = {
 				'invalid_request': 'Invalid authentication request. Please try again.',
 				'server_error': 'Server error during authentication. Please try again.',
 				'temporarily_unavailable': 'Authentication service is temporarily unavailable.'
 			};
-			errorMessage = errorMessages[error || ''] || `Authentication error: ${error}`;
-			// Clear the URL parameter
+			errorMessage = errorMessages[err || ''] || `Authentication error: ${err}`;
 			window.history.replaceState({}, '', '/');
-			// Auto-hide error after 8 seconds
-			setTimeout(() => {
-				errorMessage = '';
-			}, 8000);
+			setTimeout(() => { errorMessage = ''; }, 8000);
+		}
+
+		if (user) {
+			loadStats();
+			loadRecentAndUpcoming();
 		}
 	});
-
-	// Mock data for dashboard
-	let stats = {
-		transportation: {
-			activeVehicles: 12,
-			totalVehicles: 15,
-			onDutyDrivers: 10,
-			pendingRequests: 5,
-			vouchersAvailable: 45
-		},
-		meeting: {
-			availableRooms: 8,
-			totalRooms: 12,
-			todayBookings: 15,
-			ongoingMeetings: 3,
-			activeLicenses: 10
-		}
-	};
-
-	let recentActivities = [
-		{ type: 'transport', message: 'Car booking requested by John Doe', time: '5 min ago' },
-		{ type: 'meeting', message: 'Meeting room A-301 booked for 2:00 PM', time: '12 min ago' },
-		{ type: 'transport', message: 'Voucher allocated to Jane Smith', time: '23 min ago' },
-		{ type: 'meeting', message: 'Hybrid meeting started in B-205', time: '35 min ago' },
-		{ type: 'transport', message: 'Vehicle maintenance completed - Car #7', time: '1 hour ago' }
-	];
-
-	let upcomingBookings = [
-		{ type: 'Meeting', title: 'Board Meeting', room: 'A-301', time: '14:00 - 16:00' },
-		{ type: 'Transport', title: 'Airport Transfer', vehicle: 'SUV-001', time: '15:30' },
-		{ type: 'Meeting', title: 'Team Sync', room: 'B-102', time: '16:00 - 17:00' }
-	];
 </script>
 
 <svelte:head>
@@ -334,7 +387,7 @@
 						<div class="booking-type {booking.type.toLowerCase()}">{booking.type}</div>
 						<div class="booking-details">
 							<h4>{booking.title}</h4>
-							<p>{booking.room || booking.vehicle}</p>
+							<p>{booking.location}</p>
 							<span class="booking-time">⏰ {booking.time}</span>
 						</div>
 					</div>

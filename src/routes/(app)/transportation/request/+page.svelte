@@ -60,13 +60,19 @@
 	let selectedPurposeId = '';
 	let driverShouldWait = false;
 
-	// Mock data
-	let availableVehicles = [
-		{ id: 'VEH-SUV-001', name: 'Toyota Fortuner', type: 'SUV', capacity: 7, licensePlate: 'B 1234 ABC' },
-		{ id: 'VEH-SED-001', name: 'Honda Accord', type: 'Sedan', capacity: 5, licensePlate: 'B 5678 DEF' },
-		{ id: 'VEH-MPV-001', name: 'Toyota Alphard', type: 'MPV', capacity: 8, licensePlate: 'B 9012 GHI' },
-		{ id: 'VEH-EV-001', name: 'BYD Atto 3', type: 'EV', capacity: 5, licensePlate: 'B 3456 JKL' }
-	];
+	interface Vehicle {
+		_id: string;
+		vehicleId: string;
+		brand: string;
+		model: string;
+		vehicleType: string;
+		capacity: number;
+		licensePlate: string;
+		isElectric: boolean;
+		status: string;
+	}
+	let availableVehicles: Vehicle[] = [];
+	let isLoadingVehicles = true;
 
 	let selectedVehicle = '';
 
@@ -121,10 +127,25 @@
 		}
 	}
 
-	// Fetch transport companies and trip purposes on mount
+	// Fetch transport companies, trip purposes, and vehicles on mount
 	onMount(async () => {
-		await Promise.all([loadTransportCompanies(), loadTripPurposes(), loadBooking()]);
+		await Promise.all([loadTransportCompanies(), loadTripPurposes(), loadVehicles(), loadBooking()]);
 	});
+
+	async function loadVehicles() {
+		try {
+			isLoadingVehicles = true;
+			const response = await fetch('/api/v1/vehicles?status=available');
+			const result = await response.json();
+			if (result.success && result.data) {
+				availableVehicles = result.data;
+			}
+		} catch (error) {
+			console.error('Failed to load vehicles:', error);
+		} finally {
+			isLoadingVehicles = false;
+		}
+	}
 
 	async function loadTransportCompanies() {
 		try {
@@ -435,22 +456,28 @@
 				{#if requestType === 'company-car'}
 					<div class="vehicle-selection" in:slide="{{ duration: 300 }}" out:slide="{{ duration: 300 }}">
 						<h3>Select Vehicle</h3>
+						{#if isLoadingVehicles}
+							<p class="loading-message">Loading vehicles...</p>
+						{:else if availableVehicles.length === 0}
+							<p class="empty-message">No available vehicles. Please contact administrator.</p>
+						{:else}
 						<div class="vehicle-grid">
 							{#each availableVehicles as vehicle}
-								<label class="vehicle-card {selectedVehicle === vehicle.id ? 'selected' : ''}">
-									<input type="radio" bind:group={selectedVehicle} value={vehicle.id} />
+								<label class="vehicle-card {selectedVehicle === vehicle._id ? 'selected' : ''}">
+									<input type="radio" bind:group={selectedVehicle} value={vehicle._id} />
 									<div class="vehicle-content">
 										<div class="vehicle-icon">
-											{vehicle.type === 'EV' ? '⚡' : '🚗'}
+											{vehicle.isElectric ? '⚡' : '🚗'}
 										</div>
-										<h4>{vehicle.name}</h4>
-										<p class="vehicle-type">{vehicle.type}</p>
+										<h4>{vehicle.brand} {vehicle.model}</h4>
+										<p class="vehicle-type">{vehicle.vehicleType}</p>
 										<p class="vehicle-plate">{vehicle.licensePlate}</p>
 										<p class="vehicle-capacity">Capacity: {vehicle.capacity} passengers</p>
 									</div>
 								</label>
 							{/each}
 						</div>
+						{/if}
 
 						<!-- Driver Wait/Drop Option -->
 						<div class="driver-wait-option">

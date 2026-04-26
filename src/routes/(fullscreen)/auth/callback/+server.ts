@@ -86,7 +86,7 @@ export const GET: RequestHandler = async (event) => {
 
 		console.log('✅ Authentication successful, redirecting to:', storedOAuthState.redirectPath);
 
-		redirect(302, storedOAuthState.redirectPath || '/');
+		throw redirect(302, storedOAuthState.redirectPath || '/');
 	} catch (err) {
 		// Re-throw SvelteKit redirects — they are not errors
 		if (isRedirect(err)) throw err;
