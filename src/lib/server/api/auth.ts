@@ -93,10 +93,29 @@ export function hasRole(user: AuthenticatedUser, role: string): boolean {
 }
 
 /**
- * Check if user is admin
+ * Check if user has any admin-level role.
+ * Covers: super_admin, global_admin, regional_admin (and legacy 'admin').
  */
 export function isAdmin(user: AuthenticatedUser): boolean {
-	return hasRole(user, 'admin') || hasRole(user, 'super_admin');
+	return (
+		hasRole(user, 'super_admin') ||
+		hasRole(user, 'global_admin') ||
+		hasRole(user, 'regional_admin') ||
+		hasRole(user, 'admin')
+	);
+}
+
+/**
+ * Check if user can approve/reject requests (transport or meeting).
+ * super_admin and global_admin can approve; regional_admin can approve within their scope.
+ */
+export function canApprove(user: AuthenticatedUser): boolean {
+	return (
+		hasRole(user, 'super_admin') ||
+		hasRole(user, 'global_admin') ||
+		hasRole(user, 'regional_admin') ||
+		hasRole(user, 'admin')
+	);
 }
 
 /**

@@ -259,7 +259,10 @@
 				priority: 'medium',
 				specialRequirements: notes || undefined,
 				driverShouldWait: requestType === 'company-car' ? driverShouldWait : undefined,
-				// For company car - vehicle will be assigned by admin
+				vehicleId: requestType === 'company-car' ? selectedVehicle : undefined,
+				vehicleName: requestType === 'company-car'
+					? (() => { const v = availableVehicles.find(v => v._id === selectedVehicle); return v ? `${v.brand} ${v.model} (${v.licensePlate})` : undefined; })()
+					: undefined,
 				// For voucher - transport company info
 				transportCompanyId: requestType === 'voucher' ? selectedTransportCompanyId : undefined,
 				voucherProvider: requestType === 'voucher' && selectedCompany

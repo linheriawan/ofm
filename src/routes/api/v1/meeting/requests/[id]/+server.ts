@@ -7,7 +7,7 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { requireAuth } from '$lib/server/api/auth';
+import { requireAuth, isAdmin, canApprove } from '$lib/server/api/auth';
 import { success, error, ErrorCode } from '$lib/server/api/response';
 import { parseBody } from '$lib/server/api/validation';
 import { connectDB, getDB, collections } from '$lib/server/db/mongodb';
@@ -35,7 +35,7 @@ export const GET: RequestHandler = async (event) => {
 		}
 
 		// Only allow users to view their own requests (or admins can view all)
-		if (request.userId !== user.userId && !user.roles?.includes('admin')) {
+		if (request.userId !== user.userId && !isAdmin(user)) {
 			return json(error(ErrorCode.FORBIDDEN, 'You can only view your own requests'), { status: 403 });
 		}
 
@@ -103,7 +103,7 @@ export const PATCH: RequestHandler = async (event) => {
 		// Handle general field updates (editing booking details)
 		if (!body.action) {
 			// Only owner or admin can edit
-			if (request.userId !== user.userId && !user.roles?.includes('admin')) {
+			if (request.userId !== user.userId && !isAdmin(user)) {
 				return json(error(ErrorCode.FORBIDDEN, 'You can only edit your own requests'), { status: 403 });
 			}
 
@@ -147,18 +147,26 @@ export const PATCH: RequestHandler = async (event) => {
 		// Handle action-based updates
 		switch (body.action) {
 			case 'approve':
+				if (!canApprove(user)) {
+					return json(error(ErrorCode.FORBIDDEN, 'Insufficient permissions'), { status: 403 });
+				}
 				if (request.status !== 'pending') {
 					return json(error(ErrorCode.VALIDATION_ERROR, 'Only pending requests can be approved'), { status: 400 });
 				}
 
-				updateData.status = 'approved';
+				// If room already chosen at booking (offline/hybrid), go straight to assigned
+				updateData.status = request.roomId ? 'assigned' : 'approved';
 				updateData.approvedBy = user.userId;
 				updateData.approverName = user.name || user.email;
 				updateData.approvalDate = now;
+				if (request.roomId) updateData.assignedAt = now;
 				if (body.notes) updateData.approvalNotes = body.notes;
 				break;
 
 			case 'reject':
+				if (!canApprove(user)) {
+					return json(error(ErrorCode.FORBIDDEN, 'Insufficient permissions'), { status: 403 });
+				}
 				if (request.status !== 'pending') {
 					return json(error(ErrorCode.VALIDATION_ERROR, 'Only pending requests can be rejected'), { status: 400 });
 				}

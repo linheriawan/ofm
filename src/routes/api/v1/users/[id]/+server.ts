@@ -20,12 +20,20 @@ export const GET: RequestHandler = async ({ params }) => {
 	}
 };
 
+// Fields managed by OFM — all others are owned by SSO/SCIM and must not be overwritten here
+const OFM_FIELDS = new Set(['roleIds', 'locationId', 'companyAccess']);
+
 export const PUT: RequestHandler = async ({ params, request }) => {
 	try {
 		const body = await request.json();
 
-		// Remove sensitive fields that shouldn't be updated directly
-		const { passwordHash, ...updateData } = body;
+		const updateData = Object.fromEntries(
+			Object.entries(body).filter(([k]) => OFM_FIELDS.has(k))
+		);
+
+		if (Object.keys(updateData).length === 0) {
+			return json({ success: false, error: 'No OFM-managed fields to update' }, { status: 400 });
+		}
 
 		const result = await updateDocument<User>('users', params.id, updateData);
 		return json(result, { status: result.status || 200 });

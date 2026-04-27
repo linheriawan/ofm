@@ -21,30 +21,32 @@
 	onMount(async () => {
 		const [vRes, dRes, bRes] = await Promise.allSettled([
 			fetch('/api/v1/vehicles?limit=1000').then(r => r.json()),
-			fetch('/api/v1/drivers?limit=1000').then(r => r.json()),
+			fetch('/api/v1/users?role=driver&limit=1000').then(r => r.json()),
 			fetch('/api/v1/transport/requests?limit=1000').then(r => r.json()),
 		]);
 
 		if (vRes.status === 'fulfilled' && vRes.value.success) {
-			vehicles = (vRes.value.data ?? []).map((v: any, i: number) => ({
+			const mapped = (vRes.value.data ?? []).map((v: any, i: number) => ({
 				id: v._id,
 				name: `${v.brand} ${v.model}`,
 				type: v.vehicleType,
 				licensePlate: v.licensePlate,
 				color: COLORS[i % COLORS.length]
 			}));
+			vehicles = [...mapped, { id: 'unassigned', name: 'Unassigned', type: '', licensePlate: '—', color: '#aaa' }];
 		}
 		if (dRes.status === 'fulfilled' && dRes.value.success) {
-			drivers = (dRes.value.data ?? []).map((d: any, i: number) => ({
+			const mapped = (dRes.value.data ?? []).map((d: any, i: number) => ({
 				id: d._id,
-				name: d.fullName || d.driverId,
-				licenseNumber: d.licenseNumber,
+				name: `${d.firstName ?? ''} ${d.lastName ?? ''}`.trim() || d.email || d.userId,
+				licenseNumber: d.licenseNumber ?? '',
 				color: COLORS[i % COLORS.length]
 			}));
+			drivers = [...mapped, { id: 'unassigned', name: 'Unassigned', licenseNumber: '', color: '#aaa' }];
 		}
 		if (bRes.status === 'fulfilled' && bRes.value.success) {
 			bookings = (bRes.value.data ?? [])
-				.filter((b: any) => b.vehicleId || b.driverId)
+				.filter((b: any) => !['cancelled', 'rejected', 'pending'].includes(b.status))
 				.map((b: any) => {
 					const start = new Date(b.scheduledTime);
 					const end = b.returnTime
@@ -52,8 +54,8 @@
 						: new Date(start.getTime() + 60 * 60 * 1000); // default 1h
 					return {
 						id: b._id,
-						vehicleId: b.vehicleId ?? '',
-						driverId: b.driverId ?? '',
+						vehicleId: b.vehicleId || 'unassigned',
+						driverId: b.driverId || 'unassigned',
 						requestor: b.userName || b.userEmail || b.requestNumber,
 						startTime: start,
 						endTime: end,
@@ -262,7 +264,7 @@
 												<div class="booking-title">{booking.requestor}</div>
 												<div class="booking-route">{booking.fromLocation} → {booking.toLocation}</div>
 												<div class="booking-time">{formatTime(booking.startTime)} - {formatTime(booking.endTime)}</div>
-												<div class="booking-status">Status: {booking.status}</div>
+												<div class="booking-status">{booking.status === 'in_progress' ? '🚗 In Progress' : booking.status === 'assigned' ? '✅ Driver Assigned' : booking.status === 'approved' ? '⏳ Awaiting Assignment' : booking.status === 'completed' ? '☑️ Done' : booking.status}</div>
 											</div>
 										{/if}
 									{/each}
@@ -498,13 +500,32 @@
 		z-index: 1;
 	}
 
-	.booking-block.in-progress {
+	/* approved — waiting for driver/vehicle, slightly muted */
+	.booking-block.approved {
+		opacity: 0.75;
+		border: 2px dashed rgba(255,255,255,0.6);
+	}
+
+	/* assigned — driver assigned, ready to go */
+	.booking-block.assigned {
+		border: 2px solid rgba(255,255,255,0.8);
+	}
+
+	/* in_progress — trip ongoing, pulse to indicate live */
+	.booking-block.in_progress {
+		border: 2px solid rgba(255,255,255,0.9);
 		animation: pulse 2s infinite;
+	}
+
+	/* completed — dimmed */
+	.booking-block.completed {
+		opacity: 0.45;
+		filter: grayscale(40%);
 	}
 
 	@keyframes pulse {
 		0%, 100% { opacity: 1; }
-		50% { opacity: 0.85; }
+		50% { opacity: 0.8; }
 	}
 
 	.booking-block:hover {

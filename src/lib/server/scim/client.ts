@@ -8,14 +8,19 @@
 import { request } from 'undici';
 import { getSCIMConfig } from '$lib/server/settings';
 
-// Cache for SCIM config (refreshed on each request to allow runtime updates)
+// Cache for SCIM config — only cache when fully configured; invalidated on settings update
 let configCache: {
 	baseUrl: string;
 	clientId: string;
 	clientSecret: string;
 } | null = null;
 let cacheTime = 0;
-const CACHE_TTL = 60000; // 1 minute cache
+const CACHE_TTL = 60000; // 1 minute
+
+export function invalidateConfigCache() {
+	configCache = null;
+	cacheTime = 0;
+}
 
 async function getConfig() {
 	// Return cached config if still valid
@@ -23,17 +28,21 @@ async function getConfig() {
 		return configCache;
 	}
 
-	// Get from database settings (getSetting already falls back to env vars)
 	const dbConfig = await getSCIMConfig();
 
-	configCache = {
+	const resolved = {
 		baseUrl: dbConfig.baseUrl || 'http://localhost:5173',
 		clientId: dbConfig.clientId || '',
 		clientSecret: dbConfig.clientSecret || ''
 	};
 
-	cacheTime = Date.now();
-	return configCache;
+	// Only cache when fully configured — avoids caching empty state before credentials are saved
+	if (resolved.clientId && resolved.clientSecret) {
+		configCache = resolved;
+		cacheTime = Date.now();
+	}
+
+	return resolved;
 }
 
 interface TokenResponse {
@@ -145,7 +154,7 @@ class SCIMClient {
 		}
 
 		console.log('🔑 Requesting new SCIM token from:', `${config.baseUrl}/scim/v2/token`);
-		console.log('   Client ID:', config.clientId);
+		console.log('   Client ID:', config.clientId,config.clientSecret);
 
 		const response = await fetch(`${config.baseUrl}/scim/v2/token`, {
 			method: 'POST',
@@ -158,6 +167,7 @@ class SCIMClient {
 				client_secret: config.clientSecret
 			})
 		});
+
 
 		if (!response.ok) {
 			const error = await response.text();
@@ -189,7 +199,7 @@ class SCIMClient {
 		if (options?.filter) params.set('filter', options.filter);
 		params.set('startIndex', (options?.startIndex || 1).toString());
 		params.set('count', (options?.count || 1000).toString());
-
+		
 		const url = `${config.baseUrl}/scim/v2/Users?${params.toString()}`;
 
 		const response = await fetch(url, {
@@ -336,14 +346,12 @@ class SCIMClient {
 	async fetchUser(userId: string): Promise<SCIMUser> {
 		const config = await getConfig();
 		const token = await this.getAccessToken();
-
 		const response = await fetch(`${config.baseUrl}/scim/v2/Users/${userId}`, {
 			headers: {
 				'Authorization': `Bearer ${token}`,
 				'Accept': 'application/scim+json'
 			}
 		});
-
 		if (!response.ok) {
 			const error = await response.text();
 			throw new Error(`Failed to fetch user: ${error}`);

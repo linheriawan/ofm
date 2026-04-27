@@ -47,7 +47,7 @@
 			if (result.success && result.data) {
 				// Map to expected format and filter only available rooms
 				availableRooms = result.data
-					.filter((room: any) => room.status === 'available')
+					.filter((room: any) => (room.status === 'available' && room.roomType !=='office' ))
 					.map((room: any) => ({
 						id: room.roomId,
 						_id: room._id,

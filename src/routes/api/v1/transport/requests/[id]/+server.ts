@@ -8,7 +8,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { ObjectId } from 'mongodb';
-import { requireAuth, isAdmin } from '$lib/server/api/auth';
+import { requireAuth, isAdmin, canApprove } from '$lib/server/api/auth';
 import { success, error, ErrorCode } from '$lib/server/api/response';
 import { parseBody, isValidObjectId } from '$lib/server/api/validation';
 import { getDB, collections } from '$lib/server/db/mongodb';
@@ -56,12 +56,15 @@ export const PATCH: RequestHandler = async (event) => {
 		}
 
 		const body = await parseBody<{
-			status?: 'approved' | 'rejected' | 'cancelled';
+			action?: 'approve' | 'reject' | 'cancel' | 'assign_driver' | 'assign_voucher';
 			rejectionReason?: string;
 			vehicleId?: string;
+			vehicleName?: string;
 			driverId?: string;
+			driverName?: string;
 			voucherCode?: string;
 			voucherAmount?: number;
+			notes?: string;
 		}>(event.request);
 
 		const db = getDB();
@@ -74,32 +77,47 @@ export const PATCH: RequestHandler = async (event) => {
 
 		// Check permissions
 		const isOwner = request.userId === user.userId;
-		const canApprove = isAdmin(user);
+		const userCanApprove = canApprove(user);
 		const canCancel = isOwner || isAdmin(user);
-
 		// Build update
 		const update: any = {
 			updatedAt: new Date(),
 			updatedBy: user.userId
 		};
-
-		if (body.status === 'approved' && canApprove) {
-			update.status = 'approved';
+		
+		if (body.action === 'approve' && userCanApprove) {
+			// If vehicle already selected at booking time, go straight to assigned
+			update.status = request.vehicleId ? 'assigned' : 'approved';
 			update.approvedBy = user.userId;
 			update.approvedAt = new Date();
+			if (request.vehicleId) update.assignedAt = new Date();
+			if (body.notes) update.approvalNotes = body.notes;
 
-			if (body.vehicleId) update.vehicleId = body.vehicleId;
-			if (body.driverId) update.driverId = body.driverId;
-			if (body.driverId || body.vehicleId) update.assignedAt = new Date();
-
-			if (body.voucherCode) update.voucherCode = body.voucherCode;
-			if (body.voucherAmount) update.voucherAmount = body.voucherAmount;
-
-		} else if (body.status === 'rejected' && canApprove) {
+		} else if (body.action === 'reject' && userCanApprove) {
 			update.status = 'rejected';
 			update.rejectionReason = body.rejectionReason || 'No reason provided';
 
-		} else if (body.status === 'cancelled' && canCancel) {
+		} else if (body.action === 'assign_driver' && userCanApprove) {
+			if (!body.driverId || !body.vehicleId) {
+				return json(error(ErrorCode.VALIDATION_ERROR, 'driverId and vehicleId are required'), { status: 400 });
+			}
+			update.driverId = body.driverId;
+			update.driverName = body.driverName;
+			update.vehicleId = body.vehicleId;
+			update.vehicleName = body.vehicleName;
+			update.assignedAt = new Date();
+			update.status = 'assigned';
+
+		} else if (body.action === 'assign_voucher' && userCanApprove) {
+			if (!body.voucherCode) {
+				return json(error(ErrorCode.VALIDATION_ERROR, 'voucherCode is required'), { status: 400 });
+			}
+			update.voucherCode = body.voucherCode;
+			update.voucherAmount = body.voucherAmount;
+			update.assignedAt = new Date();
+			update.status = 'assigned';
+
+		} else if (body.action === 'cancel' && canCancel) {
 			update.status = 'cancelled';
 
 		} else {

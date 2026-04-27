@@ -6,6 +6,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getSettingsByCategory, updateSettings } from '$lib/server/settings';
+import { invalidateConfigCache } from '$lib/server/scim/client';
 
 /**
  * GET /api/v1/settings?category=scim
@@ -61,6 +62,9 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
 		}
 
 		await updateSettings(settings, locals.user.userId);
+
+		// Invalidate SCIM client cache so the next test/sync reads fresh credentials from DB
+		invalidateConfigCache();
 
 		return json({
 			success: true,

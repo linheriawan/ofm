@@ -3,6 +3,7 @@
 	import Modal from '$lib/components/Modal.svelte';
 	import type { User } from '$lib/types';
 
+	let { data } = $props();
 	let title = 'Users - OFM';
 
 	// Tabs — each maps to a roleId filter (null = all users)
@@ -30,12 +31,12 @@
 	// Edit modal
 	let isModalOpen = $state(false);
 	let editingUser: User | null = $state(null);
-	let existingDriverId: string | null = $state(null); // MongoDB _id of the driver record if exists
 	let roles: any[] = $state([]);
 	let departments: any[] = $state([]);
 	let locations: any[] = $state([]);
 
-	let formData = $state({
+	// SSO-owned fields — display only, never submitted
+	let ssoProfile = $state({
 		userId: '',
 		email: '',
 		username: '',
@@ -43,19 +44,21 @@
 		lastName: '',
 		phone: '',
 		departmentId: '',
+		companyId: '',
+		isActive: false,
+		syncedAt: null as string | null
+	});
+
+	// OFM-managed fields — the only ones editable and submitted
+	let formData = $state({
 		locationId: '',
-		roleIds: [] as string[],
-		isActive: true
+		roleIds: [] as string[]
 	});
 
-	let driverData = $state({
-		licenseNumber: '',
-		licenseExpiry: '',
-		status: 'available',
-		rating: 0
-	});
-
-	const isDriver = $derived(formData.roleIds.includes('driver'));
+	function formatSyncedAt(iso: string | null): string {
+		if (!iso) return 'Never';
+		return new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso));
+	}
 
 	const groupedRoles = $derived.by(() => {
 		const groups = [
@@ -169,7 +172,9 @@
 
 	async function openEditModal(user: User) {
 		editingUser = user;
-		formData = {
+
+		// SSO-managed — display only
+		ssoProfile = {
 			userId: user.userId,
 			email: user.email,
 			username: user.username,
@@ -177,35 +182,21 @@
 			lastName: user.lastName,
 			phone: user.phone || '',
 			departmentId: user.departmentId || '',
-			locationId: user.locationId || '',
-			roleIds: normaliseRoleIds(user.roleIds || []),
-			isActive: user.isActive
+			companyId: (user as any).companyId || '',
+			isActive: user.isActive,
+			syncedAt: (user as any).syncedAt ?? null
 		};
 
-		// Reset driver data
-		existingDriverId = null;
-		driverData = { licenseNumber: '', licenseExpiry: '', status: 'available', rating: 0 };
-
-		// Fetch existing driver record if user has driver role or was a driver
-		try {
-			const res = await fetch(`/api/v1/drivers?userId=${(user as any)._id}&limit=1`);
-			const json = await res.json();
-			const record = json.data?.[0];
-			if (record) {
-				existingDriverId = record._id;
-				driverData = {
-					licenseNumber: record.licenseNumber || '',
-					licenseExpiry: record.licenseExpiry ? new Date(record.licenseExpiry).toISOString().split('T')[0] : '',
-					status: record.status || 'available',
-					rating: record.rating ?? 0
-				};
-			}
-		} catch { /* non-critical */ }
+		// OFM-managed — editable
+		formData = {
+			locationId: (user as any).locationId || '',
+			roleIds: normaliseRoleIds(user.roleIds || [])
+		};
 
 		isModalOpen = true;
 	}
 
-	function closeModal() { isModalOpen = false; editingUser = null; existingDriverId = null; }
+	function closeModal() { isModalOpen = false; editingUser = null; }
 
 	function toggleRole(roleId: string) {
 		if (formData.roleIds.includes(roleId)) {
@@ -219,7 +210,7 @@
 		event.preventDefault();
 		if (!editingUser) return;
 		try {
-			// Save user
+			// Only send OFM-managed fields — SSO fields are never submitted
 			const userRes = await fetch(`/api/v1/users/${(editingUser as any)._id}`, {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
@@ -227,33 +218,6 @@
 			});
 			const userResult = await userRes.json();
 			if (!userResult.success) { alert(userResult.error || 'Failed to update user'); return; }
-
-			// Sync driver record
-			if (isDriver) {
-				const driverPayload = {
-					...driverData,
-					userId: (editingUser as any)._id,
-					userName: `${formData.firstName} ${formData.lastName}`.trim() || formData.email,
-					companyId: (editingUser as any).companyId || 'IAS',
-					locationId: formData.locationId || 'LOC-CGK'
-				};
-				if (existingDriverId) {
-					await fetch(`/api/v1/drivers/${existingDriverId}`, {
-						method: 'PUT',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify(driverPayload)
-					});
-				} else {
-					await fetch('/api/v1/drivers', {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify(driverPayload)
-					});
-				}
-			} else if (existingDriverId) {
-				// Role removed — delete the driver record
-				await fetch(`/api/v1/drivers/${existingDriverId}`, { method: 'DELETE' });
-			}
 
 			isModalOpen = false;
 			loadUsers();
@@ -313,62 +277,77 @@
 
 <Modal bind:isOpen={isModalOpen} title="Edit User" onClose={closeModal} width="700px">
 	<form onsubmit={handleSubmit}>
-		<div class="form-grid">
-			<div class="form-group full-width">
-				<label>User ID</label>
-				<input type="text" value={formData.userId} readonly class="readonly-input" />
-			</div>
 
-			<div class="form-group">
-				<label for="email">Email</label>
-				<input type="email" id="email" bind:value={formData.email} />
+		<!-- SSO Profile — readonly, managed by Aksara SSO -->
+		<div class="sso-section">
+			<div class="sso-section-header">
+				<span class="sso-label">🔒 Synced from Aksara SSO</span>
+				<a
+					href="{data.ssoBaseUrl}/admin/users"
+					target="_blank"
+					rel="noopener noreferrer"
+					class="sso-link"
+				>Edit in SSO ↗</a>
 			</div>
-
-			<div class="form-group">
-				<label for="username">Username</label>
-				<input type="text" id="username" bind:value={formData.username} />
+			<div class="form-grid">
+				<div class="form-group">
+					<label>User ID</label>
+					<div class="readonly-field">{ssoProfile.userId || '—'}</div>
+				</div>
+				<div class="form-group">
+					<label>Status</label>
+					<div class="readonly-field">
+						<span class="badge {ssoProfile.isActive ? 'badge-green' : 'badge-red'}">
+							{ssoProfile.isActive ? 'Active' : 'Inactive'}
+						</span>
+					</div>
+				</div>
+				<div class="form-group">
+					<label>First Name</label>
+					<div class="readonly-field">{ssoProfile.firstName || '—'}</div>
+				</div>
+				<div class="form-group">
+					<label>Last Name</label>
+					<div class="readonly-field">{ssoProfile.lastName || '—'}</div>
+				</div>
+				<div class="form-group full-width">
+					<label>Email</label>
+					<div class="readonly-field">{ssoProfile.email || '—'}</div>
+				</div>
+				<div class="form-group">
+					<label>Username</label>
+					<div class="readonly-field">{ssoProfile.username || '—'}</div>
+				</div>
+				<div class="form-group">
+					<label>Phone</label>
+					<div class="readonly-field">{ssoProfile.phone || '—'}</div>
+				</div>
+				<div class="form-group">
+					<label>Department</label>
+					<div class="readonly-field">
+						{departments.find(d => d._id === ssoProfile.departmentId)?.name || ssoProfile.departmentId || '—'}
+					</div>
+				</div>
+				<div class="form-group">
+					<label>Last Synced</label>
+					<div class="readonly-field muted">{formatSyncedAt(ssoProfile.syncedAt)}</div>
+				</div>
 			</div>
+		</div>
 
-			<div class="form-group">
-				<label for="firstName">First Name</label>
-				<input type="text" id="firstName" bind:value={formData.firstName} />
-			</div>
-
-			<div class="form-group">
-				<label for="lastName">Last Name</label>
-				<input type="text" id="lastName" bind:value={formData.lastName} />
-			</div>
-
-			<div class="form-group">
-				<label for="phone">Phone</label>
-				<input type="tel" id="phone" bind:value={formData.phone} placeholder="+62-811-1111-1111" />
-			</div>
-
-			<div class="form-group">
-				<label for="departmentId">Department</label>
-				<select id="departmentId" bind:value={formData.departmentId}>
-					<option value="">— None —</option>
-					{#each departments as dept}
-						<option value={dept._id}>{dept.name}</option>
-					{/each}
-				</select>
-			</div>
-
-			<div class="form-group">
-				<label for="locationId">Location</label>
-				<select id="locationId" bind:value={formData.locationId}>
-					<option value="">— None —</option>
-					{#each locations as loc}
-						<option value={loc._id}>{loc.name} — {loc.city}</option>
-					{/each}
-				</select>
-			</div>
-
-			<div class="form-group checkbox-group">
-				<label>
-					<input type="checkbox" bind:checked={formData.isActive} />
-					Is Active
-				</label>
+		<!-- OFM Settings — editable -->
+		<div class="ofm-section">
+			<div class="ofm-section-header">OFM Settings</div>
+			<div class="form-grid">
+				<div class="form-group full-width">
+					<label for="locationId">Work Location</label>
+					<select id="locationId" bind:value={formData.locationId}>
+						<option value="">— None —</option>
+						{#each locations as loc}
+							<option value={loc._id}>{loc.name} — {loc.city}</option>
+						{/each}
+					</select>
+				</div>
 			</div>
 		</div>
 
@@ -403,56 +382,6 @@
 							</div>
 						</div>
 					{/each}
-				</div>
-			</div>
-		{/if}
-
-		{#if isDriver}
-			<div class="driver-section">
-				<h3>Driver Details</h3>
-				<div class="form-grid">
-					<div class="form-group">
-						<label for="licenseNumber">License Number *</label>
-						<input
-							type="text"
-							id="licenseNumber"
-							bind:value={driverData.licenseNumber}
-							placeholder="e.g. SIM-12345678"
-							required
-						/>
-					</div>
-
-					<div class="form-group">
-						<label for="licenseExpiry">License Expiry *</label>
-						<input
-							type="date"
-							id="licenseExpiry"
-							bind:value={driverData.licenseExpiry}
-							required
-						/>
-					</div>
-
-					<div class="form-group">
-						<label for="driverStatus">Driver Status</label>
-						<select id="driverStatus" bind:value={driverData.status}>
-							<option value="available">Available</option>
-							<option value="on-duty">On Duty</option>
-							<option value="off-duty">Off Duty</option>
-							<option value="on-leave">On Leave</option>
-						</select>
-					</div>
-
-					<div class="form-group">
-						<label for="rating">Rating</label>
-						<input
-							type="number"
-							id="rating"
-							bind:value={driverData.rating}
-							min="0"
-							max="5"
-							step="0.1"
-						/>
-					</div>
 				</div>
 			</div>
 		{/if}
@@ -597,7 +526,65 @@
 	.form-group input:focus,
 	.form-group select:focus { border-color: #667eea; }
 
-	.readonly-input { background: #f9fafb; color: #6b7280; cursor: default; }
+	/* SSO profile section */
+	.sso-section {
+		background: #f8fafc;
+		border: 1px solid #e2e8f0;
+		border-radius: 8px;
+		padding: 1rem;
+	}
+
+	.sso-section-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 0.875rem;
+	}
+
+	.sso-label {
+		font-size: 0.75rem;
+		font-weight: 600;
+		color: #64748b;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+
+	.sso-link {
+		font-size: 0.8rem;
+		color: #2563eb;
+		text-decoration: none;
+		font-weight: 500;
+	}
+	.sso-link:hover { text-decoration: underline; }
+
+	.readonly-field {
+		padding: 0.5rem 0.75rem;
+		background: #fff;
+		border: 1px solid #e2e8f0;
+		border-radius: 6px;
+		font-size: 0.875rem;
+		color: #374151;
+		min-height: 2.25rem;
+		display: flex;
+		align-items: center;
+	}
+	.readonly-field.muted { color: #9ca3af; font-size: 0.8rem; }
+
+	/* OFM settings section */
+	.ofm-section {
+		padding-top: 0.25rem;
+	}
+
+	.ofm-section-header {
+		font-size: 0.8rem;
+		font-weight: 600;
+		color: #64748b;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		margin-bottom: 0.75rem;
+		padding-bottom: 0.5rem;
+		border-bottom: 1px solid #e2e8f0;
+	}
 
 	.checkbox-group label { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; }
 	.checkbox-group input[type='checkbox'] { width: auto; }

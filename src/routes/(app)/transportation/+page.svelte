@@ -38,15 +38,15 @@
 				vehicleStats.maintenance = vehicles.filter((v) => v.status === 'maintenance').length;
 			}
 
-			// Fetch drivers
-			const driversRes = await fetch('/api/v1/drivers?limit=100');
+			// Fetch drivers (users with driver role)
+			const driversRes = await fetch('/api/v1/users?role=driver&limit=200');
 			const driversData = await driversRes.json();
 			if (driversData.success) {
 				drivers = driversData.data;
 				driverStats.total = drivers.length;
-				driverStats.onDuty = drivers.filter((d) => d.status === 'on-duty').length;
-				driverStats.offDuty = drivers.filter((d) => d.status === 'off-duty').length;
-				driverStats.onLeave = drivers.filter((d) => d.status === 'on-leave').length;
+				driverStats.onDuty = drivers.filter((d: any) => d.isActive).length;
+				driverStats.offDuty = drivers.filter((d: any) => !d.isActive).length;
+				driverStats.onLeave = 0;
 			}
 
 			// Fetch recent requests
@@ -152,20 +152,16 @@
 						<span class="value">{driverStats.total}</span>
 					</div>
 					<div class="info-item">
-						<span class="label">On Duty</span>
+						<span class="label">Active</span>
 						<span class="value success">{driverStats.onDuty}</span>
 					</div>
 					<div class="info-item">
-						<span class="label">Off Duty</span>
+						<span class="label">Inactive</span>
 						<span class="value">{driverStats.offDuty}</span>
-					</div>
-					<div class="info-item">
-						<span class="label">On Leave</span>
-						<span class="value">{driverStats.onLeave}</span>
 					</div>
 				</div>
 			{/if}
-			<a href="/admin/drivers" class="link-btn">View All Drivers →</a>
+			<a href="/modules/users?role=driver" class="link-btn">View All Drivers →</a>
 		</div>
 
 		<!-- Voucher Pool -->

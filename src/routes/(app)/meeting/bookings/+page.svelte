@@ -80,18 +80,11 @@
 	];
 
 	// DataTable actions
-	const actions = [
-		{
-			label: 'Edit',
-			class: 'btn-view',
-			onClick: openEditRequest
-		},
-		{
-			label: 'Cancel',
-			class: 'btn-cancel',
-			onClick: handleCancel,
-			show: (booking: any) => booking.status === 'pending' || booking.status === 'approved'
-		}
+	const actions = (row: any) => [
+		{ label: 'Edit', class: 'btn-view', onClick: () => openEditRequest(row) },
+		...(row.status === 'pending' || row.status === 'approved'
+			? [{ label: 'Cancel', class: 'btn-cancel', onClick: () => handleCancel(row) }]
+			: [])
 	];
 
 	function getStatusClass(status: string) {

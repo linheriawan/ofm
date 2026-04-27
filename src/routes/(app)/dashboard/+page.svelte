@@ -28,7 +28,7 @@
 	async function loadStats() {
 		const [vehiclesRes, driversRes, transportRes, voucherRes, roomsRes, meetingRes] = await Promise.allSettled([
 			fetch('/api/v1/vehicles?limit=1000').then(r => r.json()),
-			fetch('/api/v1/drivers?limit=1000').then(r => r.json()),
+			fetch('/api/v1/users?role=driver&limit=1000').then(r => r.json()),
 			fetch('/api/v1/transport/requests?status=pending&limit=1').then(r => r.json()),
 			fetch('/api/v1/vouchers/stats').then(r => r.json()),
 			fetch('/api/v1/rooms?limit=1000').then(r => r.json()),
@@ -42,7 +42,7 @@
 		}
 		if (driversRes.status === 'fulfilled' && driversRes.value.success) {
 			const drivers = driversRes.value.data ?? [];
-			stats.transportation.onDutyDrivers = drivers.filter((d: any) => d.status === 'on-duty').length;
+			stats.transportation.onDutyDrivers = drivers.filter((d: any) => d.isActive).length;
 		}
 		if (transportRes.status === 'fulfilled' && transportRes.value.success) {
 			stats.transportation.pendingRequests = transportRes.value.pagination?.total ?? 0;

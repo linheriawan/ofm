@@ -53,7 +53,6 @@ export const collections = {
 
 	// Transportation Module
 	vehicles: 'vehicles',
-	drivers: 'drivers',
 	driverProfiles: 'driver_profiles',
 	driverAvailability: 'driver_availability',
 	driverShifts: 'driver_shifts',

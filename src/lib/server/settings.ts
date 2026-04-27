@@ -80,8 +80,13 @@ export async function getSetting(key: string): Promise<string | null> {
 		try {
 			return decrypt(setting.value);
 		} catch (error) {
-			console.error(`Failed to decrypt setting ${key}:`, error);
-			return null;
+			console.error(
+				`Failed to decrypt setting "${key}". ` +
+				`This usually means SETTINGS_ENCRYPTION_KEY changed after the value was saved. ` +
+				`Re-save the value in Admin Settings to re-encrypt with the current key.`,
+				error
+			);
+			return setting.value;
 		}
 	}
 

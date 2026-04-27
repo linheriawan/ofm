@@ -48,7 +48,7 @@
 					title: 'Drivers',
 					description: 'Manage drivers and assignments',
 					icon: '👨‍✈️',
-					href: '/admin/drivers',
+					href: '/modules/users?role=driver',
 					color: '#48bb78',
 					available: true
 				},

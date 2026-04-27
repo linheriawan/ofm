@@ -32,8 +32,14 @@ interface CreateTransportRequestBody {
 	passengerCount: number;
 	passengers?: string[];
 	purpose: string;
+	purposeId?: string;
 	priority?: 'low' | 'medium' | 'high' | 'urgent';
 	specialRequirements?: string;
+	driverShouldWait?: boolean;
+	vehicleId?: string;
+	vehicleName?: string;
+	transportCompanyId?: string;
+	voucherProvider?: string;
 }
 
 export const POST: RequestHandler = async (event) => {
@@ -55,6 +61,25 @@ export const POST: RequestHandler = async (event) => {
 		const db = getDB();
 		const now = new Date();
 
+		// Resolve driver from vehicle if a vehicle was pre-selected
+		let resolvedVehicleId: string | undefined;
+		let resolvedVehicleName: string | undefined;
+		let resolvedDriverId: string | undefined;
+		let resolvedDriverName: string | undefined;
+
+		if (body.vehicleId && body.type === 'company_car') {
+			const { ObjectId } = await import('mongodb');
+			const vehicle = await db.collection(collections.vehicles).findOne(
+				{ _id: new ObjectId(body.vehicleId) }
+			);
+			if (vehicle) {
+				resolvedVehicleId = body.vehicleId;
+				resolvedVehicleName = body.vehicleName || `${vehicle.brand} ${vehicle.model} (${vehicle.licensePlate})`;
+				resolvedDriverId = vehicle.driverId || undefined;
+				resolvedDriverName = vehicle.driverName || undefined;
+			}
+		}
+
 		const request: TransportationRequest = {
 			requestNumber: generateRequestNumber('TR'),
 			type: body.type,
@@ -72,8 +97,17 @@ export const POST: RequestHandler = async (event) => {
 			passengers: body.passengers,
 
 			purpose: body.purpose,
+			purposeId: body.purposeId,
 			priority: body.priority || 'medium',
 			specialRequirements: body.specialRequirements,
+			driverShouldWait: body.driverShouldWait,
+			transportCompanyId: body.transportCompanyId,
+			voucherProvider: body.voucherProvider,
+
+			vehicleId: resolvedVehicleId,
+			vehicleName: resolvedVehicleName,
+			driverId: resolvedDriverId,
+			driverName: resolvedDriverName,
 
 			status: 'pending',
 

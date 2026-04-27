@@ -48,6 +48,11 @@ export const POST: RequestHandler = async (event) => {
 			return json(error(ErrorCode.FORBIDDEN, 'Not assigned to this trip'), { status: 403 });
 		}
 
+		// Only assigned requests can be started
+		if (request.status !== 'assigned' && request.status !== 'in_progress') {
+			return json(error(ErrorCode.VALIDATION_ERROR, 'Trip must be in assigned status to start'), { status: 400 });
+		}
+
 		// Check if already started
 		const existingEvent = await db.collection(collections.tripEvents)
 			.findOne({ requestId: id, eventType: 'started' });

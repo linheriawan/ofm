@@ -46,6 +46,54 @@
 		return `${days}d ago`;
 	}
 
+	// Individual user sync
+	let userQuery = $state('');
+	let userSearching = $state(false);
+	let searchResults = $state<any[]>([]);
+	let searchError = $state('');
+	let syncingId = $state<string | null>(null);
+	let syncedIds = $state<Record<string, { action: string; user: any }>>({});
+
+	async function searchUsers() {
+		if (userQuery.trim().length < 2) return;
+		userSearching = true;
+		searchError = '';
+		searchResults = [];
+		try {
+			const res = await fetch(`/api/v1/sync/user?q=${encodeURIComponent(userQuery.trim())}`);
+			const result = await res.json();
+			if (!result.success) searchError = result.error || 'Search failed';
+			else searchResults = result.results;
+		} catch (err) {
+			searchError = err instanceof Error ? err.message : 'Search failed';
+		} finally {
+			userSearching = false;
+		}
+	}
+
+	async function syncUser(ssoId: string) {
+		syncingId = ssoId;
+		try {
+			const res = await fetch('/api/v1/sync/user', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ ssoId })
+			});
+			const result = await res.json();
+			if (result.success) {
+				syncedIds = { ...syncedIds, [ssoId]: result };
+				// Update isSynced in search results
+				searchResults = searchResults.map(r => r.ssoId === ssoId ? { ...r, isSynced: true } : r);
+			} else {
+				searchError = result.error || 'Sync failed';
+			}
+		} catch (err) {
+			searchError = err instanceof Error ? err.message : 'Sync failed';
+		} finally {
+			syncingId = null;
+		}
+	}
+
 	// Streaming sync function
 	async function startStreamingSync() {
 		syncing = true;
@@ -136,7 +184,7 @@
 						<div class="status-content">
 							<h4>Connection Failed</h4>
 							<p>{data.connectionStatus.message}</p>
-							<p class="hint">Check your SCIM credentials in .env file</p>
+							<p class="hint">Check your SCIM credentials in <a href="/admin/settings">Admin Settings</a></p>
 						</div>
 					</div>
 				{/if}
@@ -145,7 +193,7 @@
 					<div class="status-icon">⚠️</div>
 					<div class="status-content">
 						<h4>SCIM Not Configured</h4>
-						<p>Set SCIM_CLIENT_ID and SCIM_CLIENT_SECRET in your .env file</p>
+						<p>Configure SCIM credentials in <a href="/admin/settings">Admin Settings</a></p>
 					</div>
 				</div>
 			{/if}
@@ -235,6 +283,63 @@
 				database.
 			</p>
 
+			<!-- Individual User Sync -->
+			<div class="user-sync-row">
+				<input
+					type="text"
+					class="user-sync-input"
+					placeholder="Search by name, email, or employee ID..."
+					bind:value={userQuery}
+					onkeydown={(e) => e.key === 'Enter' && searchUsers()}
+					disabled={userSearching || !data.scimConfigured}
+				/>
+				<button
+					class="btn-secondary"
+					onclick={searchUsers}
+					disabled={userSearching || userQuery.trim().length < 2 || !data.scimConfigured}
+				>
+					{userSearching ? '⏳' : '🔍'} Search
+				</button>
+			</div>
+			{#if searchError}
+				<div class="user-sync-result error">❌ {searchError}</div>
+			{/if}
+			{#if searchResults.length > 0}
+				<div class="search-results">
+					{#each searchResults as result}
+						<div class="result-row">
+							<div class="result-info">
+								<span class="result-name">{result.firstName} {result.lastName}</span>
+								<span class="result-email">{result.email}</span>
+								{#if result.employeeNumber}
+									<span class="result-emp">#{result.employeeNumber}</span>
+								{/if}
+								<span class="badge {result.isActive ? 'success' : 'neutral'}" style="font-size:0.7rem">
+									{result.isActive ? 'Active' : 'Inactive'}
+								</span>
+							</div>
+							<div class="result-actions">
+								{#if syncedIds[result.ssoId]}
+									<span class="synced-label">✅ {syncedIds[result.ssoId].action}</span>
+								{:else if result.isSynced}
+									<span class="synced-label">✔ synced</span>
+								{/if}
+								<button
+									class="btn-secondary"
+									style="padding:0.35rem 0.75rem;font-size:0.8rem"
+									onclick={() => syncUser(result.ssoId)}
+									disabled={syncingId === result.ssoId}
+								>
+									{syncingId === result.ssoId ? '⏳' : result.isSynced && !syncedIds[result.ssoId] ? '🔄 Re-sync' : '⬇ Sync'}
+								</button>
+							</div>
+						</div>
+					{/each}
+				</div>
+			{:else if !userSearching && userQuery.trim().length >= 2}
+				<p class="hint" style="margin-top:0.5rem">No results found in SSO.</p>
+			{/if}
+
 			<!-- Progress Display -->
 			{#if syncing && syncProgress.phase}
 				<div class="progress-box">
@@ -297,7 +402,7 @@
 						{webhookUrl || 'http://localhost:5074/api/v1/scim/webhook'}
 					</code>
 					<p class="hint">
-						Set SCIM_WEBHOOK_SECRET in .env for webhook signature verification
+						Set the Webhook Secret in <a href="/admin/settings">Admin Settings</a> for webhook signature verification
 					</p>
 				</div>
 			</div>
@@ -658,6 +763,128 @@
 		word-break: break-all;
 	}
 
+	.user-sync-row {
+		display: flex;
+		gap: 0.5rem;
+		margin-top: 1rem;
+	}
+
+	.user-sync-input {
+		flex: 1;
+		padding: 0.625rem 0.875rem;
+		border: 1px solid #d1d5db;
+		border-radius: 8px;
+		font-size: 0.9rem;
+		outline: none;
+	}
+
+	.user-sync-input:focus {
+		border-color: #667eea;
+		box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+	}
+
+	.btn-secondary {
+		padding: 0.625rem 1.25rem;
+		border: 1px solid #667eea;
+		border-radius: 8px;
+		font-weight: 600;
+		cursor: pointer;
+		font-size: 0.9rem;
+		background: white;
+		color: #667eea;
+		white-space: nowrap;
+		transition: all 0.2s;
+	}
+
+	.btn-secondary:not(:disabled):hover {
+		background: #667eea;
+		color: white;
+	}
+
+	.btn-secondary:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	.user-sync-result {
+		margin-top: 0.5rem;
+		padding: 0.625rem 1rem;
+		border-radius: 6px;
+		font-size: 0.9rem;
+	}
+
+	.user-sync-result.success {
+		background: #d1fae5;
+		color: #065f46;
+	}
+
+	.user-sync-result.error {
+		background: #fee2e2;
+		color: #991b1b;
+	}
+
+	.search-results {
+		margin-top: 0.75rem;
+		border: 1px solid #e5e7eb;
+		border-radius: 8px;
+		overflow: hidden;
+	}
+
+	.result-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 0.625rem 1rem;
+		border-bottom: 1px solid #f3f4f6;
+		gap: 1rem;
+	}
+
+	.result-row:last-child {
+		border-bottom: none;
+	}
+
+	.result-row:hover {
+		background: #f9fafb;
+	}
+
+	.result-info {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		flex-wrap: wrap;
+		min-width: 0;
+	}
+
+	.result-name {
+		font-weight: 600;
+		font-size: 0.9rem;
+		color: #111827;
+	}
+
+	.result-email {
+		font-size: 0.8rem;
+		color: #6b7280;
+	}
+
+	.result-emp {
+		font-size: 0.75rem;
+		color: #9ca3af;
+		font-family: monospace;
+	}
+
+	.result-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		flex-shrink: 0;
+	}
+
+	.synced-label {
+		font-size: 0.75rem;
+		color: #059669;
+		white-space: nowrap;
+	}
+
 	@media (max-width: 768px) {
 		.sync-grid,
 		.stats-grid {
@@ -665,6 +892,10 @@
 		}
 
 		.info-box {
+			flex-direction: column;
+		}
+
+		.user-sync-row {
 			flex-direction: column;
 		}
 	}

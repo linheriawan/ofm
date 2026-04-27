@@ -320,11 +320,12 @@
 			<div class="form-group">
 				<label for="roomType">Room Type *</label>
 				<select id="roomType" bind:value={formData.roomType} required>
+					<option value="huddle">Huddle</option>
+					<option value="meeting">Meeting</option>
 					<option value="boardroom">Boardroom</option>
 					<option value="conference">Conference</option>
-					<option value="meeting">Meeting</option>
 					<option value="training">Training</option>
-					<option value="huddle">Huddle</option>
+					<option value="office">Office</option>
 				</select>
 			</div>
 

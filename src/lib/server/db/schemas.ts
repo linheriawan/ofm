@@ -68,7 +68,9 @@ export interface TransportationRequest extends BaseDocument {
 
 	// Assignment (for company cars)
 	vehicleId?: string;
+	vehicleName?: string;
 	driverId?: string;
+	driverName?: string;
 	driverType?: 'primary' | 'backup' | 'none'; // Track assignment type
 	assignedAt?: Date;
 

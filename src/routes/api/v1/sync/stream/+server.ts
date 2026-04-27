@@ -27,14 +27,20 @@ export const GET: RequestHandler = async () => {
 				}
 				sendSSE(controller, 'status', { message: '✅ Connected to Aksara SSO' });
 
-				// Fetch organizational units with pagination
-				sendSSE(controller, 'status', { message: '📥 Fetching organizational units with pagination...' });
-				const groups = await scimClient.fetchAllGroups();
-				sendSSE(controller, 'progress', {
-					phase: 'fetch_groups',
-					total: groups.length,
-					message: `📥 Fetched ${groups.length} organizational units`
-				});
+				// Fetch organizational units with pagination (optional — skip if endpoint unavailable)
+				let groups: any[] = [];
+				try {
+					sendSSE(controller, 'status', { message: '📥 Fetching organizational units...' });
+					groups = await scimClient.fetchAllGroups();
+					sendSSE(controller, 'progress', {
+						phase: 'fetch_groups',
+						total: groups.length,
+						message: `📥 Fetched ${groups.length} organizational units`
+					});
+				} catch (groupErr) {
+					const msg = groupErr instanceof Error ? groupErr.message : String(groupErr);
+					sendSSE(controller, 'status', { message: `⚠️ Skipping org units (${msg.slice(0, 80)})` });
+				}
 
 				// Fetch users with pagination (handles 1500+ users)
 				sendSSE(controller, 'status', { message: '📥 Fetching users with pagination...' });
@@ -77,7 +83,8 @@ export const GET: RequestHandler = async () => {
 						const roleName = isAdminUser ? 'super_admin' : 'employee';
 						const userRole = await db.collection('roles').findOne({ roleId: roleName });
 
-						const userData: any = {
+						// SSO-owned fields — always overwritten from SCIM
+						const ssoFields: any = {
 							userId: enterpriseExt?.employeeNumber || scimUser.userName.split('@')[0],
 							email: scimUser.emails?.[0]?.value || scimUser.userName,
 							username: scimUser.userName.split('@')[0],
@@ -90,7 +97,6 @@ export const GET: RequestHandler = async () => {
 							managerId: enterpriseExt?.manager?.value || null,
 							ssoUserId: scimUser.id,
 							isActive: scimUser.active,
-							roleIds: userRole ? [userRole._id!.toString()] : [],
 							syncedAt: new Date(),
 							updatedAt: new Date()
 						};
@@ -98,19 +104,15 @@ export const GET: RequestHandler = async () => {
 						const existingUser = await usersCollection.findOne({
 							$or: [
 								{ ssoUserId: scimUser.id },
-								{ email: userData.email }
+								{ email: ssoFields.email }
 							]
 						});
 
 						if (existingUser) {
+							// Preserve OFM-managed fields (roleIds, locationId, companyAccess)
 							await usersCollection.updateOne(
 								{ _id: existingUser._id },
-								{
-									$set: {
-										...userData,
-										ssoUserId: scimUser.id
-									}
-								}
+								{ $set: ssoFields }
 							);
 							updated++;
 
@@ -118,8 +120,12 @@ export const GET: RequestHandler = async () => {
 								deactivated++;
 							}
 						} else {
+							// New user — set SSO fields + OFM defaults
 							await usersCollection.insertOne({
-								...userData,
+								...ssoFields,
+								roleIds: userRole ? [userRole._id!.toString()] : [],
+								locationId: null,
+								companyAccess: [],
 								createdAt: new Date()
 							});
 							created++;

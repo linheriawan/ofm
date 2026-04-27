@@ -19,10 +19,6 @@
 	let rejectionReason = '';
 	let approvalNotes = '';
 
-	// Assignment data (for offline/hybrid meetings)
-	let selectedRoomId = '';
-	let rooms: any[] = [];
-
 	// Assignment data (for online/hybrid meetings)
 	let selectedLicenseId = '';
 	let meetingLink = '';
@@ -35,7 +31,7 @@
 	const itemsPerPage = 10;
 
 	onMount(async () => {
-		await Promise.all([loadRequests(), loadRooms(), loadLicenses()]);
+		await Promise.all([loadRequests(), loadLicenses()]);
 	});
 
 	async function loadRequests() {
@@ -62,18 +58,6 @@
 			console.error('Failed to load requests:', error);
 		} finally {
 			isLoading = false;
-		}
-	}
-
-	async function loadRooms() {
-		try {
-			const response = await fetch('/api/v1/rooms');
-			const result = await response.json();
-			if (result.success) {
-				rooms = result.data || [];
-			}
-		} catch (error) {
-			console.error('Failed to load rooms:', error);
 		}
 	}
 
@@ -106,7 +90,6 @@
 		approvalAction = action;
 		rejectionReason = '';
 		approvalNotes = '';
-		selectedRoomId = '';
 		selectedLicenseId = '';
 		meetingLink = '';
 		showApprovalModal = true;
@@ -145,39 +128,6 @@
 						? `Request ${selectedRequest.requestNumber} approved successfully!`
 						: `Request ${selectedRequest.requestNumber} rejected.`
 				);
-				closeModal();
-				await loadRequests();
-			} else {
-				alert(`Failed: ${result.error?.message || 'Unknown error'}`);
-			}
-		} catch (error: any) {
-			alert(`Error: ${error.message}`);
-		}
-	}
-
-	async function handleAssignRoom() {
-		if (!selectedRequest || !selectedRoomId) {
-			alert('Please select a room');
-			return;
-		}
-
-		try {
-			const selectedRoom = rooms.find((r) => r._id === selectedRoomId);
-
-			const response = await fetch(`/api/v1/meeting/requests/${selectedRequest._id}`, {
-				method: 'PATCH',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					action: 'assign_room',
-					roomId: selectedRoomId,
-					roomName: selectedRoom?.roomName || ''
-				})
-			});
-
-			const result = await response.json();
-
-			if (result.success) {
-				alert(`Room assigned to request ${selectedRequest.requestNumber}!`);
 				closeModal();
 				await loadRequests();
 			} else {
@@ -381,17 +331,10 @@
 								</button>
 							{/if}
 
-							{#if request.status === 'approved'}
-								{#if request.type === 'offline' || request.type === 'hybrid'}
-									<button class="btn btn-primary" onclick={() => openApprovalModal(request, 'approve')}>
-										🏢 Assign Room
-									</button>
-								{/if}
-								{#if request.type === 'online' || request.type === 'hybrid'}
-									<button class="btn btn-primary" onclick={() => openApprovalModal(request, 'approve')}>
-										💻 Assign License
-									</button>
-								{/if}
+							{#if request.status === 'approved' && (request.type === 'online' || request.type === 'hybrid')}
+								<button class="btn btn-primary" onclick={() => openApprovalModal(request, 'approve')}>
+									💻 Assign License
+								</button>
 							{/if}
 
 							{#if request.status === 'assigned'}
@@ -473,6 +416,11 @@
 						></textarea>
 					</div>
 				{:else if selectedRequest.status === 'pending'}
+					{#if selectedRequest.roomId || selectedRequest.roomName}
+						<div class="info-banner">
+							<strong>Room:</strong> {selectedRequest.roomName || selectedRequest.roomId}
+						</div>
+					{/if}
 					<div class="form-group">
 						<label for="approvalNotes">Notes (Optional)</label>
 						<textarea
@@ -482,53 +430,33 @@
 							placeholder="Add any notes..."
 						></textarea>
 					</div>
-				{:else if selectedRequest.status === 'approved'}
-					{#if selectedRequest.type === 'offline' || selectedRequest.type === 'hybrid'}
-						<div class="assignment-section">
-							<h4>Assign Meeting Room</h4>
+				{:else if selectedRequest.status === 'approved' && (selectedRequest.type === 'online' || selectedRequest.type === 'hybrid')}
+					<div class="assignment-section">
+						<h4>Assign Meeting License</h4>
 
-							<div class="form-group">
-								<label for="room">Select Room <span class="required">*</span></label>
-								<select id="room" bind:value={selectedRoomId} required>
-									<option value="">-- Choose Room --</option>
-									{#each rooms as room}
-										<option value={room._id}>
-											{room.roomName} - {room.locationName} (Capacity: {room.capacity})
-										</option>
-									{/each}
-								</select>
-							</div>
+						<div class="form-group">
+							<label for="license">Select License <span class="required">*</span></label>
+							<select id="license" bind:value={selectedLicenseId} required>
+								<option value="">-- Choose License --</option>
+								{#each licenses as license}
+									<option value={license._id}>
+										{license.platform} - {license.licenseKey}
+									</option>
+								{/each}
+							</select>
 						</div>
-					{/if}
 
-					{#if selectedRequest.type === 'online' || selectedRequest.type === 'hybrid'}
-						<div class="assignment-section">
-							<h4>Assign Meeting License</h4>
-
-							<div class="form-group">
-								<label for="license">Select License <span class="required">*</span></label>
-								<select id="license" bind:value={selectedLicenseId} required>
-									<option value="">-- Choose License --</option>
-									{#each licenses as license}
-										<option value={license._id}>
-											{license.platform} - {license.licenseKey}
-										</option>
-									{/each}
-								</select>
-							</div>
-
-							<div class="form-group">
-								<label for="meetingLink">Meeting Link <span class="required">*</span></label>
-								<input
-									type="url"
-									id="meetingLink"
-									bind:value={meetingLink}
-									placeholder="https://zoom.us/j/..."
-									required
-								/>
-							</div>
+						<div class="form-group">
+							<label for="meetingLink">Meeting Link <span class="required">*</span></label>
+							<input
+								type="url"
+								id="meetingLink"
+								bind:value={meetingLink}
+								placeholder="https://zoom.us/j/..."
+								required
+							/>
 						</div>
-					{/if}
+					</div>
 				{/if}
 			</div>
 
@@ -545,32 +473,13 @@
 					</button>
 				{:else if selectedRequest.status === 'pending'}
 					<button class="btn btn-success" onclick={handleApproveReject}>Approve Request</button>
-				{:else if selectedRequest.type === 'offline'}
-					<button
-						class="btn btn-primary"
-						onclick={handleAssignRoom}
-						disabled={!selectedRoomId}
-					>
-						Assign Room
-					</button>
-				{:else if selectedRequest.type === 'online'}
+				{:else if selectedRequest.status === 'approved'}
 					<button
 						class="btn btn-primary"
 						onclick={handleAssignLicense}
 						disabled={!selectedLicenseId || !meetingLink.trim()}
 					>
 						Assign License
-					</button>
-				{:else if selectedRequest.type === 'hybrid'}
-					<button
-						class="btn btn-primary"
-						onclick={() => {
-							if (selectedRoomId) handleAssignRoom();
-							else if (selectedLicenseId && meetingLink) handleAssignLicense();
-						}}
-						disabled={!selectedRoomId && (!selectedLicenseId || !meetingLink.trim())}
-					>
-						Assign Resources
 					</button>
 				{/if}
 			</div>
@@ -966,6 +875,16 @@
 	textarea:focus {
 		outline: none;
 		border-color: #667eea;
+	}
+
+	.info-banner {
+		background: #f0f9ff;
+		border: 1px solid #bae6fd;
+		border-radius: 6px;
+		padding: 0.75rem 1rem;
+		margin-bottom: 1rem;
+		font-size: 0.9rem;
+		color: #0369a1;
 	}
 
 	.assignment-section {

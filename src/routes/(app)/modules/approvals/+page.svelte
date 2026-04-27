@@ -19,12 +19,6 @@
 	let rejectionReason = '';
 	let assignmentNotes = '';
 
-	// Assignment data (for company car)
-	let selectedDriverId = '';
-	let selectedVehicleId = '';
-	let drivers: any[] = [];
-	let vehicles: any[] = [];
-
 	// Assignment data (for voucher)
 	let voucherCode = '';
 	let voucherAmount = 0;
@@ -36,7 +30,7 @@
 	const itemsPerPage = 10;
 
 	onMount(async () => {
-		await Promise.all([loadRequests(), loadDrivers(), loadVehicles()]);
+		await Promise.all([loadRequests(), loadVehicles()]);
 	});
 
 	async function loadRequests() {
@@ -63,18 +57,6 @@
 			console.error('Failed to load requests:', error);
 		} finally {
 			isLoading = false;
-		}
-	}
-
-	async function loadDrivers() {
-		try {
-			const response = await fetch('/api/v1/drivers');
-			const result = await response.json();
-			if (result.success) {
-				drivers = result.data || [];
-			}
-		} catch (error) {
-			console.error('Failed to load drivers:', error);
 		}
 	}
 
@@ -108,8 +90,6 @@
 		approvalAction = action;
 		rejectionReason = '';
 		assignmentNotes = '';
-		selectedDriverId = '';
-		selectedVehicleId = '';
 		voucherCode = '';
 		voucherAmount = 0;
 		showApprovalModal = true;
@@ -148,42 +128,6 @@
 						? `Request ${selectedRequest.requestNumber} approved successfully!`
 						: `Request ${selectedRequest.requestNumber} rejected.`
 				);
-				closeModal();
-				await loadRequests();
-			} else {
-				alert(`Failed: ${result.error?.message || 'Unknown error'}`);
-			}
-		} catch (error: any) {
-			alert(`Error: ${error.message}`);
-		}
-	}
-
-	async function handleAssignDriver() {
-		if (!selectedRequest || !selectedDriverId || !selectedVehicleId) {
-			alert('Please select both driver and vehicle');
-			return;
-		}
-
-		try {
-			const selectedDriver = drivers.find((d) => d._id === selectedDriverId);
-			const selectedVehicle = vehicles.find((v) => v._id === selectedVehicleId);
-
-			const response = await fetch(`/api/v1/transport/requests/${selectedRequest._id}`, {
-				method: 'PATCH',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					action: 'assign_driver',
-					driverId: selectedDriverId,
-					driverName: selectedDriver?.name,
-					vehicleId: selectedVehicleId,
-					vehicleName: selectedVehicle ? `${selectedVehicle.brand} ${selectedVehicle.model}` : ''
-				})
-			});
-
-			const result = await response.json();
-
-			if (result.success) {
-				alert(`Driver and vehicle assigned to request ${selectedRequest.requestNumber}!`);
 				closeModal();
 				await loadRequests();
 			} else {
@@ -378,22 +322,16 @@
 								</button>
 							{/if}
 
-							{#if request.status === 'approved'}
-								{#if request.type === 'company_car'}
-									<button class="btn btn-primary" onclick={() => openApprovalModal(request, 'approve')}>
-										🚗 Assign Driver & Vehicle
-									</button>
-								{:else}
-									<button class="btn btn-primary" onclick={() => openApprovalModal(request, 'approve')}>
-										🎫 Assign Voucher
-									</button>
-								{/if}
+							{#if request.status === 'approved' && request.type === 'voucher'}
+								<button class="btn btn-primary" onclick={() => openApprovalModal(request, 'approve')}>
+									🎫 Assign Voucher
+								</button>
 							{/if}
 
 							{#if request.status === 'assigned'}
 								<div class="assigned-info">
 									{#if request.type === 'company_car'}
-										<span>✓ Assigned to {request.driverName} ({request.vehicleName})</span>
+										<span>✓ {request.vehicleName || 'Vehicle assigned'}{request.driverName ? ` — ${request.driverName}` : ''}</span>
 									{:else}
 										<span>✓ Voucher: {request.voucherCode}</span>
 									{/if}
@@ -467,6 +405,12 @@
 						></textarea>
 					</div>
 				{:else if selectedRequest.status === 'pending'}
+					{#if selectedRequest.type === 'company_car' && selectedRequest.vehicleName}
+						<div class="info-banner">
+							<strong>Vehicle:</strong> {selectedRequest.vehicleName}
+							{#if selectedRequest.driverName}<br><strong>Driver:</strong> {selectedRequest.driverName}{/if}
+						</div>
+					{/if}
 					<div class="form-group">
 						<label for="assignmentNotes">Notes (Optional)</label>
 						<textarea
@@ -476,60 +420,31 @@
 							placeholder="Add any notes..."
 						></textarea>
 					</div>
-				{:else if selectedRequest.status === 'approved'}
-					{#if selectedRequest.type === 'company_car'}
-						<div class="assignment-section">
-							<h4>Assign Driver & Vehicle</h4>
+				{:else if selectedRequest.status === 'approved' && selectedRequest.type === 'voucher'}
+					<div class="assignment-section">
+						<h4>Assign Voucher</h4>
 
-							<div class="form-group">
-								<label for="driver">Select Driver <span class="required">*</span></label>
-								<select id="driver" bind:value={selectedDriverId} required>
-									<option value="">-- Choose Driver --</option>
-									{#each drivers as driver}
-										<option value={driver._id}>{driver.name} - {driver.licenseNumber}</option>
-									{/each}
-								</select>
-							</div>
-
-							<div class="form-group">
-								<label for="vehicle">Select Vehicle <span class="required">*</span></label>
-								<select id="vehicle" bind:value={selectedVehicleId} required>
-									<option value="">-- Choose Vehicle --</option>
-									{#each vehicles as vehicle}
-										<option value={vehicle._id}>
-											{vehicle.brand}
-											{vehicle.model} ({vehicle.licensePlate})
-										</option>
-									{/each}
-								</select>
-							</div>
+						<div class="form-group">
+							<label for="voucherCode">Voucher Code <span class="required">*</span></label>
+							<input
+								type="text"
+								id="voucherCode"
+								bind:value={voucherCode}
+								placeholder="e.g., GOJEK-ABC123"
+								required
+							/>
 						</div>
-					{:else}
-						<div class="assignment-section">
-							<h4>Assign Voucher</h4>
 
-							<div class="form-group">
-								<label for="voucherCode">Voucher Code <span class="required">*</span></label>
-								<input
-									type="text"
-									id="voucherCode"
-									bind:value={voucherCode}
-									placeholder="e.g., GOJEK-ABC123"
-									required
-								/>
-							</div>
-
-							<div class="form-group">
-								<label for="voucherAmount">Amount (Optional)</label>
-								<input
-									type="number"
-									id="voucherAmount"
-									bind:value={voucherAmount}
-									placeholder="e.g., 50000"
-								/>
-							</div>
+						<div class="form-group">
+							<label for="voucherAmount">Amount (Optional)</label>
+							<input
+								type="number"
+								id="voucherAmount"
+								bind:value={voucherAmount}
+								placeholder="e.g., 50000"
+							/>
 						</div>
-					{/if}
+					</div>
 				{/if}
 			</div>
 
@@ -546,15 +461,7 @@
 					</button>
 				{:else if selectedRequest.status === 'pending'}
 					<button class="btn btn-success" onclick={handleApproveReject}>Approve Request</button>
-				{:else if selectedRequest.type === 'company_car'}
-					<button
-						class="btn btn-primary"
-						onclick={handleAssignDriver}
-						disabled={!selectedDriverId || !selectedVehicleId}
-					>
-						Assign Driver & Vehicle
-					</button>
-				{:else}
+				{:else if selectedRequest.status === 'approved' && selectedRequest.type === 'voucher'}
 					<button class="btn btn-primary" onclick={handleAssignVoucher} disabled={!voucherCode.trim()}>
 						Assign Voucher
 					</button>
@@ -978,6 +885,16 @@
 	textarea:focus {
 		outline: none;
 		border-color: #667eea;
+	}
+
+	.info-banner {
+		background: #f0f9ff;
+		border: 1px solid #bae6fd;
+		border-radius: 6px;
+		padding: 0.75rem 1rem;
+		margin-bottom: 1rem;
+		font-size: 0.9rem;
+		color: #0369a1;
 	}
 
 	.assignment-section {

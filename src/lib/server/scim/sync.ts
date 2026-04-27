@@ -103,7 +103,8 @@ export async function syncUsers(users: SCIMUser[]): Promise<{
 			const roleName = isAdminUser ? 'super_admin' : 'employee';
 			const userRole = await db.collection('roles').findOne({ roleId: roleName });
 
-			const userData: Partial<User> = {
+			// SSO-owned fields — always overwritten from SCIM
+			const ssoFields: Partial<User> = {
 				userId: enterpriseExt?.employeeNumber || scimUser.userName.split('@')[0],
 				email: scimUser.emails?.[0]?.value || scimUser.userName,
 				username: scimUser.userName.split('@')[0],
@@ -116,30 +117,30 @@ export async function syncUsers(users: SCIMUser[]): Promise<{
 				managerId: enterpriseExt?.manager?.value || null,
 				ssoUserId: scimUser.id,
 				isActive: scimUser.active,
-				roleIds: userRole ? [userRole._id!.toString()] : [],
 				syncedAt: new Date(),
 				updatedAt: new Date()
+			};
+
+			// OFM-owned defaults — only used on first insert, never overwritten on update
+			const ofmDefaults = {
+				roleIds: userRole ? [userRole._id!.toString()] : [],
+				locationId: null,
+				companyAccess: []
 			};
 
 			// Check if user exists by ssoUserId OR email (handle duplicates)
 			const existingUser = await usersCollection.findOne({
 				$or: [
 					{ ssoUserId: scimUser.id },
-					{ email: userData.email }
+					{ email: ssoFields.email }
 				]
 			});
 
 			if (existingUser) {
-				// Update existing user
+				// Update only SSO-owned fields; preserve OFM-managed fields (roleIds, locationId, companyAccess)
 				await usersCollection.updateOne(
 					{ _id: existingUser._id },
-					{
-						$set: {
-							...userData,
-							// Ensure ssoUserId is set if it wasn't before
-							ssoUserId: scimUser.id
-						}
-					}
+					{ $set: ssoFields }
 				);
 				updated++;
 
@@ -148,9 +149,10 @@ export async function syncUsers(users: SCIMUser[]): Promise<{
 					deactivated++;
 				}
 			} else {
-				// Create new user
+				// New user — set SSO fields + OFM defaults
 				await usersCollection.insertOne({
-					...userData,
+					...ssoFields,
+					...ofmDefaults,
 					createdAt: new Date()
 				} as User);
 				created++;
