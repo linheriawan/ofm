@@ -121,16 +121,9 @@
 						const data = JSON.parse(line.substring(6));
 
 						// Handle different event types
-						if (data.message) {
-							syncLogs = [...syncLogs, data.message];
-						}
-
-						if (data.phase) {
-							syncProgress = data;
-						}
-
-						if (data.stats) {
-							// Sync complete
+						if (data.message) { syncLogs = [...syncLogs, data.message]; }
+						if (data.phase) { syncProgress = data; }
+						if (data.stats) { // Sync complete
 							lastSyncTime = new Date();
 						}
 					}

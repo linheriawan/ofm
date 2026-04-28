@@ -146,21 +146,16 @@ class SCIMClient {
 			console.log('✅ Using cached SCIM token');
 			return this.accessToken;
 		}
-
 		const config = await getConfig();
-
 		if (!config.clientId || !config.clientSecret) {
 			throw new Error('SCIM not configured. Please set SCIM credentials in Settings.');
 		}
 
-		console.log('🔑 Requesting new SCIM token from:', `${config.baseUrl}/scim/v2/token`);
-		console.log('   Client ID:', config.clientId,config.clientSecret);
+		// console.log('🔑 Requesting new SCIM token from:', `${config.baseUrl}/scim/v2/token`);
+		// console.log('   Client ID:', config.clientId, config.clientSecret);
 
 		const response = await fetch(`${config.baseUrl}/scim/v2/token`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/x-www-form-urlencoded',
-			},
+			method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', },
 			body: new URLSearchParams({
 				grant_type: 'client_credentials',
 				client_id: config.clientId,

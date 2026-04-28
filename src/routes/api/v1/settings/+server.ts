@@ -27,10 +27,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 
 		const settings = await getSettingsByCategory(category);
 
-		return json({
-			success: true,
-			data: settings
-		});
+		return json({ success: true, data: settings });
 	} catch (error) {
 		console.error('Failed to get settings:', error);
 		return json(

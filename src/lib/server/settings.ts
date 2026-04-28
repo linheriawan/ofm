@@ -10,7 +10,7 @@ import type { Setting } from './db/schemas/settings';
 import { DEFAULT_SETTINGS, SETTING_KEYS } from './db/schemas/settings';
 
 // Encryption key (should be set in environment)
-const ENCRYPTION_KEY = env.SETTINGS_ENCRYPTION_KEY || process.env.SETTINGS_ENCRYPTION_KEY || 'default-key-change-in-production-32c';
+const ENCRYPTION_KEY = env.SETTINGS_ENCRYPTION_KEY || process.env.SETTINGS_ENCRYPTION_KEY || 'dev-enc-key-change-in-production';
 const ALGORITHM = 'aes-256-cbc';
 
 // Ensure key is 32 bytes
@@ -31,13 +31,17 @@ function encrypt(text: string): string {
  * Decrypt sensitive value
  */
 function decrypt(encrypted: string): string {
-	const parts = encrypted.split(':');
-	const iv = Buffer.from(parts[0], 'hex');
-	const encryptedText = parts[1];
-	const decipher = crypto.createDecipheriv(ALGORITHM, KEY, iv);
-	const decrypted1 = decipher.update(encryptedText, 'hex', 'utf8');
-	const decrypted2 = decipher.final('utf8');
-	return decrypted1 + decrypted2;
+	try{
+		const parts = encrypted.split(':');
+		const iv = Buffer.from(parts[0], 'hex');
+		const encryptedText = parts[1];
+		const decipher = crypto.createDecipheriv(ALGORITHM, KEY, iv);
+		const decrypted1 = decipher.update(encryptedText, 'hex', 'utf8');
+		const decrypted2 = decipher.final('utf8');
+		return decrypted1 + decrypted2;
+	}catch(err){ 
+		throw `This usually means SETTINGS_ENCRYPTION_KEY changed after the value was saved.\nRe-save the value in Admin Settings to re-encrypt with the current key.`
+	}
 }
 
 /**
@@ -58,7 +62,6 @@ export async function initializeSettings(): Promise<void> {
 			} as Setting);
 		}
 	}
-
 	console.log('✅ Settings initialized');
 }
 
@@ -77,19 +80,15 @@ export async function getSetting(key: string): Promise<string | null> {
 	}
 
 	if (setting.isSecret && setting.value) {
+		let decr=''
 		try {
-			return decrypt(setting.value);
+			decr=decrypt(setting.value);
+			return decr;
 		} catch (error) {
-			console.error(
-				`Failed to decrypt setting "${key}". ` +
-				`This usually means SETTINGS_ENCRYPTION_KEY changed after the value was saved. ` +
-				`Re-save the value in Admin Settings to re-encrypt with the current key.`,
-				error
-			);
+			console.error( `Failed to decrypt setting "${key}" "${decr}".\n`, error );
 			return setting.value;
 		}
 	}
-
 	return setting.value || null;
 }
 
@@ -98,11 +97,9 @@ export async function getSetting(key: string): Promise<string | null> {
  */
 export async function getSettings(keys: string[]): Promise<Record<string, string | null>> {
 	const result: Record<string, string | null> = {};
-
 	for (const key of keys) {
 		result[key] = await getSetting(key);
 	}
-
 	return result;
 }
 
