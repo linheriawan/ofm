@@ -283,7 +283,7 @@
 			<div class="sso-section-header">
 				<span class="sso-label">🔒 Synced from Aksara SSO</span>
 				<a
-					href="{data.ssoBaseUrl}/admin/users"
+					href="{data.ssoBaseUrl}/organization/identities"
 					target="_blank"
 					rel="noopener noreferrer"
 					class="sso-link"
