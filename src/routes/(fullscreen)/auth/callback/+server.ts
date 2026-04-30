@@ -71,9 +71,18 @@ export const GET: RequestHandler = async (event) => {
 
 		let roleNames: string[] = [];
 		if (user.roleIds && user.roleIds.length > 0) {
-			const roleIds = user.roleIds.map((id: string) => new ObjectId(id));
-			const roles = await db.collection('roles').find({ _id: { $in: roleIds } }).toArray();
-			roleNames = roles.map(r => r.roleId); // Use roleId field instead of name
+			// roleIds can be ObjectId strings (new users) or role name strings (seeded users)
+			const objectIdRefs = user.roleIds.filter((id: string) => id && ObjectId.isValid(id));
+			const nameRefs     = user.roleIds.filter((id: string) => id && !ObjectId.isValid(id));
+
+			const orFilters: any[] = [];
+			if (objectIdRefs.length) orFilters.push({ _id: { $in: objectIdRefs.map((id: string) => new ObjectId(id)) } });
+			if (nameRefs.length)     orFilters.push({ roleId: { $in: nameRefs } });
+
+			if (orFilters.length) {
+				const roles = await db.collection('roles').find({ $or: orFilters }).toArray();
+				roleNames = roles.map(r => r.roleId);
+			}
 		}
 		console.log('✅ User roles loaded:', roleNames);
 

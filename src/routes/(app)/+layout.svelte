@@ -11,7 +11,9 @@
 
 	// Get user from page data
 	$: user = $page.data.user;
+	$: ssoBaseUrl = $page.data.ssoBaseUrl;
 	$: isAuthenticated = !!user;
+	$: isAdmin = !!(user?.roles?.includes('admin') || user?.roles?.includes('super_admin'));
 
 	// Multi-entity company switcher
 	$: accessibleCompanies = $page.data.accessibleCompanies ?? [];
@@ -88,9 +90,7 @@
 			// Check if click is outside all dropdowns
 			const isClickInsideDropdown = target.closest('.dropdown') || target.closest('.user-menu');
 
-			if (!isClickInsideDropdown) {
-				closeDropdowns();
-			}
+			if (!isClickInsideDropdown) { closeDropdowns(); }
 		}
 
 		document.addEventListener('click', handleClickOutside);
@@ -110,9 +110,7 @@
 				<span class="subtitle">Office Facility Management</span>
 			</div>
 
-			<button class="menu-toggle" onclick={toggleMenu}>
-				☰
-			</button>
+			<button class="menu-toggle" onclick={toggleMenu}> ☰ </button>
 
 			<ul class:open={isMenuOpen}>
 				<li>
@@ -121,12 +119,8 @@
 					</a>
 				</li>
 				<li class="dropdown">
-					<button
-						class="dropdown-trigger {$page.url.pathname.startsWith('/transportation') || $page.url.pathname.startsWith('/meeting') ? 'active' : ''}"
-						onclick={toggleRequestsDropdown}
-					>
-						Requests ▾
-					</button>
+					<button class="dropdown-trigger {$page.url.pathname.startsWith('/transportation') || $page.url.pathname.startsWith('/meeting') ? 'active' : ''}"
+						onclick={toggleRequestsDropdown} > Requests ▾ </button>
 					{#if requestsDropdownOpen}
 						<div class="dropdown-menu">
 							<div class="dropdown-section-title">Booking</div>
@@ -145,13 +139,10 @@
 						</div>
 					{/if}
 				</li>
+				{#if isAdmin}
 				<li class="dropdown">
-					<button
-						class="dropdown-trigger {$page.url.pathname.startsWith('/admin') ? 'active' : ''}"
-						onclick={toggleMasterDataDropdown}
-					>
-						Master Data ▾
-					</button>
+					<button class="dropdown-trigger {$page.url.pathname.startsWith('/admin') ? 'active' : ''}"
+						onclick={toggleMasterDataDropdown} > Master Data ▾ </button>
 					{#if masterDataDropdownOpen}
 						<div class="dropdown-menu">
 							<div class="dropdown-section-title">Transportation</div>
@@ -172,19 +163,15 @@
 					{/if}
 				</li>
 				<li class="dropdown">
-					<button
-						class="dropdown-trigger {$page.url.pathname.startsWith('/admin/approvals') || $page.url.pathname.startsWith('/admin/room-displays') ? 'active' : ''}"
-						onclick={toggleConfigDropdown}
-					>
-						Configuration ▾
-					</button>
+					<button class="dropdown-trigger {$page.url.pathname.startsWith('/admin/approvals') || $page.url.pathname.startsWith('/admin/room-displays') ? 'active' : ''}"
+						onclick={toggleConfigDropdown} > Configuration ▾ </button>
 					{#if configDropdownOpen}
 						<div class="dropdown-menu">
 							<div class="dropdown-section-title">Modules</div>
 							<div class="dropdown-divider"></div>
 							<a href="/admin/settings" onclick={closeDropdowns}>⚙️ Settings</a>
 							<a href="/modules/approvals/config" onclick={closeDropdowns}>Workflow</a>
-							
+
 							<div class="dropdown-section-title">General</div>
 							<div class="dropdown-divider"></div>
 							<a href="/modules/users" onclick={closeDropdowns}>Users</a>
@@ -192,11 +179,12 @@
 							<a href="/modules/positions" onclick={closeDropdowns}>Position</a>
 							<a href="/modules/roles" onclick={closeDropdowns}>Roles &amp; Permissions</a>
 							<a href="/modules/sync" onclick={closeDropdowns}>Data Sync</a>
-							
+
 							<a href="/modules/locations" onclick={closeDropdowns}>Locations</a>
 						</div>
 					{/if}
 				</li>
+				{/if}
 			</ul>
 
 			<!-- Company Switcher -->
@@ -247,6 +235,7 @@
 								</div>
 							{/if}
 						</div>
+						<a class="menu-item" href="{ssoBaseUrl}/profile" target="_blank">SSO Account ↗</a>
 						<div class="dropdown-divider"></div>
 						<form method="POST" action="/auth/logout" style="margin: 0;">
 							<button type="submit" class="user-menu-logout">🚪 Logout</button>
@@ -406,7 +395,7 @@
 		}
 	}
 
-	.dropdown-menu a {
+	.dropdown-menu a, .menu-item {
 		display: block;
 		padding: 0.75rem 1.25rem;
 		color: #333;
@@ -414,7 +403,7 @@
 		transition: background 0.2s;
 	}
 
-	.dropdown-menu a:hover {
+	.dropdown-menu a:hover, a.menu-item:hover {
 		background: #f0f4ff;
 		color: #667eea;
 	}

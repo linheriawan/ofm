@@ -70,6 +70,7 @@
 		licensePlate: string;
 		isElectric: boolean;
 		status: string;
+		driverName: string;
 	}
 	let availableVehicles: Vehicle[] = [];
 	let isLoadingVehicles = true;
@@ -476,6 +477,7 @@
 										<p class="vehicle-type">{vehicle.vehicleType}</p>
 										<p class="vehicle-plate">{vehicle.licensePlate}</p>
 										<p class="vehicle-capacity">Capacity: {vehicle.capacity} passengers</p>
+										( {vehicle.driverName} )
 									</div>
 								</label>
 							{/each}

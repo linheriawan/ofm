@@ -17,6 +17,7 @@
 	let searchQuery = selectedAddress;
 	let suggestions: any[] = [];
 	let isSearching = false;
+	let initialized = false; // guard: don't dispatch 'select' during initial geocode
 
 	onMount(async () => {
 		// Dynamically import Leaflet
@@ -46,10 +47,12 @@
 			await reverseGeocode(e.latlng.lat, e.latlng.lng);
 		});
 
-		// Initial reverse geocode
+		// Initial reverse geocode — only updates display, does not dispatch 'select'
 		if (!selectedAddress) {
 			await reverseGeocode(initialLat, initialLng);
 		}
+
+		initialized = true; // from here on, reverseGeocode dispatches 'select'
 	});
 
 	onDestroy(() => {
@@ -67,11 +70,9 @@
 			selectedAddress = data.display_name || `${lat}, ${lng}`;
 			searchQuery = selectedAddress;
 
-			dispatch('select', {
-				address: selectedAddress,
-				lat,
-				lng
-			});
+			if (initialized) {
+				dispatch('select', { address: selectedAddress, lat, lng });
+			}
 		} catch (error) {
 			console.error('Reverse geocode error:', error);
 			selectedAddress = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;

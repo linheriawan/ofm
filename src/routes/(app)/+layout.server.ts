@@ -2,6 +2,7 @@ import type { LayoutServerLoad } from './$types';
 import { connectDB, collections } from '$lib/server/db/mongodb';
 import { buildCompanyTree } from '$lib/server/db/company-utils';
 import type { CompanyNode } from '$lib/server/db/company-utils';
+import { env } from '$env/dynamic/private';
 
 export const load: LayoutServerLoad = async ({ locals, parent }) => {
 	const parentData = await parent();
@@ -53,6 +54,7 @@ export const load: LayoutServerLoad = async ({ locals, parent }) => {
 				companyName: c.companyName,
 				parentCompanyId: c.parentCompanyId
 			})),
+			ssoBaseUrl: env.SSO_ISSUER || 'http://localhost:5173',
 			companyTree,
 			selectedCompanyId
 		};

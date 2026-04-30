@@ -35,6 +35,24 @@ export const PUT: RequestHandler = async ({ params, request }) => {
 			return json({ success: false, error: 'No OFM-managed fields to update' }, { status: 400 });
 		}
 
+		// Normalise roleIds: the UI sends role name strings (e.g. 'super_admin').
+		// The DB and auth callback expect ObjectId strings — resolve them here.
+		if (Array.isArray(updateData.roleIds)) {
+			const { connectDB } = await import('$lib/server/db/mongodb');
+			const { ObjectId } = await import('mongodb');
+			const db = await connectDB();
+
+			const nameIds   = updateData.roleIds.filter((id: string) => !ObjectId.isValid(id));
+			const objectIds = updateData.roleIds.filter((id: string) =>  ObjectId.isValid(id));
+
+			let resolved: string[] = [...objectIds];
+			if (nameIds.length) {
+				const roles = await db.collection('roles').find({ roleId: { $in: nameIds } }).toArray();
+				resolved = [...resolved, ...roles.map(r => r._id.toString())];
+			}
+			updateData.roleIds = resolved;
+		}
+
 		const result = await updateDocument<User>('users', params.id, updateData);
 		return json(result, { status: result.status || 200 });
 	} catch (error) {
