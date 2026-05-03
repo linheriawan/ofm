@@ -1,6 +1,8 @@
 import type { Handle } from '@sveltejs/kit';
-import { connectDB } from '$lib/server/db/mongodb';
+import { connectDB, getDB } from '$lib/server/db/mongodb';
 import { initializeSettings } from '$lib/server/settings';
+import { startRoomSync } from '$lib/services/room-sync';
+import { initializeSystemRoles, resolvePermissions } from '$lib/services/roles-service';
 
 // Initialize database connection on server startup
 let dbInitialized = false;
@@ -8,9 +10,10 @@ let dbInitialized = false;
 async function initializeDB() {
 	if (!dbInitialized) {
 		try {
-			await connectDB();
-			// Initialize settings after DB connection
+			const db = await connectDB();
 			await initializeSettings();
+			await initializeSystemRoles(db);
+			startRoomSync();
 			dbInitialized = true;
 			console.log('Database initialized successfully');
 		} catch (error) {
@@ -99,6 +102,11 @@ export const handle: Handle = async ({ event, resolve }) => {
 						companyAccess: session.companyAccess,
 						selectedCompanyId: session.selectedCompanyId
 					};
+
+					// Resolve canonical permissions from roles collection
+					if (event.locals.user) {
+						event.locals.user.permissions = await resolvePermissions(getDB(), session.roles ?? []);
+					}
 				}
 			}
 		} catch (error) {

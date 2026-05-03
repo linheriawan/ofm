@@ -9,7 +9,7 @@ import type { ObjectId } from 'mongodb';
 // COMMON TYPES
 // ============================================
 
-export type RequestStatus = 'pending' | 'approved' | 'rejected' | 'cancelled' | 'completed';
+export type RequestStatus = 'pending' | 'approved' | 'in_progress' | 'completed' | 'rejected' | 'cancelled';
 export type TripStatus = 'scheduled' | 'started' | 'in_progress' | 'completed' | 'cancelled';
 export type TransportType = 'company_car' | 'voucher';
 export type FacilityType = 'atk' | 'equipment' | 'furniture' | 'other';

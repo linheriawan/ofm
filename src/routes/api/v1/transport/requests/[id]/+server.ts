@@ -7,38 +7,24 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { ObjectId } from 'mongodb';
 import { requireAuth, isAdmin, canApprove } from '$lib/server/api/auth';
 import { success, error, ErrorCode } from '$lib/server/api/response';
 import { parseBody, isValidObjectId } from '$lib/server/api/validation';
-import { getDB, collections } from '$lib/server/db/mongodb';
+import { getDB } from '$lib/server/db/mongodb';
+import { getTransportRequest, applyAction } from '$lib/services/transport-request-service';
 
 export const GET: RequestHandler = async (event) => {
 	try {
-		const user = await requireAuth(event);
+		await requireAuth(event);
 		const { id } = event.params;
 
 		if (!isValidObjectId(id)) {
 			return json(error(ErrorCode.VALIDATION_ERROR, 'Invalid request ID'), { status: 400 });
 		}
 
-		const db = getDB();
-		const request = await db.collection(collections.transportationRequests)
-			.findOne({ _id: new ObjectId(id) });
-
-		if (!request) {
-			return json(error(ErrorCode.NOT_FOUND, 'Request not found'), { status: 404 });
-		}
-
-		// Check permissions: user can only see their own requests (unless admin)
-		if (request.userId !== user.userId && !isAdmin(user)) {
-			return json(error(ErrorCode.FORBIDDEN, 'Access denied'), { status: 403 });
-		}
-
-		return json(success({
-			...request,
-			_id: request._id?.toString()
-		}));
+		const request = await getTransportRequest(getDB(), id);
+		if (!request) return json(error(ErrorCode.NOT_FOUND, 'Request not found'), { status: 404 });
+		return json(success(request));
 
 	} catch (err: any) {
 		if (err instanceof Response) throw err;
@@ -68,73 +54,20 @@ export const PATCH: RequestHandler = async (event) => {
 		}>(event.request);
 
 		const db = getDB();
-		const request = await db.collection(collections.transportationRequests)
-			.findOne({ _id: new ObjectId(id) });
+		const request = await getTransportRequest(db, id);
+		if (!request) return json(error(ErrorCode.NOT_FOUND, 'Request not found'), { status: 404 });
 
-		if (!request) {
-			return json(error(ErrorCode.NOT_FOUND, 'Request not found'), { status: 404 });
+		if (!body.action) {
+			return json(error(ErrorCode.VALIDATION_ERROR, 'action is required'), { status: 400 });
 		}
 
-		// Check permissions
-		const isOwner = request.userId === user.userId;
-		const userCanApprove = canApprove(user);
-		const canCancel = isOwner || isAdmin(user);
-		// Build update
-		const update: any = {
-			updatedAt: new Date(),
-			updatedBy: user.userId
-		};
-		
-		if (body.action === 'approve' && userCanApprove) {
-			// If vehicle already selected at booking time, go straight to assigned
-			update.status = request.vehicleId ? 'assigned' : 'approved';
-			update.approvedBy = user.userId;
-			update.approvedAt = new Date();
-			if (request.vehicleId) update.assignedAt = new Date();
-			if (body.notes) update.approvalNotes = body.notes;
-
-		} else if (body.action === 'reject' && userCanApprove) {
-			update.status = 'rejected';
-			update.rejectionReason = body.rejectionReason || 'No reason provided';
-
-		} else if (body.action === 'assign_driver' && userCanApprove) {
-			if (!body.driverId || !body.vehicleId) {
-				return json(error(ErrorCode.VALIDATION_ERROR, 'driverId and vehicleId are required'), { status: 400 });
-			}
-			update.driverId = body.driverId;
-			update.driverName = body.driverName;
-			update.vehicleId = body.vehicleId;
-			update.vehicleName = body.vehicleName;
-			update.assignedAt = new Date();
-			update.status = 'assigned';
-
-		} else if (body.action === 'assign_voucher' && userCanApprove) {
-			if (!body.voucherCode) {
-				return json(error(ErrorCode.VALIDATION_ERROR, 'voucherCode is required'), { status: 400 });
-			}
-			update.voucherCode = body.voucherCode;
-			update.voucherAmount = body.voucherAmount;
-			update.assignedAt = new Date();
-			update.status = 'assigned';
-
-		} else if (body.action === 'cancel' && canCancel) {
-			update.status = 'cancelled';
-
-		} else {
-			return json(error(ErrorCode.FORBIDDEN, 'Insufficient permissions'), { status: 403 });
+		const result = await applyAction(db, id, request, body as any, user, canApprove, isAdmin);
+		if (result.error) {
+			const code = result.status === 403 ? ErrorCode.FORBIDDEN : ErrorCode.VALIDATION_ERROR;
+			return json(error(code, result.error), { status: result.status });
 		}
 
-		// Update request
-		await db.collection(collections.transportationRequests)
-			.updateOne({ _id: new ObjectId(id) }, { $set: update });
-
-		const updatedRequest = await db.collection(collections.transportationRequests)
-			.findOne({ _id: new ObjectId(id) });
-
-		return json(success({
-			...updatedRequest,
-			_id: updatedRequest?._id?.toString()
-		}));
+		return json(success({ message: 'Request updated successfully' }));
 
 	} catch (err: any) {
 		if (err instanceof Response) throw err;
@@ -152,29 +85,14 @@ export const DELETE: RequestHandler = async (event) => {
 		}
 
 		const db = getDB();
-		const request = await db.collection(collections.transportationRequests)
-			.findOne({ _id: new ObjectId(id) });
+		const request = await getTransportRequest(db, id);
+		if (!request) return json(error(ErrorCode.NOT_FOUND, 'Request not found'), { status: 404 });
 
-		if (!request) {
-			return json(error(ErrorCode.NOT_FOUND, 'Request not found'), { status: 404 });
+		const result = await applyAction(db, id, request, { action: 'cancel' }, user, canApprove, isAdmin);
+		if (result.error) {
+			const code = result.status === 403 ? ErrorCode.FORBIDDEN : ErrorCode.VALIDATION_ERROR;
+			return json(error(code, result.error), { status: result.status });
 		}
-
-		// Only owner or admin can delete
-		if (request.userId !== user.userId && !isAdmin(user)) {
-			return json(error(ErrorCode.FORBIDDEN, 'Access denied'), { status: 403 });
-		}
-
-		// Soft delete: mark as cancelled instead of actual deletion
-		await db.collection(collections.transportationRequests).updateOne(
-			{ _id: new ObjectId(id) },
-			{
-				$set: {
-					status: 'cancelled',
-					updatedAt: new Date(),
-					updatedBy: user.userId
-				}
-			}
-		);
 
 		return json(success({ message: 'Request cancelled successfully' }));
 

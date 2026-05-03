@@ -19,7 +19,6 @@
 		companyId: '',
 		locationId: '',
 		roomName: '',
-		roomNumber: '',
 		floor: '',
 		capacity: 10,
 		roomType: 'meeting',
@@ -47,7 +46,6 @@
 		{ key: 'roomId', label: 'Room ID' },
 		{ key: 'roomName', label: 'Room Name' },
 		{ key: 'locationId', label: 'Location' },
-		{ key: 'roomNumber', label: 'Room Number' },
 		{ key: 'floor', label: 'Floor' },
 		{ key: 'capacity', label: 'Capacity' },
 		{ key: 'roomType', label: 'Type' },
@@ -103,7 +101,6 @@
 			companyId: room.companyId,
 			locationId: room.locationId,
 			roomName: room.roomName,
-			roomNumber: room.roomNumber || '',
 			floor: room.floor || '',
 			capacity: room.capacity,
 			roomType: room.roomType,
@@ -126,7 +123,6 @@
 			companyId: selectedCompanyId,
 			locationId: '',
 			roomName: '',
-			roomNumber: '',
 			floor: '',
 			capacity: 10,
 			roomType: 'meeting',
@@ -300,11 +296,6 @@
 						<option value={location.locationId}>{location.locationName} — {location.city}</option>
 					{/each}
 				</select>
-			</div>
-
-			<div class="form-group">
-				<label for="roomNumber">Room Number</label>
-				<input type="text" id="roomNumber" bind:value={formData.roomNumber} placeholder="A-301" />
 			</div>
 
 			<div class="form-group">

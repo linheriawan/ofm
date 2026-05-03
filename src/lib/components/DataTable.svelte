@@ -162,7 +162,7 @@
 	});
 
 	const effectiveTotalFiltered = $derived(
-		isExternalMode && totalItems > 0 ? totalItems : filteredData.length
+		isExternalMode && totalItems > 0 ? totalItems : !isExternalMode && internalTotal > 0 ? internalTotal : filteredData.length
 	);
 	const effectiveTotalPages = $derived(
 		isExternalMode && totalItems > 0

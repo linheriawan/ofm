@@ -48,6 +48,7 @@ declare global {
 				// Roles
 				roles: string[];
 				ssoRoles?: string[];
+				permissions?: string[]; // resolved from roles collection: 'employee' | 'driver' | 'admin'
 
 				// Multi-entity
 				companyAccess?: string[];

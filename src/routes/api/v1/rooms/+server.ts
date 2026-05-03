@@ -26,7 +26,6 @@ export const POST: RequestHandler = async ({ request }) => {
 			companyId: body.companyId,
 			locationId: body.locationId,
 			roomName: body.roomName,
-			roomNumber: body.roomNumber,
 			floor: body.floor,
 			capacity: parseInt(body.capacity),
 			roomType: body.roomType,

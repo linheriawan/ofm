@@ -11,6 +11,7 @@ export interface AuthenticatedUser {
 	email: string;
 	name?: string;
 	roles: string[];
+	permissions?: string[]; // resolved from roles collection: 'employee' | 'driver' | 'admin'
 	companyId?: string;
 }
 
@@ -92,35 +93,18 @@ export function hasRole(user: AuthenticatedUser, role: string): boolean {
 	return user.roles.includes(role);
 }
 
-/**
- * Check if user has any admin-level role.
- * Covers: super_admin, global_admin, regional_admin (and legacy 'admin').
- */
 export function isAdmin(user: AuthenticatedUser): boolean {
-	return (
-		hasRole(user, 'super_admin') ||
-		hasRole(user, 'global_admin') ||
-		hasRole(user, 'regional_admin') ||
-		hasRole(user, 'admin')
-	);
+	if (user.permissions) return user.permissions.includes('admin');
+	// fallback for sessions not yet enriched
+	return hasRole(user, 'super_admin') || hasRole(user, 'global_admin') ||
+		hasRole(user, 'regional_admin') || hasRole(user, 'admin');
 }
 
-/**
- * Check if user can approve/reject requests (transport or meeting).
- * super_admin and global_admin can approve; regional_admin can approve within their scope.
- */
 export function canApprove(user: AuthenticatedUser): boolean {
-	return (
-		hasRole(user, 'super_admin') ||
-		hasRole(user, 'global_admin') ||
-		hasRole(user, 'regional_admin') ||
-		hasRole(user, 'admin')
-	);
+	return isAdmin(user);
 }
 
-/**
- * Check if user is driver
- */
 export function isDriver(user: AuthenticatedUser): boolean {
+	if (user.permissions) return user.permissions.includes('driver');
 	return hasRole(user, 'driver');
 }

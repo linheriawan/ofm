@@ -175,11 +175,10 @@
 	function getStatusBadgeClass(status: string) {
 		const classes: Record<string, string> = {
 			pending: 'badge-warning',
-			approved: 'badge-success',
-			rejected: 'badge-danger',
-			assigned: 'badge-info',
+			approved: 'badge-info',
 			in_progress: 'badge-primary',
 			completed: 'badge-success',
+			rejected: 'badge-danger',
 			cancelled: 'badge-secondary'
 		};
 		return classes[status] || 'badge-secondary';
@@ -221,10 +220,9 @@
 					<option value="all">All Statuses</option>
 					<option value="pending">Pending</option>
 					<option value="approved">Approved</option>
-					<option value="rejected">Rejected</option>
-					<option value="assigned">Assigned</option>
 					<option value="in_progress">In Progress</option>
 					<option value="completed">Completed</option>
+					<option value="rejected">Rejected</option>
 				</select>
 			</div>
 
@@ -331,13 +329,13 @@
 								</button>
 							{/if}
 
-							{#if request.status === 'approved' && (request.type === 'online' || request.type === 'hybrid')}
+							{#if request.status === 'approved' && (request.type === 'online' || request.type === 'hybrid') && !request.meetingLink}
 								<button class="btn btn-primary" onclick={() => openApprovalModal(request, 'approve')}>
 									💻 Assign License
 								</button>
 							{/if}
 
-							{#if request.status === 'assigned'}
+							{#if request.status === 'approved' && (request.roomName || request.meetingLink)}
 								<div class="assigned-info">
 									{#if request.roomName}
 										<span>✓ Room: {request.roomName}</span>

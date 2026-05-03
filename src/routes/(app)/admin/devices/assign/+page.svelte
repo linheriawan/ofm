@@ -117,7 +117,7 @@
 					<option value="">-- Select a room --</option>
 					{#each rooms as room}
 						<option value={room.roomId}>
-							{room.roomName} {room.roomNumber ? `(${room.roomNumber})` : ''} - Floor {room.floor || 'N/A'}
+							{room.roomName} ({room.roomId}) - Floor {room.floor || 'N/A'}
 						</option>
 					{/each}
 				</select>

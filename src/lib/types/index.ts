@@ -50,12 +50,14 @@ export interface User extends BaseDocument {
 	lastLogin?: Date;
 }
 
+export type RolePermission = 'employee' | 'driver' | 'admin';
+
 export interface Role extends BaseDocument {
 	roleId: string;
 	roleName: string;
 	description?: string;
-	permissions: string[];
-	companyIds?: string[]; // empty = global; specific IDs = scoped to those companies
+	permission: RolePermission;  // canonical access level for this role
+	companyIds?: string[];       // empty = global; specific IDs = scoped
 	isActive: boolean;
 }
 
@@ -192,7 +194,6 @@ export interface MeetingRoom extends BaseDocument {
 	companyId: string;
 	locationId: string;
 	roomName: string;
-	roomNumber?: string;
 	floor?: string;
 	capacity: number;
 	roomType: 'conference' | 'meeting' | 'boardroom' | 'training' | 'huddle';

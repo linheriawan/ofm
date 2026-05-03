@@ -13,7 +13,8 @@
 	$: user = $page.data.user;
 	$: ssoBaseUrl = $page.data.ssoBaseUrl;
 	$: isAuthenticated = !!user;
-	$: isAdmin = !!(user?.roles?.includes('admin') || user?.roles?.includes('super_admin'));
+	$: isAdmin = !!(user?.permissions?.includes('admin') ||
+		user?.roles?.includes('admin') || user?.roles?.includes('super_admin'));
 
 	// Multi-entity company switcher
 	$: accessibleCompanies = $page.data.accessibleCompanies ?? [];

@@ -83,6 +83,7 @@ export function createPaginationMeta(
 		page,
 		limit,
 		total,
+		totalPages: Math.ceil(total / limit),
 		timestamp: new Date().toISOString()
 	};
 }

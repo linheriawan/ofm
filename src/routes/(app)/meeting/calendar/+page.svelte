@@ -25,13 +25,13 @@
 	onMount(async () => {
 		const [rRes, bRes, lRes] = await Promise.allSettled([
 			fetch('/api/v1/rooms?limit=1000').then(r => r.json()),
-			fetch('/api/v1/meeting/requests?limit=1000').then(r => r.json()),
+			fetch(`/api/v1/meeting/requests?limit=1000`).then(r => r.json()),
 			fetch('/api/v1/locations?limit=1000').then(r => r.json()),
 		]);
 
 		if (rRes.status === 'fulfilled' && rRes.value.success) {
 			rooms = (rRes.value.data ?? []).map((r: any, i: number) => ({
-				id: r._id,
+				id: r.roomId || r._id,
 				name: r.roomName || r.roomId,
 				color: COLORS[i % COLORS.length],
 				locationId: r.locationId || ''
@@ -70,7 +70,7 @@
 		let b = bookings.filter(b => visibleRoomIds.includes(b.roomId));
 		if (selectedRoom !== 'all') b = b.filter(b => b.roomId === selectedRoom);
 		if (selectedStatus !== 'active') b = b.filter(b => b.status === selectedStatus);
-		else b = b.filter(b => ['approved','pending','completed'].includes(b.status));
+		// else b = b.filter(b => ['approved','pending','in_progress','completed'].includes(b.status));
 		return b;
 	})());
 

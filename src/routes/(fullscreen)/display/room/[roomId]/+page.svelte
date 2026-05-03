@@ -16,7 +16,6 @@
 	let roomData = $state({
 		roomId: '',
 		roomName: '',
-		roomNumber: '',
 		floor: '',
 		capacity: 0,
 		status: 'available' as 'available' | 'occupied' | 'upcoming',
@@ -69,12 +68,11 @@
 			const result = await response.json();
 
 			if (result.success && result.data.assigned) {
-				// Check if assigned to correct room
+				// Self-correct: if device is assigned to a different room, redirect there
 				if (result.data.roomId !== roomId) {
-					// Device is assigned to different room
-					console.warn(`⚠️ Device assigned to ${result.data.roomId}, not ${roomId}`);
-					error = `This device is assigned to room ${result.data.roomName || result.data.roomId}. Please use the correct device or reassign.`;
-					loading = false;
+					console.warn(`⚠️ Device assigned to ${result.data.roomId}, redirecting from ${roomId}`);
+					localStorage.setItem('assignedRoomId', result.data.roomId);
+					await goto(`/display/room/${result.data.roomId}`, { replaceState: true });
 					return false;
 				}
 				return true;
@@ -151,7 +149,6 @@
 				// Safely populate room data
 				roomData.roomId = data.room?.roomId || '';
 				roomData.roomName = data.room?.roomName || 'Unknown Room';
-				roomData.roomNumber = data.room?.roomNumber || '';
 				roomData.floor = data.room?.floor || '';
 				roomData.capacity = data.room?.capacity || 0;
 				roomData.videoBackgroundIds = data.room?.videoBackgroundIds || [];
@@ -431,8 +428,8 @@
 		<div class="header">
 			<div class="room-title">
 				<span class="room-name">{roomData.roomName}</span>
-				{#if roomData.roomNumber}
-					<span class="room-number">#{roomData.roomNumber}</span>
+				{#if roomData.roomId}
+					<span class="room-number">#{roomData.roomId}</span>
 				{/if}
 			</div>
 			<div class="clock" onclick={location.reload()}>

@@ -7,10 +7,11 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { requireAuth } from '$lib/server/api/auth';
-import { success, error, ErrorCode, parsePagination, createPaginationMeta } from '$lib/server/api/response';
+import { success, error, ErrorCode, parsePagination } from '$lib/server/api/response';
 import { parseBody, validateRequired, throwValidationError, isValidDate } from '$lib/server/api/validation';
 import { getDB, collections } from '$lib/server/db/mongodb';
 import { generateRequestNumber, type TransportationRequest } from '$lib/server/db/schemas';
+import { listTransportRequests } from '$lib/services/transport-request-service';
 
 interface CreateTransportRequestBody {
 	type: 'company_car' | 'voucher';
@@ -131,75 +132,18 @@ export const POST: RequestHandler = async (event) => {
 
 export const GET: RequestHandler = async (event) => {
 	try {
-		const user = await requireAuth(event);
-		const db = getDB();
-
-		// Parse pagination
-		const { page, limit, skip } = parsePagination(event.url);
-
-		// Parse filters
-		const status = event.url.searchParams.get('status');
-		const type = event.url.searchParams.get('type');
-		const startDate = event.url.searchParams.get('startDate');
-		const endDate = event.url.searchParams.get('endDate');
-		const userId = event.url.searchParams.get('userId');
-
-		// Build query
-		const query: any = {};
-
-		// Check if user is admin
-		const userRoles = user.roles || [];
-		const isAdmin = userRoles.includes('admin') || userRoles.includes('regional_admin') || userRoles.includes('super_admin');
-
-		console.log('🔍 Transport requests query - User:', user.email, 'Roles:', userRoles, 'isAdmin:', isAdmin);
-
-		// Regular users can only see their own requests
-		// Admins can see all requests or filter by userId
-		if (!isAdmin) {
-			query.userId = user.userId;
-			console.log('   👤 Non-admin: filtering by userId:', user.userId);
-		} else if (userId) {
-			query.userId = userId;
-			console.log('   👨‍💼 Admin: filtering by requested userId:', userId);
-		} else {
-			console.log('   👨‍💼 Admin: showing all requests (no userId filter)');
-		}
-
-		if (status) query.status = status;
-		if (type) query.type = type;
-		if (startDate || endDate) {
-			query.scheduledTime = {};
-			if (startDate) query.scheduledTime.$gte = new Date(startDate);
-			if (endDate) query.scheduledTime.$lte = new Date(endDate);
-		}
-
-		console.log('   🔎 Final query:', JSON.stringify(query));
-		console.log('   📄 Pagination: page', page, 'limit', limit, 'skip', skip);
-
-		// Execute query
-		const [requests, total] = await Promise.all([
-			db.collection(collections.transportationRequests)
-				.find(query)
-				.sort({ createdAt: -1 })
-				.skip(skip)
-				.limit(limit)
-				.toArray(),
-			db.collection(collections.transportationRequests).countDocuments(query)
-		]);
-
-		console.log('   ✅ Found', total, 'requests, returning', requests.length, 'items');
-
-		// Format response
-		const formattedRequests = requests.map(req => ({
-			...req,
-			_id: req._id?.toString()
-		}));
-
-		return json(success(
-			formattedRequests,
-			createPaginationMeta(page, limit, total)
-		));
-
+		await requireAuth(event);
+		const { page, limit } = parsePagination(event.url);
+		const sp = event.url.searchParams;
+		const result = await listTransportRequests(getDB(), {
+			page, limit,
+			status:    sp.get('status')    ?? undefined,
+			type:      sp.get('type')      ?? undefined,
+			userId:    sp.get('userId')    ?? undefined,
+			startDate: sp.get('startDate') ?? undefined,
+			endDate:   sp.get('endDate')   ?? undefined,
+		});
+		return json(success(result.data, result.meta));
 	} catch (err: any) {
 		if (err instanceof Response) throw err;
 		return json(error(ErrorCode.INTERNAL_ERROR, 'Failed to fetch requests', err.message), { status: 500 });

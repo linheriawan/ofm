@@ -83,7 +83,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			roleId: data.roleId,
 			roleName: data.roleName,
 			description: data.description || '',
-			permissions: data.permissions || [],
+			permission: data.permission || 'employee',
 			companyIds: Array.isArray(data.companyIds) ? data.companyIds : [],
 			isActive: data.isActive !== undefined ? data.isActive : true,
 			createdAt: new Date(),

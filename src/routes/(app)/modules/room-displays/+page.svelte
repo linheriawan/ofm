@@ -80,7 +80,7 @@
 				<div class="room-card">
 					<div class="room-header">
 						<h3>{room.roomName}</h3>
-						<span class="room-number">{room.roomNumber}</span>
+						<span class="room-number">{room.roomId}</span>
 					</div>
 
 					<div class="qr-section">

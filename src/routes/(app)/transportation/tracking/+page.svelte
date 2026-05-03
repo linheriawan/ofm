@@ -54,8 +54,8 @@
 						: new Date(start.getTime() + 60 * 60 * 1000); // default 1h
 					return {
 						id: b._id,
-						vehicleId: b.vehicleId || 'unassigned',
-						driverId: b.driverId || 'unassigned',
+						vehicleId: b.vehicleId || '',
+						driverId: b.driverId || '',
 						requestor: b.userName || b.userEmail || b.requestNumber,
 						startTime: start,
 						endTime: end,
@@ -70,7 +70,11 @@
 	$: resources = viewMode === 'vehicles' ? vehicles : drivers;
 	$: filteredBookings = selectedResource === 'all'
 		? bookings
-		: bookings.filter(b => viewMode === 'vehicles' ? b.vehicleId === selectedResource : b.driverId === selectedResource);
+		: bookings.filter(b => {
+			const id = viewMode === 'vehicles' ? b.vehicleId : b.driverId;
+			const resolved = (id && resources.some(r => r.id === id)) ? id : 'unassigned';
+			return resolved === selectedResource;
+		});
 
 	$: timeSlots = generateTimeSlots();
 	$: weekDays = getWeekDays(currentDate);
@@ -118,22 +122,17 @@
 		currentDate = new Date();
 	}
 
+	function resolveResourceId(booking: CalendarBooking): string {
+		const id = viewMode === 'vehicles' ? booking.vehicleId : booking.driverId;
+		return (id && resources.some(r => r.id === id)) ? id : 'unassigned';
+	}
+
 	function getBookingsForTimeSlot(time: string, dayDate: Date, resourceId: string) {
 		const [hour] = time.split(':').map(Number);
 		return filteredBookings.filter(booking => {
-			const idField = viewMode === 'vehicles' ? 'vehicleId' : 'driverId';
-			if (resourceId !== 'all' && booking[idField] !== resourceId) return false;
-			if (selectedResource !== 'all' && booking[idField] !== selectedResource) return false;
-
-			const bookingDate = booking.startTime.toDateString();
-			const slotDate = dayDate.toDateString();
-
-			if (bookingDate !== slotDate) return false;
-
-			const bookingHour = booking.startTime.getHours();
-			const bookingEndHour = booking.endTime.getHours();
-
-			return bookingHour <= hour && hour < bookingEndHour;
+			if (resolveResourceId(booking) !== resourceId) return false;
+			if (booking.startTime.toDateString() !== dayDate.toDateString()) return false;
+			return booking.startTime.getHours() <= hour && hour < booking.endTime.getHours();
 		});
 	}
 

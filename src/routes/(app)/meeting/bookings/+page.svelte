@@ -57,8 +57,9 @@
 			options: [
 				{ value: 'pending', label: 'Pending' },
 				{ value: 'approved', label: 'Approved' },
-				{ value: 'rejected', label: 'Rejected' },
+				{ value: 'in_progress', label: 'In Progress' },
 				{ value: 'completed', label: 'Completed' },
+				{ value: 'rejected', label: 'Rejected' },
 				{ value: 'cancelled', label: 'Cancelled' }
 			]
 		},
@@ -82,24 +83,20 @@
 	// DataTable actions
 	const actions = (row: any) => [
 		{ label: 'Edit', class: 'btn-view', onClick: () => openEditRequest(row) },
-		...(row.status === 'pending' || row.status === 'approved'
+		...(['pending', 'approved', 'in_progress'].includes(row.status)
 			? [{ label: 'Cancel', class: 'btn-cancel', onClick: () => handleCancel(row) }]
 			: [])
 	];
 
 	function getStatusClass(status: string) {
 		switch (status) {
-			case 'pending':
-				return 'badge-scheduled';
-			case 'approved':
-				return 'badge-ongoing';
-			case 'completed':
-				return 'badge-completed';
+			case 'pending':    return 'badge-scheduled';
+			case 'approved':   return 'badge-ongoing';
+			case 'in_progress': return 'badge-active';
+			case 'completed':  return 'badge-completed';
 			case 'cancelled':
-			case 'rejected':
-				return 'badge-cancelled';
-			default:
-				return '';
+			case 'rejected':   return 'badge-cancelled';
+			default:           return '';
 		}
 	}
 

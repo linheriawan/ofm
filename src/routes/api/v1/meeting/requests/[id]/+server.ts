@@ -12,6 +12,7 @@ import { success, error, ErrorCode } from '$lib/server/api/response';
 import { parseBody } from '$lib/server/api/validation';
 import { connectDB, getDB, collections } from '$lib/server/db/mongodb';
 import { ObjectId } from 'mongodb';
+import { getMeetingRequest, applyAction } from '$lib/services/meeting-request-service';
 
 /**
  * GET /api/v1/meeting/requests/[id]
@@ -25,20 +26,8 @@ export const GET: RequestHandler = async (event) => {
 		await connectDB();
 		const db = getDB();
 
-		// Fetch the meeting request
-		const request = await db.collection(collections.meetingRequests).findOne({
-			_id: new ObjectId(id)
-		});
-
-		if (!request) {
-			return json(error(ErrorCode.NOT_FOUND, 'Request not found'), { status: 404 });
-		}
-
-		// Only allow users to view their own requests (or admins can view all)
-		if (request.userId !== user.userId && !isAdmin(user)) {
-			return json(error(ErrorCode.FORBIDDEN, 'You can only view your own requests'), { status: 403 });
-		}
-
+		const request = await getMeetingRequest(db, id);
+		if (!request) return json(error(ErrorCode.NOT_FOUND, 'Request not found'), { status: 404 });
 		return json(success(request));
 
 	} catch (err: any) {
@@ -87,21 +76,12 @@ export const PATCH: RequestHandler = async (event) => {
 		const now = new Date();
 
 		// Check if request exists
-		const request = await db.collection(collections.meetingRequests).findOne({
-			_id: new ObjectId(id)
-		});
-
-		if (!request) {
-			return json(error(ErrorCode.NOT_FOUND, 'Request not found'), { status: 404 });
-		}
-
-		let updateData: any = {
-			updatedAt: now,
-			updatedBy: user.userId
-		};
+		const request = await db.collection(collections.meetingRequests).findOne({ _id: new ObjectId(id) });
+		if (!request) return json(error(ErrorCode.NOT_FOUND, 'Request not found'), { status: 404 });
 
 		// Handle general field updates (editing booking details)
 		if (!body.action) {
+			const updateData: any = { updatedAt: now, updatedBy: user.userId };
 			// Only owner or admin can edit
 			if (request.userId !== user.userId && !isAdmin(user)) {
 				return json(error(ErrorCode.FORBIDDEN, 'You can only edit your own requests'), { status: 403 });
@@ -144,113 +124,12 @@ export const PATCH: RequestHandler = async (event) => {
 			return json(success({ message: 'Booking updated successfully' }));
 		}
 
-		// Handle action-based updates
-		switch (body.action) {
-			case 'approve':
-				if (!canApprove(user)) {
-					return json(error(ErrorCode.FORBIDDEN, 'Insufficient permissions'), { status: 403 });
-				}
-				if (request.status !== 'pending') {
-					return json(error(ErrorCode.VALIDATION_ERROR, 'Only pending requests can be approved'), { status: 400 });
-				}
-
-				// If room already chosen at booking (offline/hybrid), go straight to assigned
-				updateData.status = request.roomId ? 'assigned' : 'approved';
-				updateData.approvedBy = user.userId;
-				updateData.approverName = user.name || user.email;
-				updateData.approvalDate = now;
-				if (request.roomId) updateData.assignedAt = now;
-				if (body.notes) updateData.approvalNotes = body.notes;
-				break;
-
-			case 'reject':
-				if (!canApprove(user)) {
-					return json(error(ErrorCode.FORBIDDEN, 'Insufficient permissions'), { status: 403 });
-				}
-				if (request.status !== 'pending') {
-					return json(error(ErrorCode.VALIDATION_ERROR, 'Only pending requests can be rejected'), { status: 400 });
-				}
-
-				if (!body.rejectionReason) {
-					return json(error(ErrorCode.VALIDATION_ERROR, 'Rejection reason is required'), { status: 400 });
-				}
-
-				updateData.status = 'rejected';
-				updateData.rejectedBy = user.userId;
-				updateData.rejectionReason = body.rejectionReason;
-				updateData.rejectionDate = now;
-				break;
-
-			case 'assign_room':
-				if (request.status !== 'approved') {
-					return json(error(ErrorCode.VALIDATION_ERROR, 'Only approved requests can have rooms assigned'), { status: 400 });
-				}
-
-				if (!body.roomId) {
-					return json(error(ErrorCode.VALIDATION_ERROR, 'Room ID is required'), { status: 400 });
-				}
-
-				// Check room availability
-				const conflictingBooking = await db.collection(collections.meetingRequests).findOne({
-					roomId: body.roomId,
-					status: { $in: ['assigned', 'in_progress'] },
-					$or: [
-						{
-							startTime: { $lt: request.endTime },
-							endTime: { $gt: request.startTime }
-						}
-					]
-				});
-
-				if (conflictingBooking) {
-					return json(error(ErrorCode.VALIDATION_ERROR, 'Room is not available for the selected time'), { status: 400 });
-				}
-
-				updateData.roomId = body.roomId;
-				updateData.roomName = body.roomName;
-				updateData.status = 'assigned';
-				updateData.assignedAt = now;
-				updateData.assignedBy = user.userId;
-				break;
-
-			case 'assign_license':
-				if (request.status !== 'approved' && request.status !== 'assigned') {
-					return json(error(ErrorCode.VALIDATION_ERROR, 'Only approved/assigned requests can have licenses assigned'), { status: 400 });
-				}
-
-				if (!body.licenseId) {
-					return json(error(ErrorCode.VALIDATION_ERROR, 'License ID is required'), { status: 400 });
-				}
-
-				updateData.licenseId = body.licenseId;
-				updateData.platform = body.platform;
-				updateData.meetingLink = body.meetingLink;
-				updateData.status = 'assigned';
-				updateData.assignedAt = now;
-				updateData.assignedBy = user.userId;
-				break;
-
-			case 'cancel':
-				if (request.status === 'completed' || request.status === 'cancelled') {
-					return json(error(ErrorCode.VALIDATION_ERROR, 'Cannot cancel completed or already cancelled requests'), { status: 400 });
-				}
-
-				updateData.status = 'cancelled';
-				updateData.cancelledBy = user.userId;
-				updateData.cancelledAt = now;
-				if (body.notes) updateData.cancellationReason = body.notes;
-				break;
-
-			default:
-				return json(error(ErrorCode.VALIDATION_ERROR, 'Invalid action'), { status: 400 });
+		// Handle action-based updates via service
+		const result = await applyAction(db, id, request, body, user, canApprove, isAdmin);
+		if (result.error) {
+			const code = result.status === 403 ? ErrorCode.FORBIDDEN : ErrorCode.VALIDATION_ERROR;
+			return json(error(code, result.error), { status: result.status });
 		}
-
-		// Update request
-		await db.collection(collections.meetingRequests).updateOne(
-			{ _id: new ObjectId(id) },
-			{ $set: updateData }
-		);
-
 		return json(success({ message: 'Request updated successfully' }));
 
 	} catch (err: any) {
