@@ -129,10 +129,50 @@ export const handle: Handle = async ({ event, resolve }) => {
 	if (!isPublicRoute && !event.locals.user) {
 		return new Response(null, {
 			status: 302,
-			headers: {
-				location: '/'
-			}
+			headers: { location: '/' }
 		});
+	}
+
+	// Route-level permission guard for authenticated users
+	if (!isPublicRoute && event.locals.user) {
+		const perms: string[] = event.locals.user.permissions ?? [];
+		// '*' comes only from permissions[] set by super-admins.
+		// 'admin' comes only from the singular `permission` field (system roles) — never from UI-set permissions[].
+		// resolvePermissions() in roles-service.ts strips system-tier values from permissions[] at resolution time.
+		const isSuperAdmin = perms.includes('*');
+		const isAdminTier = isSuperAdmin || perms.includes('admin');
+
+		// Returns true when the user's permissions satisfy the required permission.
+		const can = (required: string) => {
+			if (isSuperAdmin) return true;
+			// Any admin-tier route (required starts with 'admin') is accessible to admin-tier users
+			if (required.startsWith('admin') && isAdminTier) return true;
+			return perms.includes(required);
+		};
+
+		// Routes that require a specific minimum permission.
+		// Order matters: first match wins.
+		const routeGuards: Array<{ prefix: string; permission: string }> = [
+			{ prefix: '/admin',                        permission: 'admin' },
+			{ prefix: '/modules/roles',                permission: 'admin.roles.read' },
+			{ prefix: '/modules/users',                permission: 'admin.users.read' },
+			{ prefix: '/modules/companies',            permission: 'admin' },
+			{ prefix: '/modules/departments',          permission: 'admin' },
+			{ prefix: '/modules/locations',            permission: 'admin.locations.read' },
+			{ prefix: '/modules/positions',            permission: 'admin' },
+			{ prefix: '/modules/sync',                 permission: 'admin' },
+			{ prefix: '/modules/approvals',            permission: 'admin' },
+			{ prefix: '/modules/meeting-approvals',    permission: 'meeting.approve' },
+		];
+
+		const guard = routeGuards.find(g => pathname.startsWith(g.prefix));
+		if (guard && !can(guard.permission)) {
+			// Redirect to dashboard — the API layer will enforce the same rule if they try to call the API directly
+			return new Response(null, {
+				status: 302,
+				headers: { location: '/dashboard?error=unauthorized' }
+			});
+		}
 	}
 
 	const response = await resolve(event);

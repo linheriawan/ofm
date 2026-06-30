@@ -42,7 +42,7 @@
 				if (val === 'voucher') {
 					return `<span class="badge-type">Voucher</span>${row.voucherCode ? `<br/><small>${row.voucherCode}</small>` : ''}`;
 				} else {
-					return row.vehicleId || '-';
+					return row.vehicleName || '-';
 				}
 			}
 		},
@@ -51,7 +51,7 @@
 			label: 'Driver',
 			format: (val: string, row: any) => {
 				if (row.type === 'voucher') return '-';
-				if (val) return val;
+				if (val) return row.driverName;// ${val}
 				return 'Self-Drive';
 			}
 		},
@@ -145,8 +145,7 @@
 </svelte:head>
 
 <div class="bookings-page">
-	<DataTable
-		title="Transportation Requests"
+	<DataTable title="Transportation Requests"
 		{columns}
 		apiEndpoint="/api/v1/transport/requests"
 		{filters}
@@ -155,4 +154,3 @@
 		addButtonLabel="New Request"
 	/>
 </div>
-

@@ -37,27 +37,28 @@
 	let availableRooms = $state<any[]>([]);
 	let isLoadingRooms = $state(false);
 
+	// Booker info (edit mode only)
+	let bookerName = $state('');
+	let bookerDepartment = $state('');
+	let isCancelling = $state(false);
+
 	// Fetch rooms from API
 	async function fetchRooms() {
 		try {
 			isLoadingRooms = true;
-			const response = await fetch('/api/v1/rooms');
+			const response = await fetch('/api/v1/rooms?limit=0&status=available&excludeRoomType=office');
 			const result = await response.json();
 
 			if (result.success && result.data) {
-				// Map to expected format and filter only available rooms
-				availableRooms = result.data
-					.filter((room: any) => (room.status === 'available' && room.roomType !=='office' ))
-					.map((room: any) => ({
-						id: room.roomId,
-						_id: room._id,
-						name: room.roomName,
-						capacity: room.capacity,
-						floor: room.floor || 'N/A',
-						facilities: room.facilities || [],
-						hasVideoConf: room.hasVideoConference,
-						imageUrls: room.imageUrls || (room.imageUrl ? [room.imageUrl] : []) // backward compatibility
-					}));
+				availableRooms = result.data.map((room: any) => ({
+					_id: room._id,
+					id: room.roomId,
+					name: room.roomName,
+					type: room.roomType,
+					capacity: room.capacity,
+					floor: room.floor || 'N/A',
+					imageUrls: room.imageUrls || (room.imageUrl ? [room.imageUrl] : [])
+				}));
 			}
 		} catch (error) {
 			console.error('Failed to fetch rooms:', error);
@@ -73,11 +74,7 @@
 	];
 
 	let filteredRooms = $derived(
-		meetingType === 'offline'
-			? availableRooms
-			: meetingType === 'hybrid'
-				? availableRooms.filter(r => r.hasVideoConf)
-				: []
+		meetingType === 'offline' || meetingType === 'hybrid' ? availableRooms : []
 	);
 
 	let duration = $derived(calculateDuration(startTime, endTime));
@@ -118,12 +115,49 @@
 				}
 
 				notes = booking.notes || '';
+
+				bookerName = booking.userName || booking.userEmail || '';
+
+				// Resolve department from the booker's user record
+				if (booking.userId) {
+					const [userRes, deptRes] = await Promise.all([
+						fetch(`/api/v1/users?search=${encodeURIComponent(booking.userId)}&limit=1`).then(r => r.json()),
+						fetch('/api/v1/departments?limit=200').then(r => r.json())
+					]);
+					const bookerUser = userRes.success ? userRes.data?.[0] : null;
+					if (bookerUser?.departmentId && deptRes.success) {
+						const dept = deptRes.data?.find((d: any) => d._id === bookerUser.departmentId || d.departmentId === bookerUser.departmentId);
+						bookerDepartment = dept?.departmentName ?? '';
+					}
+				}
 			}
 		} catch (error) {
 			console.error('Failed to load booking:', error);
 			errorMessage = 'Failed to load booking details. Please try again.';
 		} finally {
 			isLoadingBooking = false;
+		}
+	}
+
+	async function cancelBooking() {
+		if (!bookingId || !confirm('Are you sure you want to cancel this booking?')) return;
+		isCancelling = true;
+		try {
+			const res = await fetch(`/api/v1/meeting/requests/${bookingId}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ action: 'cancel' })
+			});
+			const result = await res.json();
+			if (result.success) {
+				goto('/meeting/bookings');
+			} else {
+				errorMessage = result.error?.message || 'Failed to cancel booking';
+			}
+		} catch {
+			errorMessage = 'Failed to cancel booking';
+		} finally {
+			isCancelling = false;
 		}
 	}
 
@@ -269,10 +303,28 @@
 
 <div class="booking-page">
 	<div class="header">
-		<h1>{isEditMode ? 'View/Edit Meeting Booking' : 'Book Meeting Room'}</h1>
-		<p class="subtitle">
-			{isEditMode ? 'View or modify your meeting booking' : 'Schedule online, offline, or hybrid meetings'}
-		</p>
+		<div class="header-left">
+			<h1>{isEditMode ? 'View/Edit Meeting Booking' : 'Book Meeting Room'}</h1>
+			<p class="subtitle">
+				{isEditMode ? 'View or modify your meeting booking' : 'Schedule online, offline, or hybrid meetings'}
+			</p>
+		</div>
+		{#if isEditMode && bookerName}
+			<div class="header-right">
+				<div class="booker-info">
+					<div class="booker-avatar">{bookerName[0]?.toUpperCase() ?? '?'}</div>
+					<div class="booker-details">
+						<span class="booker-name">{bookerName}</span>
+						{#if bookerDepartment}
+							<span class="booker-dept">{bookerDepartment}</span>
+						{/if}
+					</div>
+				</div>
+				<button class="btn-cancel-booking" onclick={cancelBooking} disabled={isCancelling}>
+					{isCancelling ? 'Cancelling…' : 'Cancel Booking'}
+				</button>
+			</div>
+		{/if}
 	</div>
 
 	{#if isLoadingBooking}
@@ -320,7 +372,7 @@
 		</div>
 
 		<!-- Meeting Details Form -->
-		<form on:submit|preventDefault={handleSubmit}>
+		<form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
 			<div class="card">
 				<h2>Meeting Details</h2>
 				<div class="form-grid">
@@ -382,15 +434,15 @@
 							type="text"
 							bind:value={participantInput}
 							placeholder="Enter employee name or email, then click Add"
-							on:keydown={(e) => e.key === 'Enter' && (e.preventDefault(), addParticipant())}
+							onkeydown={(e) => e.key === 'Enter' && (e.preventDefault(), addParticipant())}
 						/>
-						<button type="button" class="btn-add" on:click={addParticipant}>Add</button>
+						<button type="button" class="btn-add" onclick={addParticipant}>Add</button>
 					</div>
 					<div class="tags">
 						{#each participants as participant, i}
 							<span class="tag">
 								{participant}
-								<button type="button" on:click={() => removeParticipant(i)}>×</button>
+								<button type="button" onclick={() => removeParticipant(i)}>×</button>
 							</span>
 						{/each}
 					</div>
@@ -403,15 +455,15 @@
 							type="email"
 							bind:value={externalInput}
 							placeholder="Enter external email, then click Add"
-							on:keydown={(e) => e.key === 'Enter' && (e.preventDefault(), addExternalParticipant())}
+							onkeydown={(e) => e.key === 'Enter' && (e.preventDefault(), addExternalParticipant())}
 						/>
-						<button type="button" class="btn-add" on:click={addExternalParticipant}>Add</button>
+						<button type="button" class="btn-add" onclick={addExternalParticipant}>Add</button>
 					</div>
 					<div class="tags">
 						{#each externalParticipants as participant, i}
 							<span class="tag">
 								{participant}
-								<button type="button" on:click={() => removeExternalParticipant(i)}>×</button>
+								<button type="button" onclick={() => removeExternalParticipant(i)}>×</button>
 							</span>
 						{/each}
 					</div>
@@ -421,7 +473,7 @@
 			<!-- Room Selection (for offline/hybrid) -->
 			{#if meetingType === 'offline' || meetingType === 'hybrid'}
 				<div class="card" transition:slide={{ duration: 300 }}>
-					<h2>Select Room</h2>
+					<h2>Select Room {filteredRooms.length}</h2>
 					{#if isLoadingRooms}
 						<div class="loading-rooms">Loading available rooms...</div>
 					{:else if filteredRooms.length === 0}
@@ -448,26 +500,20 @@
 													{/if}
 													<!-- Room info overlay on carousel -->
 													<div class="room-info-overlay">
-														<h4>{room.name}</h4>
-														<p class="room-floor">Floor {room.floor}</p>
-														<p class="room-capacity">👥 {room.capacity} people</p>
+									                    <h4 class="m-0">{room.name}</h4>
+														<i>[{room.type}] &lt;{room.id}&gt;</i><br>
+														<p class="room-floor">Floor {room.floor} {room.stat}</p>
+														<p class="room-capacity"> Capacity: {room.capacity} 👥</p>
 													</div>
 												</div>
 											{:else}
 												<div class="room-icon">🏢</div>
-												<h4>{room.name}</h4>
-												<p class="room-floor">Floor {room.floor}</p>
-												<p class="room-capacity">Capacity: {room.capacity}</p>
+												<h4 class="m-0">{room.name}</h4>
+												<i>[{room.type}] &lt;{room.id}&gt;</i><br>
+												<p class="room-floor">Floor {room.floor} {room.stat}</p>
+												<p class="room-capacity"> Capacity: {room.capacity} 👥</p>
 											{/if}
-											<div class="room-facilities">
-												{#each room.facilities.slice(0, 3) as facility}
-													<span class="facility-badge">{facility}</span>
-												{/each}
-												{#if room.facilities.length > 3}
-													<span class="facility-badge">+{room.facilities.length - 3}</span>
-												{/if}
 											</div>
-										</div>
 									</label>
 								{/each}
 						</div>
@@ -514,7 +560,7 @@
 									<input
 										type="checkbox"
 										checked={facilitiesNeeded.includes(facility)}
-										on:change={() => toggleFacility(facility)}
+										onchange={() => toggleFacility(facility)}
 									/>
 									<span>{facility}</span>
 								</label>

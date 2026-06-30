@@ -4,7 +4,7 @@
  * Syncs users and organizational units from Aksara SSO to OFM local database
  */
 
-import { connectDB } from '$lib/server/db/mongodb';
+import { connectDB, collections } from '$lib/server/db/mongodb';
 import { scimClient, type SCIMUser, type SCIMGroup } from './client';
 import type { User } from '$lib/types';
 
@@ -27,7 +27,7 @@ export async function syncOrganizationalUnits(groups: SCIMGroup[]): Promise<{
 	errors: string[];
 }> {
 	const db = await connectDB();
-	const orgUnitsCollection = db.collection('organizationalUnits');
+	const orgUnitsCollection = db.collection(collections.organizationalUnits);
 
 	let created = 0;
 	let updated = 0;

@@ -14,7 +14,9 @@ export const load: LayoutServerLoad = async ({ locals, parent }) => {
 
 	try {
 		const db = await connectDB();
+		const userPerms = user.permissions ?? [];
 		const isGlobalAdmin =
+			userPerms.includes('*') || userPerms.includes('admin') ||
 			user.roles.includes('super_admin') || user.roles.includes('global_admin');
 
 		let companies: any[] = [];

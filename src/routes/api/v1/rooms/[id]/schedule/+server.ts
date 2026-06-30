@@ -97,7 +97,6 @@ export const GET: RequestHandler = async ({ params, url, request }) => {
 					roomName: room.roomName,
 					floor: room.floor,
 					capacity: room.capacity,
-					facilities: room.facilities,
 					status: room.status,
 					videoBackgroundIds: room.videoBackgroundIds || []
 				},

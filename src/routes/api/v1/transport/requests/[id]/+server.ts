@@ -7,7 +7,7 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { requireAuth, isAdmin, canApprove } from '$lib/server/api/auth';
+import { requireAuth, isAdmin, hasPermission } from '$lib/server/api/auth';
 import { success, error, ErrorCode } from '$lib/server/api/response';
 import { parseBody, isValidObjectId } from '$lib/server/api/validation';
 import { getDB } from '$lib/server/db/mongodb';
@@ -61,7 +61,10 @@ export const PATCH: RequestHandler = async (event) => {
 			return json(error(ErrorCode.VALIDATION_ERROR, 'action is required'), { status: 400 });
 		}
 
-		const result = await applyAction(db, id, request, body as any, user, canApprove, isAdmin);
+		// canApproveTransport: checks granular 'transportation.approve' permission OR admin wildcard
+		const canApproveTransport = (u: typeof user) =>
+			hasPermission(u, 'transportation.approve') || isAdmin(u);
+		const result = await applyAction(db, id, request, body as any, user, canApproveTransport, isAdmin);
 		if (result.error) {
 			const code = result.status === 403 ? ErrorCode.FORBIDDEN : ErrorCode.VALIDATION_ERROR;
 			return json(error(code, result.error), { status: result.status });
@@ -88,7 +91,9 @@ export const DELETE: RequestHandler = async (event) => {
 		const request = await getTransportRequest(db, id);
 		if (!request) return json(error(ErrorCode.NOT_FOUND, 'Request not found'), { status: 404 });
 
-		const result = await applyAction(db, id, request, { action: 'cancel' }, user, canApprove, isAdmin);
+		const canApproveTransport = (u: typeof user) =>
+			hasPermission(u, 'transportation.approve') || isAdmin(u);
+		const result = await applyAction(db, id, request, { action: 'cancel' }, user, canApproveTransport, isAdmin);
 		if (result.error) {
 			const code = result.status === 403 ? ErrorCode.FORBIDDEN : ErrorCode.VALIDATION_ERROR;
 			return json(error(code, result.error), { status: result.status });

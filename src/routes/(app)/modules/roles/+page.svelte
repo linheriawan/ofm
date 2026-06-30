@@ -25,6 +25,17 @@
 	// Roles are mostly global; company column shows per-role scope
 	const rolesEndpoint = '/api/v1/roles';
 
+	// Whether the '*' wildcard is active
+	const hasWildcard = $derived(formData.permissions.includes('*'));
+
+	function toggleWildcard() {
+		if (hasWildcard) {
+			formData.permissions = formData.permissions.filter(p => p !== '*');
+		} else {
+			formData.permissions = ['*'];
+		}
+	}
+
 	// Available permissions by module
 	const availablePermissions = [
 		{ id: 'transportation.create', label: 'Create Transportation Requests', module: 'Transportation' },
@@ -269,11 +280,15 @@
 						<span class="text-muted">No permissions selected</span>
 					{:else}
 						<div class="permissions-chips">
-							{#each formData.permissions.slice(0, 5) as perm}
-								<span class="chip">{perm}</span>
-							{/each}
-							{#if formData.permissions.length > 5}
-								<span class="chip-more">+{formData.permissions.length - 5} more</span>
+							{#if formData.permissions.includes('*')}
+								<span class="chip chip-wildcard">Full Access (*)</span>
+							{:else}
+								{#each formData.permissions.slice(0, 5) as perm}
+									<span class="chip">{perm}</span>
+								{/each}
+								{#if formData.permissions.length > 5}
+									<span class="chip-more">+{formData.permissions.length - 5} more</span>
+								{/if}
 							{/if}
 						</div>
 					{/if}
@@ -335,32 +350,47 @@
 
 <Modal bind:isOpen={isPermissionsModalOpen} title="Manage Permissions" onClose={closePermissionsModal} width="800px">
 	<div class="permissions-manager">
-		{#each Object.entries(permissionsByModule) as [module, permissions]}
-			<div class="permission-module">
-				<div class="module-header">
-					<h3>{module}</h3>
-					<button
-						type="button"
-						class="btn-link-small"
-						onclick={() => toggleAllInModule(module)}
-					>
-						{permissions.every(p => formData.permissions.includes(p.id)) ? 'Deselect All' : 'Select All'}
-					</button>
+		<!-- Full Access wildcard toggle -->
+		<div class="permission-module wildcard-module" class:wildcard-active={hasWildcard}>
+			<label class="wildcard-toggle">
+				<input type="checkbox" checked={hasWildcard} onchange={toggleWildcard} />
+				<div class="wildcard-info">
+					<strong>Full Access <code>*</code></strong>
+					<span>Grants all current and future permissions. Use for Super Admin roles.</span>
 				</div>
-				<div class="permission-list">
-					{#each permissions as permission}
-						<label class="permission-item">
-							<input
-								type="checkbox"
-								checked={formData.permissions.includes(permission.id)}
-								onchange={() => togglePermission(permission.id)}
-							/>
-							<span>{permission.label}</span>
-						</label>
-					{/each}
+			</label>
+		</div>
+
+		{#if !hasWildcard}
+			{#each Object.entries(permissionsByModule) as [module, permissions]}
+				<div class="permission-module">
+					<div class="module-header">
+						<h3>{module}</h3>
+						<button
+							type="button"
+							class="btn-link-small"
+							onclick={() => toggleAllInModule(module)}
+						>
+							{permissions.every(p => formData.permissions.includes(p.id)) ? 'Deselect All' : 'Select All'}
+						</button>
+					</div>
+					<div class="permission-list">
+						{#each permissions as permission}
+							<label class="permission-item">
+								<input
+									type="checkbox"
+									checked={formData.permissions.includes(permission.id)}
+									onchange={() => togglePermission(permission.id)}
+								/>
+								<span>{permission.label}</span>
+							</label>
+						{/each}
+					</div>
 				</div>
-			</div>
-		{/each}
+			{/each}
+		{:else}
+			<p class="wildcard-hint">Individual permissions are overridden — full access is active.</p>
+		{/if}
 	</div>
 	<div class="modal-actions">
 		<button type="button" class="btn-primary" onclick={closePermissionsModal}>Done</button>
@@ -470,6 +500,12 @@
 		font-weight: 500;
 	}
 
+	.chip-wildcard {
+		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+		font-weight: 600;
+		letter-spacing: 0.02em;
+	}
+
 	.chip-more {
 		display: inline-block;
 		padding: 0.25rem 0.75rem;
@@ -568,6 +604,66 @@
 		border-radius: 8px;
 		padding: 1rem;
 		background: #f9fafb;
+	}
+
+	.wildcard-module {
+		border-color: #d1d5db;
+		background: #f9fafb;
+	}
+
+	.wildcard-module.wildcard-active {
+		border-color: #667eea;
+		background: #eef2ff;
+	}
+
+	.wildcard-toggle {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.75rem;
+		cursor: pointer;
+	}
+
+	.wildcard-toggle input[type='checkbox'] {
+		margin-top: 0.15rem;
+		width: 1.1rem;
+		height: 1.1rem;
+		cursor: pointer;
+		flex-shrink: 0;
+	}
+
+	.wildcard-info {
+		display: flex;
+		flex-direction: column;
+		gap: 0.2rem;
+	}
+
+	.wildcard-info strong {
+		font-size: 0.95rem;
+		color: #111;
+	}
+
+	.wildcard-info code {
+		background: #e5e7eb;
+		border-radius: 3px;
+		padding: 0.05rem 0.3rem;
+		font-size: 0.85rem;
+		color: #667eea;
+	}
+
+	.wildcard-info span {
+		font-size: 0.8rem;
+		color: #6b7280;
+	}
+
+	.wildcard-hint {
+		text-align: center;
+		color: #667eea;
+		font-size: 0.875rem;
+		padding: 1rem;
+		background: #eef2ff;
+		border-radius: 8px;
+		border: 1px dashed #667eea;
+		margin: 0;
 	}
 
 	.module-header {

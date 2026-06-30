@@ -43,11 +43,11 @@ export interface AuthSession {
 	ssoRoles?: string[];
 }
 
-// Permission checking helpers
-export function hasPermission(session: AuthSession, permission: string): boolean {
-	// TODO: Implement proper permission checking
-	// For now, return true for development
-	return true;
+// Permission checking helpers (session layer — permissions[] resolved in hooks.server.ts)
+export function hasPermission(session: AuthSession & { permissions?: string[] }, permission: string): boolean {
+	const perms = (session as any).permissions as string[] | undefined;
+	if (!perms?.length) return false;
+	return perms.includes('*') || perms.includes(permission);
 }
 
 export function hasRole(session: AuthSession, role: string): boolean {

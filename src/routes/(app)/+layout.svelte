@@ -127,12 +127,12 @@
 							<div class="dropdown-section-title">Booking</div>
 							<a href="/transportation/bookings" onclick={closeDropdowns}>Transport</a>
 							<a href="/meeting/bookings" onclick={closeDropdowns}>Meetings</a>
-							
+
 							<div class="dropdown-divider"></div>
 							<div class="dropdown-section-title">Summary</div>
 							<a href="/transportation/tracking" onclick={closeDropdowns}>Track Vehicles</a>
 							<a href="/meeting/calendar" onclick={closeDropdowns}>Room Calendar</a>
-							
+
 							<div class="dropdown-divider"></div>
 							<div class="dropdown-section-title">Approvals</div>
 							<a href="/modules/approvals" onclick={closeDropdowns}>Transportation </a>
@@ -306,6 +306,8 @@
 	.subtitle {
 		font-size: 0.75rem;
 		opacity: 0.9;
+		color:white;
+		margin-top: -.5em;
 	}
 
 	.menu-toggle {

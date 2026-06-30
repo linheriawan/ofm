@@ -14,6 +14,8 @@
 	};
 	let recentActivities: { type: string; message: string; time: string }[] = [];
 	let upcomingBookings: { type: string; title: string; location: string; time: string }[] = [];
+	let teammates: { _id: string; firstName: string; lastName: string; email: string; roleNames?: string[]; isActive: boolean }[] = $state([]);
+	let departmentName = $state('');
 
 	function timeAgo(date: Date): string {
 		const diff = Date.now() - date.getTime();
@@ -98,6 +100,28 @@
 		upcomingBookings = upcoming.sort((a, b) => a.time.localeCompare(b.time)).slice(0, 5);
 	}
 
+	async function loadTeammates() {
+		if (!user?.orgUnitId) return;
+		try {
+			const params = new URLSearchParams({ departmentId: user.orgUnitId, limit: '20', isActive: 'true' });
+			const res = await fetch(`/api/v1/users?${params}`);
+			const json = await res.json();
+			if (json.success) {
+				// exclude self
+				teammates = (json.data ?? []).filter((u: any) => u.email !== user.email);
+			}
+			// resolve department name from org units
+			const deptRes = await fetch(`/api/v1/departments?limit=200`);
+			const deptJson = await deptRes.json();
+			if (deptJson.success) {
+				const match = (deptJson.data ?? []).find((d: any) => d._id === user.orgUnitId || d.departmentId === user.orgUnitId);
+				departmentName = match?.departmentName ?? user.orgUnitName ?? '';
+			}
+		} catch (e) {
+			console.error('Failed to load teammates', e);
+		}
+	}
+
 	onMount(() => {
 		const urlParams = new URLSearchParams(window.location.search);
 		if (urlParams.get('cancelled') === 'true') {
@@ -109,7 +133,8 @@
 			const errorMessages: Record<string, string> = {
 				'invalid_request': 'Invalid authentication request. Please try again.',
 				'server_error': 'Server error during authentication. Please try again.',
-				'temporarily_unavailable': 'Authentication service is temporarily unavailable.'
+				'temporarily_unavailable': 'Authentication service is temporarily unavailable.',
+				'unauthorized': 'You do not have permission to access that page.'
 			};
 			errorMessage = errorMessages[err || ''] || `Authentication error: ${err}`;
 			window.history.replaceState({}, '', '/');
@@ -119,6 +144,7 @@
 		if (user) {
 			loadStats();
 			loadRecentAndUpcoming();
+			loadTeammates();
 		}
 	});
 </script>
@@ -394,6 +420,31 @@
 				{/each}
 			</div>
 		</div>
+
+		<!-- Teammates -->
+		{#if user?.orgUnitId}
+		<div class="card teammates">
+			<h2>👥 My Team {#if departmentName}<span class="dept-label">{departmentName}</span>{/if}</h2>
+			{#if teammates.length === 0}
+				<p class="empty-hint">No teammates found in your department.</p>
+			{:else}
+				<div class="teammate-list">
+					{#each teammates as t}
+						<div class="teammate-row">
+							<div class="teammate-avatar">{(t.firstName?.[0] ?? '?').toUpperCase()}{(t.lastName?.[0] ?? '').toUpperCase()}</div>
+							<div class="teammate-info">
+								<span class="teammate-name">{t.firstName} {t.lastName}</span>
+								<span class="teammate-email">{t.email}</span>
+							</div>
+							{#if t.roleNames?.length}
+								<span class="teammate-role">{t.roleNames[0]}</span>
+							{/if}
+						</div>
+					{/each}
+				</div>
+			{/if}
+		</div>
+		{/if}
 	</div>
 </div>
 {/if}
@@ -895,6 +946,60 @@
 	.booking-time {
 		font-size: 0.85rem;
 		color: #888;
+	}
+
+	.teammates h2 { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+
+	.dept-label {
+		font-size: 0.8rem;
+		font-weight: 500;
+		color: #667eea;
+		background: #eef2ff;
+		padding: 0.15rem 0.6rem;
+		border-radius: 999px;
+	}
+
+	.empty-hint { color: #9ca3af; font-size: 0.875rem; margin: 0; }
+
+	.teammate-list { display: flex; flex-direction: column; gap: 0.6rem; }
+
+	.teammate-row {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		padding: 0.5rem 0.6rem;
+		border-radius: 8px;
+		transition: background 0.12s;
+	}
+	.teammate-row:hover { background: #f9fafb; }
+
+	.teammate-avatar {
+		width: 2.25rem;
+		height: 2.25rem;
+		border-radius: 50%;
+		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+		color: white;
+		font-size: 0.75rem;
+		font-weight: 700;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+	}
+
+	.teammate-info { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+	.teammate-name { font-size: 0.875rem; font-weight: 500; color: #111; }
+	.teammate-email { font-size: 0.75rem; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+	.teammate-role {
+		font-size: 0.7rem;
+		font-weight: 600;
+		padding: 0.15rem 0.5rem;
+		background: #e0e7ff;
+		color: #3730a3;
+		border-radius: 999px;
+		white-space: nowrap;
+		text-transform: capitalize;
 	}
 
 	@media (max-width: 768px) {

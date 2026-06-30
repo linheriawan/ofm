@@ -22,8 +22,6 @@
 		floor: '',
 		capacity: 10,
 		roomType: 'meeting',
-		facilities: [] as string[],
-		hasVideoConference: false,
 		tabletDeviceId: '',
 		status: 'available',
 		imageUrls: [] as string[],
@@ -104,8 +102,6 @@
 			floor: room.floor || '',
 			capacity: room.capacity,
 			roomType: room.roomType,
-			facilities: room.facilities || [],
-			hasVideoConference: room.hasVideoConference,
 			tabletDeviceId: room.tabletDeviceId || '',
 			status: room.status,
 			imageUrls: room.imageUrls || (room.imageUrl ? [room.imageUrl] : []), // backward compatibility
@@ -126,11 +122,10 @@
 			floor: '',
 			capacity: 10,
 			roomType: 'meeting',
-			facilities: [],
-			hasVideoConference: false,
 			tabletDeviceId: '',
 			status: 'available',
-			imageUrls: []
+			imageUrls: [],
+			videoBackgroundIds: []
 		};
 		imagePreviews = [];
 		uploadError = '';
@@ -335,12 +330,6 @@
 				<input type="text" id="tabletDeviceId" bind:value={formData.tabletDeviceId} placeholder="TAB-A301" />
 			</div>
 
-			<div class="form-group checkbox-group">
-				<label>
-					<input type="checkbox" bind:checked={formData.hasVideoConference} />
-					Has Video Conference
-				</label>
-			</div>
 		</div>
 
 		<!-- Room Photos Upload -->

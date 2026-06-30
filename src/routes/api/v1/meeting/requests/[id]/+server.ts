@@ -7,7 +7,7 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { requireAuth, isAdmin, canApprove } from '$lib/server/api/auth';
+import { requireAuth, isAdmin, hasPermission } from '$lib/server/api/auth';
 import { success, error, ErrorCode } from '$lib/server/api/response';
 import { parseBody } from '$lib/server/api/validation';
 import { connectDB, getDB, collections } from '$lib/server/db/mongodb';
@@ -125,7 +125,10 @@ export const PATCH: RequestHandler = async (event) => {
 		}
 
 		// Handle action-based updates via service
-		const result = await applyAction(db, id, request, body, user, canApprove, isAdmin);
+		// canApproveMeeting: checks granular 'meeting.approve' permission OR admin wildcard
+		const canApproveMeeting = (u: typeof user) =>
+			hasPermission(u, 'meeting.approve') || isAdmin(u);
+		const result = await applyAction(db, id, request, body as any, user, canApproveMeeting, isAdmin);
 		if (result.error) {
 			const code = result.status === 403 ? ErrorCode.FORBIDDEN : ErrorCode.VALIDATION_ERROR;
 			return json(error(code, result.error), { status: result.status });
@@ -157,7 +160,7 @@ export const DELETE: RequestHandler = async (event) => {
 		}
 
 		// Only allow users to delete their own pending requests
-		if (request.userId !== user.userId && !user.roles.includes('admin')) {
+		if (request.userId !== user.userId && !isAdmin(user)) {
 			return json(error(ErrorCode.FORBIDDEN, 'You can only delete your own requests'), { status: 403 });
 		}
 

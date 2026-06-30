@@ -6,7 +6,7 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { requireAuth } from '$lib/server/api/auth';
+import { requireAuth, isAdmin } from '$lib/server/api/auth';
 import { success, error, ErrorCode, parsePagination, createPaginationMeta } from '$lib/server/api/response';
 import { parseBody, validateRequired, throwValidationError } from '$lib/server/api/validation';
 import { getDB, collections } from '$lib/server/db/mongodb';
@@ -117,7 +117,7 @@ export const GET: RequestHandler = async (event) => {
 		const query: any = {};
 
 		// Regular users can only see their own requests
-		if (!user.roles.includes('admin') && !user.roles.includes('regional_admin')) {
+		if (!isAdmin(user)) {
 			query.userId = user.userId;
 		}
 

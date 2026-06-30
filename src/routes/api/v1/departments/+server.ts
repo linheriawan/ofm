@@ -33,21 +33,36 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			query.isActive = isActive === 'true';
 		}
 
-		const [departments, total] = await Promise.all([
-			db
-				.collection(collections.departments)
-				.find(query)
-				.sort({ level: 1, departmentName: 1 })
-				.skip(skip)
-				.limit(limit)
-				.toArray(),
+		// Org units are SCIM-synced into organizational_units; departments is for manually created ones.
+		// Merge both sources, mapping org unit fields to the department shape.
+		const [orgUnits, orgUnitCount, manualDepts, manualCount] = await Promise.all([
+			db.collection(collections.organizationalUnits).find({}).toArray(),
+			db.collection(collections.organizationalUnits).countDocuments({}),
+			db.collection(collections.departments).find(query).sort({ level: 1, departmentName: 1 }).toArray(),
 			db.collection(collections.departments).countDocuments(query)
 		]);
+		const total = orgUnitCount + manualCount;
 
-		const data = departments.map((d) => ({
-			...d,
-			_id: d._id?.toString()
+		const fromOrgUnits = orgUnits.map((u: any) => ({
+			_id: u._id?.toString(),
+			departmentId: u.externalId || u._id?.toString(),
+			departmentName: u.unitName,
+			code: u.externalId || '',
+			type: u.unitType || 'department',
+			level: u.level ?? 1,
+			parentDepartmentId: u.parentUnitId?.toString() || null,
+			isActive: true,
+			source: 'scim',
+			syncedAt: u.syncedAt
 		}));
+
+		const fromManual = manualDepts.map((d: any) => ({
+			...d,
+			_id: d._id?.toString(),
+			source: 'manual'
+		}));
+
+		const data = [...fromOrgUnits, ...fromManual].slice(skip, skip + limit);
 
 		return json(
 			success(data, {

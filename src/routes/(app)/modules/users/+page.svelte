@@ -141,11 +141,11 @@
 				val ?? `<span style="color:#6b7280">${row.username ?? '—'}</span>`
 		},
 		{
-			key: 'roleIds',
+			key: 'roleNames',
 			label: 'Roles',
 			render: (val: string[]) => {
 				if (!val?.length) return '<span style="color:#9ca3af">—</span>';
-				return val.map(r => `<span class="badge badge-role">${r.replace(/_/g, ' ')}</span>`).join(' ');
+				return val.map(r => `<span class="badge badge-role">${r}</span>`).join(' ');
 			}
 		},
 		{
@@ -166,7 +166,7 @@
 	function normaliseRoleIds(ids: string[]): string[] {
 		return ids.map(id => {
 			const byId = roles.find(r => r._id?.toString() === id);
-			return byId ? byId.roleId : id;
+			return byId ? byId.roleName : id;
 		});
 	}
 

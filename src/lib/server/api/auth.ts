@@ -93,9 +93,24 @@ export function hasRole(user: AuthenticatedUser, role: string): boolean {
 	return user.roles.includes(role);
 }
 
+/**
+ * Check if user has a specific granular permission (or the '*' wildcard).
+ * Reads from user.permissions[] resolved by resolvePermissions() in hooks.server.ts.
+ * Note: resolvePermissions() strips system-tier values ('admin','employee','driver')
+ * from the UI-set permissions[] so they cannot be injected via the roles API.
+ */
+export function hasPermission(user: AuthenticatedUser, permission: string): boolean {
+	if (!user.permissions?.length) return false;
+	return user.permissions.includes('*') || user.permissions.includes(permission);
+}
+
 export function isAdmin(user: AuthenticatedUser): boolean {
-	if (user.permissions) return user.permissions.includes('admin');
-	// fallback for sessions not yet enriched
+	if (user.permissions?.length) {
+		// '*' — super admin wildcard, only grantable by existing super admins
+		// 'admin' — system-tier value from singular `permission` field on system roles; never UI-injectable
+		return user.permissions.includes('*') || user.permissions.includes('admin');
+	}
+	// Fallback for sessions not yet enriched with permissions
 	return hasRole(user, 'super_admin') || hasRole(user, 'global_admin') ||
 		hasRole(user, 'regional_admin') || hasRole(user, 'admin');
 }

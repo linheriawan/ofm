@@ -5,7 +5,7 @@ import type { User } from '$lib/types';
 
 export const GET: RequestHandler = async ({ url }) => {
 	try {
-		const allowedFilters = ['companyId', 'isActive'];
+		const allowedFilters = ['companyId', 'isActive', 'departmentId'];
 		const filter = buildFilterFromParams(url.searchParams, allowedFilters);
 		const { page, limit } = getPaginationParams(url.searchParams);
 
@@ -21,7 +21,8 @@ export const GET: RequestHandler = async ({ url }) => {
 			const vals: any[] = [r.roleId];
 			if (r._id) vals.push(r._id, r._id.toString());
 			return vals;
-		};
+    };
+
 
 		// Role filter: match both string 'driver' and any ObjectId forms stored for that role
 		const role = url.searchParams.get('role');
@@ -66,7 +67,18 @@ export const GET: RequestHandler = async ({ url }) => {
 
 		if (result.data) {
 			result.data = result.data.map((user: any) => {
+				if (user.lastName == 'null') { user.lastName = ''; }
 				const { passwordHash, ...userData } = user;
+				const resolvedIds = (userData.roleIds || []).map((rid: any) => {
+					const idStr = rid?.toString();
+					const matched = allRoles.find(r => r._id?.toString() === idStr || r.roleId === idStr);
+					return matched ? matched.roleId : idStr;
+				});
+				userData.roleIds = resolvedIds;
+				userData.roleNames = resolvedIds.map((rid: string) => {
+					const matched = allRoles.find(r => r.roleId === rid);
+					return matched?.roleName ?? rid;
+				});
 				return userData;
 			});
 		}

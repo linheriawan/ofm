@@ -56,8 +56,9 @@ export interface Role extends BaseDocument {
 	roleId: string;
 	roleName: string;
 	description?: string;
-	permission: RolePermission;  // canonical access level for this role
-	companyIds?: string[];       // empty = global; specific IDs = scoped
+	permission: RolePermission;   // system-set tier: 'employee' | 'driver' | 'admin'
+	permissions?: string[];       // UI-set granular permissions: 'meeting.approve', '*', etc.
+	companyIds?: string[];        // empty = global; specific IDs = scoped
 	isActive: boolean;
 }
 
@@ -197,8 +198,6 @@ export interface MeetingRoom extends BaseDocument {
 	floor?: string;
 	capacity: number;
 	roomType: 'conference' | 'meeting' | 'boardroom' | 'training' | 'huddle';
-	facilities: string[]; // projector, whiteboard, video-conf, etc
-	hasVideoConference: boolean;
 	tabletDeviceId?: string; // raspberry pi / tablet
 	status: 'available' | 'occupied' | 'maintenance' | 'inactive';
 	imageUrl?: string; // @deprecated - kept for backward compatibility

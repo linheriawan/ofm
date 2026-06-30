@@ -7,7 +7,13 @@ export const GET: RequestHandler = async ({ url }) => {
 	try {
 		const allowedFilters = ['companyId', 'status', 'locationId', 'roomType'];
 		const filter = buildFilterFromParams(url.searchParams, allowedFilters);
-		const { page, limit } = getPaginationParams(url.searchParams);
+
+		const excludeRoomType = url.searchParams.get('excludeRoomType');
+		if (excludeRoomType) filter['roomType'] = { $ne: excludeRoomType };
+
+		const { page } = getPaginationParams(url.searchParams);
+		const rawLimit = parseInt(url.searchParams.get('limit') || '10');
+		const limit = rawLimit === 0 ? 10000 : rawLimit;
 
 		const result = await listDocuments<MeetingRoom>('meeting_rooms', { filter, page, limit });
 		return json(result);
@@ -29,8 +35,6 @@ export const POST: RequestHandler = async ({ request }) => {
 			floor: body.floor,
 			capacity: parseInt(body.capacity),
 			roomType: body.roomType,
-			facilities: body.facilities || [],
-			hasVideoConference: body.hasVideoConference || false,
 			tabletDeviceId: body.tabletDeviceId,
 			status: body.status || 'available',
 			imageUrls: body.imageUrls || []

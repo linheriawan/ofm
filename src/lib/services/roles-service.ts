@@ -37,18 +37,30 @@ export async function initializeSystemRoles(db: Db): Promise<void> {
 	}
 }
 
-export async function resolvePermissions(db: Db, roleIds: string[]): Promise<RolePermission[]> {
+export async function resolvePermissions(db: Db, roleIds: string[]): Promise<string[]> {
 	if (!roleIds?.length) return ['employee'];
 
 	const roles = await db
 		.collection(collections.roles)
 		.find({ roleId: { $in: roleIds } })
-		.project({ permission: 1 })
+		.project({ permission: 1, permissions: 1 })
 		.toArray();
 
-	const resolved = roles
-		.map((r: any) => r.permission as RolePermission)
-		.filter(Boolean);
+	// System-tier values that may only come from the singular `permission` field (set by system code).
+	// If these appear in the plural `permissions[]` array, they were injected and must be ignored.
+	const SYSTEM_TIER = new Set(['admin', 'employee', 'driver']);
 
-	return resolved.length ? [...new Set(resolved)] : ['employee'];
+	const result = new Set<string>();
+	for (const r of roles) {
+		// singular `permission` field — set only by initializeSystemRoles / sync code
+		if (r.permission) result.add(r.permission);
+		// plural `permissions[]` — set via UI; strip system-tier values to prevent injection
+		if (Array.isArray(r.permissions)) {
+			(r.permissions as string[])
+				.filter(p => typeof p === 'string' && !SYSTEM_TIER.has(p))
+				.forEach(p => result.add(p));
+		}
+	}
+
+	return result.size ? [...result] : ['employee'];
 }

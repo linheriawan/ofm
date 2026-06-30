@@ -46,7 +46,7 @@ export async function closeDB(): Promise<void> {
 export const collections = {
 	// Organization
 	companies: 'companies',
-	organizationalUnits: 'organizational_units',
+	organizationalUnits: 'organizationalUnits',
 	users: 'users',
 	roles: 'roles',
 	permissions: 'permissions',
