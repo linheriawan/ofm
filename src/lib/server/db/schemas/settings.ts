@@ -27,11 +27,10 @@ export const SETTING_KEYS = {
 	SCIM_CLIENT_SECRET: 'scim.client_secret',
 	SCIM_WEBHOOK_SECRET: 'scim.webhook_secret',
 
-	// Email Configuration
-	SMTP_HOST: 'email.smtp_host',
-	SMTP_PORT: 'email.smtp_port',
-	SMTP_USER: 'email.smtp_user',
-	SMTP_PASSWORD: 'email.smtp_password',
+	// Email Configuration (Resend)
+	RESEND_API_KEY: 'email.resend_api_key',
+	FROM_EMAIL: 'email.from_address',
+	FROM_NAME: 'email.from_name',
 
 	// General
 	APP_NAME: 'general.app_name',
@@ -77,41 +76,32 @@ export const DEFAULT_SETTINGS: Omit<Setting, '_id' | 'updatedAt' | 'createdAt'>[
 		isRequired: false
 	},
 
-	// Email Settings
+	// Email Settings (Resend)
 	{
-		key: SETTING_KEYS.SMTP_HOST,
-		value: 'smtp.gmail.com',
-		category: 'email',
-		label: 'SMTP Host',
-		description: 'Email server hostname',
-		isSecret: false,
-		isRequired: false
-	},
-	{
-		key: SETTING_KEYS.SMTP_PORT,
-		value: '587',
-		category: 'email',
-		label: 'SMTP Port',
-		description: 'Email server port',
-		isSecret: false,
-		isRequired: false
-	},
-	{
-		key: SETTING_KEYS.SMTP_USER,
+		key: SETTING_KEYS.RESEND_API_KEY,
 		value: '',
 		category: 'email',
-		label: 'SMTP Username',
-		description: 'Email account username',
-		isSecret: false,
-		isRequired: false
-	},
-	{
-		key: SETTING_KEYS.SMTP_PASSWORD,
-		value: '',
-		category: 'email',
-		label: 'SMTP Password',
-		description: 'Email account password',
+		label: 'Resend API Key',
+		description: 'API key from resend.com for sending emails',
 		isSecret: true,
+		isRequired: false
+	},
+	{
+		key: SETTING_KEYS.FROM_EMAIL,
+		value: '',
+		category: 'email',
+		label: 'From Email Address',
+		description: 'Sender email address (must be verified in Resend)',
+		isSecret: false,
+		isRequired: false
+	},
+	{
+		key: SETTING_KEYS.FROM_NAME,
+		value: 'OFM System',
+		category: 'email',
+		label: 'From Name',
+		description: 'Sender name shown in email clients',
+		isSecret: false,
 		isRequired: false
 	},
 

@@ -125,9 +125,9 @@ export interface SessionData {
 	expiresAt: number;
 }
 
-export async function createSession(userInfo: UserInfo, tokens: OAuthTokens, localCompanyId?: string, userRoles?: string[]): Promise<string> {
+export async function createSession(userInfo: UserInfo, tokens: OAuthTokens, localCompanyId?: string, userRoles?: string[], dbUserId?: string): Promise<string> {
 	const sessionData: SessionData = {
-		userId: userInfo.sub,
+		userId: dbUserId || userInfo.sub,
 		email: userInfo.email,
 		name: userInfo.name || userInfo.fullName,
 		ssoUserId: userInfo.sub,

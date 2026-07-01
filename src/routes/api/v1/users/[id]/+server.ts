@@ -1,19 +1,28 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDocument, updateDocument, deleteDocument } from '$lib/utils/api';
+import { updateDocument, deleteDocument } from '$lib/utils/api';
 import type { User } from '$lib/types';
+import { getDB } from '$lib/server/db/mongodb';
+import { ObjectId } from 'mongodb';
 
 export const GET: RequestHandler = async ({ params }) => {
 	try {
-		const result = await getDocument<User>('users', params.id);
+		const id = params.id;
+		const db = getDB();
 
-		// Remove password hash from response
-		if (result.data) {
-			const { passwordHash, ...userData } = result.data as any;
-			result.data = userData;
+		// Resolve by _id (ObjectId), userId (employeeId/prefix), or ssoUserId
+		const query = ObjectId.isValid(id)
+			? { $or: [{ _id: new ObjectId(id) }, { userId: id }, { ssoUserId: id }] }
+			: { $or: [{ userId: id }, { ssoUserId: id }] };
+
+		const doc = await db.collection<User>('users').findOne(query as any);
+
+		if (!doc) {
+			return json({ success: false, error: 'User not found', status: 404 }, { status: 404 });
 		}
 
-		return json(result, { status: result.status || 200 });
+		const { passwordHash, ...userData } = doc as any;
+		return json({ success: true, data: userData });
 	} catch (error) {
 		console.error('Error fetching user:', error);
 		return json({ success: false, error: 'Failed to fetch user' }, { status: 500 });

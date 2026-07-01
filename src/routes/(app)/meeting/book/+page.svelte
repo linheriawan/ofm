@@ -41,7 +41,7 @@
 	let bookerName = $state('');
 	let bookerDepartment = $state('');
 	let isCancelling = $state(false);
-
+	let bookdata = $state<any>({});
 	// Fetch rooms from API
 	async function fetchRooms() {
 		try {
@@ -73,10 +73,7 @@
 		'Snack', 'Lunch'
 	];
 
-	let filteredRooms = $derived(
-		meetingType === 'offline' || meetingType === 'hybrid' ? availableRooms : []
-	);
-
+	let filteredRooms = $derived( meetingType === 'offline' || meetingType === 'hybrid' ? availableRooms : []);
 	let duration = $derived(calculateDuration(startTime, endTime));
 
 	// Load existing booking if in edit mode
@@ -90,7 +87,7 @@
 
 			if (result.success && result.data) {
 				const booking = result.data;
-
+				bookdata=booking;
 				// Pre-fill form fields
 				meetingType = booking.type || 'offline';
 				meetingTitle = booking.title || '';
@@ -121,13 +118,16 @@
 				// Resolve department from the booker's user record
 				if (booking.userId) {
 					const [userRes, deptRes] = await Promise.all([
-						fetch(`/api/v1/users?search=${encodeURIComponent(booking.userId)}&limit=1`).then(r => r.json()),
+						fetch(`/api/v1/users/${encodeURIComponent(booking.userId)}`).then(r => r.json()),
 						fetch('/api/v1/departments?limit=200').then(r => r.json())
 					]);
-					const bookerUser = userRes.success ? userRes.data?.[0] : null;
+					console.log(userRes,encodeURIComponent(booking.userId))
+					const bookerUser = userRes.success ? userRes.data : null;
+
 					if (bookerUser?.departmentId && deptRes.success) {
 						const dept = deptRes.data?.find((d: any) => d._id === bookerUser.departmentId || d.departmentId === bookerUser.departmentId);
 						bookerDepartment = dept?.departmentName ?? '';
+						bookerName=bookerUser.firstName+' '+bookerUser.lastName
 					}
 				}
 			}
@@ -304,25 +304,24 @@
 <div class="booking-page">
 	<div class="header">
 		<div class="header-left">
-			<h1>{isEditMode ? 'View/Edit Meeting Booking' : 'Book Meeting Room'}</h1>
+			<h1>{isEditMode ? 'Meeting Booking' : 'Book Meeting Room'}</h1>
 			<p class="subtitle">
 				{isEditMode ? 'View or modify your meeting booking' : 'Schedule online, offline, or hybrid meetings'}
 			</p>
 		</div>
 		{#if isEditMode && bookerName}
 			<div class="header-right">
-				<div class="booker-info">
-					<div class="booker-avatar">{bookerName[0]?.toUpperCase() ?? '?'}</div>
-					<div class="booker-details">
-						<span class="booker-name">{bookerName}</span>
-						{#if bookerDepartment}
-							<span class="booker-dept">{bookerDepartment}</span>
-						{/if}
-					</div>
-				</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr;">
+                    <div>Book Number</div><div>{bookdata.requestNumber}</div>
+                    <div>Status</div><div>{bookdata.status}</div>
+                    <div>Requester</div><div>{bookerName}</div>
+                    <div>Unit</div><div>{bookerDepartment}</div>
+                </div>
+				{#if bookdata.status !== 'completed'}
 				<button class="btn-cancel-booking" onclick={cancelBooking} disabled={isCancelling}>
 					{isCancelling ? 'Cancelling…' : 'Cancel Booking'}
 				</button>
+				{/if}
 			</div>
 		{/if}
 	</div>
@@ -473,14 +472,14 @@
 			<!-- Room Selection (for offline/hybrid) -->
 			{#if meetingType === 'offline' || meetingType === 'hybrid'}
 				<div class="card" transition:slide={{ duration: 300 }}>
-					<h2>Select Room {filteredRooms.length}</h2>
+					<h2>Select Room </h2>
 					{#if isLoadingRooms}
 						<div class="loading-rooms">Loading available rooms...</div>
-					{:else if filteredRooms.length === 0}
+					{:else if availableRooms.length === 0}
 						<div class="no-rooms">No rooms available for this meeting type</div>
 					{:else}
 						<div class="room-grid">
-								{#each filteredRooms as room}
+								{#each availableRooms as room}
 									<label class="room-card {selectedRoom === room.id ? 'selected' : ''}">
 										<input type="radio" bind:group={selectedRoom} value={room.id} />
 										<div class="room-content">
@@ -598,11 +597,11 @@
 
 			<!-- Actions -->
 			<div class="form-actions">
-				<a href="/meeting/bookings" class="btn-secondary">Cancel</a>
+				<a href="/meeting/bookings" class="btn-secondary">Back</a>
 				<button type="submit" class="btn-primary" disabled={isSubmitting}>
 					{isSubmitting
 						? (isEditMode ? 'Updating...' : 'Submitting...')
-						: (isEditMode ? 'Update Booking' : 'Book Meeting Room')}
+						: (isEditMode ? 'Update' : 'Create Booking')}
 				</button>
 			</div>
 		</form>

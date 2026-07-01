@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { browser } from '$app/environment';
 	import { slide } from 'svelte/transition';
 
 	let title = 'Approve Meeting Requests - Admin';
@@ -197,8 +198,8 @@
 	// Re-apply filters when search changes
 	$: searchQuery, applyFilters();
 
-	// Reload when filters or page changes
-	$: statusFilter, typeFilter, currentPage, loadRequests();
+	// Reload when filters or page changes (browser only — avoids SSR fetch with relative URL)
+	$: if (browser) { statusFilter, typeFilter, currentPage, loadRequests(); }
 </script>
 
 <svelte:head>

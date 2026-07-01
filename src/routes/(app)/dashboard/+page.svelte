@@ -180,10 +180,8 @@
 		{/if}
 
 		<div class="space-y-4">
-			<a
-				href="/auth/login"
-				class="block w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition text-center font-semibold"
-			>
+			<a href="/auth/login"
+				class="block w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition text-center font-semibold">
 				Sign in with SSO
 			</a>
 		</div>
@@ -241,7 +239,90 @@
 		<h1>Dashboard</h1>
 		<p class="subtitle">Welcome back, {user.name || user.email}!</p>
 	</div>
+	<!-- Main Content Grid -->
+	<div class="content-grid">
+        <!-- Teammates -->
+    	{#if user?.orgUnitId}
+    	<div class="card teammates">
+    		<h2>👥 My Team {#if departmentName}<span class="dept-label">{departmentName}</span>{/if}</h2>
+    		{#if teammates.length === 0}
+    			<p class="empty-hint">No teammates found in your department.</p>
+    		{:else}
+    			<div class="teammate-list">
+    				{#each teammates as t}
+    					<div class="teammate-row">
+    						<div class="teammate-avatar">{(t.firstName?.[0] ?? '?').toUpperCase()}{(t.lastName?.[0] ?? '').toUpperCase()}</div>
+    						<div class="teammate-info">
+    							<span class="teammate-name">{t.firstName} {t.lastName}</span>
+    							<span class="teammate-email">{t.email}</span>
+    						</div>
+    						{#if t.roleNames?.length}
+    							<span class="teammate-role">{t.roleNames[0]}</span>
+    						{/if}
+    					</div>
+    				{/each}
+    			</div>
+    		{/if}
+    	</div>
+    	{/if}
 
+		<!-- Upcoming Bookings -->
+		<div class="card bookings">
+			<h2>Upcoming Bookings</h2>
+			<div class="booking-list">
+				{#each upcomingBookings as booking}
+					<div class="booking-item">
+						<div class="booking-type {booking.type.toLowerCase()}">{booking.type}</div>
+						<div class="booking-details">
+							<h4>{booking.title}</h4>
+							<p>{booking.location}</p>
+							<span class="booking-time">⏰ {booking.time}</span>
+						</div>
+					</div>
+				{/each}
+			</div>
+		</div>
+		<!-- Quick Actions -->
+		<div class="card quick-actions">
+			<h2>Quick Actions</h2>
+			<div class="actions-grid">
+				<a href="/transportation/request" class="action-btn transport">
+					<span class="action-icon">🚗</span>
+					<span>Request Transport</span>
+				</a>
+				<a href="/meeting/calendar" class="action-btn transport">
+					<span class="action-icon">📅</span>
+					<span>Meeting Calendar</span>
+				</a>
+				<a href="/meeting/book" class="action-btn meeting">
+					<span class="action-icon">🎫</span>
+					<span>Book Meeting Room</span>
+				</a>
+				<a href="/transportation/tracking" class="action-btn admin">
+					<span class="action-icon">📊</span>
+					<span>Track Vehicles</span>
+				</a>
+			</div>
+		</div>
+
+		<!-- Recent Activities -->
+		<div class="card activities">
+			<h2>Recent Activities</h2>
+			<div class="activity-list">
+				{#each recentActivities as activity}
+					<div class="activity-item {activity.type}">
+						<div class="activity-icon">
+							{activity.type === 'transport' ? '🚗' : '🏢'}
+						</div>
+						<div class="activity-content">
+							<p class="activity-message">{activity.message}</p>
+							<span class="activity-time">{activity.time}</span>
+						</div>
+					</div>
+				{/each}
+			</div>
+		</div>
+	</div>
 	<!-- Transportation Overview Section -->
 	<div class="section-header">
 		<h2>🚗 Transportation</h2>
@@ -359,92 +440,6 @@
 			</div>
 			<div class="coming-soon-badge">Coming Soon</div>
 		</div>
-	</div>
-
-	<!-- Main Content Grid -->
-	<div class="content-grid">
-		<!-- Quick Actions -->
-		<div class="card quick-actions">
-			<h2>Quick Actions</h2>
-			<div class="actions-grid">
-				<a href="/transportation/request" class="action-btn transport">
-					<span class="action-icon">🚗</span>
-					<span>Request Transport</span>
-				</a>
-				<a href="/meeting/calendar" class="action-btn transport">
-					<span class="action-icon">📅</span>
-					<span>Meeting Calendar</span>
-				</a>
-				<a href="/meeting/book" class="action-btn meeting">
-					<span class="action-icon">🎫</span>
-					<span>Book Meeting Room</span>
-				</a>
-				<a href="/transportation/tracking" class="action-btn admin">
-					<span class="action-icon">📊</span>
-					<span>Track Vehicles</span>
-				</a>
-			</div>
-		</div>
-
-		<!-- Recent Activities -->
-		<div class="card activities">
-			<h2>Recent Activities</h2>
-			<div class="activity-list">
-				{#each recentActivities as activity}
-					<div class="activity-item {activity.type}">
-						<div class="activity-icon">
-							{activity.type === 'transport' ? '🚗' : '🏢'}
-						</div>
-						<div class="activity-content">
-							<p class="activity-message">{activity.message}</p>
-							<span class="activity-time">{activity.time}</span>
-						</div>
-					</div>
-				{/each}
-			</div>
-		</div>
-
-		<!-- Upcoming Bookings -->
-		<div class="card bookings">
-			<h2>Upcoming Bookings</h2>
-			<div class="booking-list">
-				{#each upcomingBookings as booking}
-					<div class="booking-item">
-						<div class="booking-type {booking.type.toLowerCase()}">{booking.type}</div>
-						<div class="booking-details">
-							<h4>{booking.title}</h4>
-							<p>{booking.location}</p>
-							<span class="booking-time">⏰ {booking.time}</span>
-						</div>
-					</div>
-				{/each}
-			</div>
-		</div>
-
-		<!-- Teammates -->
-		{#if user?.orgUnitId}
-		<div class="card teammates">
-			<h2>👥 My Team {#if departmentName}<span class="dept-label">{departmentName}</span>{/if}</h2>
-			{#if teammates.length === 0}
-				<p class="empty-hint">No teammates found in your department.</p>
-			{:else}
-				<div class="teammate-list">
-					{#each teammates as t}
-						<div class="teammate-row">
-							<div class="teammate-avatar">{(t.firstName?.[0] ?? '?').toUpperCase()}{(t.lastName?.[0] ?? '').toUpperCase()}</div>
-							<div class="teammate-info">
-								<span class="teammate-name">{t.firstName} {t.lastName}</span>
-								<span class="teammate-email">{t.email}</span>
-							</div>
-							{#if t.roleNames?.length}
-								<span class="teammate-role">{t.roleNames[0]}</span>
-							{/if}
-						</div>
-					{/each}
-				</div>
-			{/if}
-		</div>
-		{/if}
 	</div>
 </div>
 {/if}

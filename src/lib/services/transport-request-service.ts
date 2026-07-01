@@ -1,6 +1,13 @@
 import { ObjectId, type Db } from 'mongodb';
 import { collections } from '$lib/server/db/mongodb';
 import { createPaginationMeta } from '$lib/server/api/response';
+import { sendEmail, getUserInfo, getAdminEmails } from '$lib/server/email';
+import {
+	transportApprovedEmail,
+	transportRejectedEmail,
+	transportCancelledEmail,
+	type TransportEmailData
+} from '$lib/server/email/templates';
 
 export interface ListParams {
 	page?: number;
@@ -133,5 +140,64 @@ export async function applyAction(
 		{ $set: update }
 	);
 
+	// Fire-and-forget email notifications for status-changing actions
+	const emailAction = params.action;
+	if (['approve', 'reject', 'cancel'].includes(emailAction)) {
+		sendTransportNotification(db, request, params, user, emailAction).catch((e) =>
+			console.error('[Email] Transport notification failed:', e)
+		);
+	}
+
 	return {};
+}
+
+async function sendTransportNotification(
+	db: Db,
+	request: any,
+	params: ActionParams,
+	actor: any,
+	action: string
+): Promise<void> {
+	console.log(`[Email] Transport ${action} notification — userId: ${request.userId}`);
+	const requester = await getUserInfo(request.userId);
+	if (!requester) {
+		console.warn(`[Email] User not found for userId: ${request.userId} — skipping notification`);
+		return;
+	}
+	console.log(`[Email] Sending ${action} notification to ${requester.email}`);
+
+	const emailData: TransportEmailData = {
+		requestId: request._id?.toString(),
+		purpose: request.purpose || request.tripPurpose || '-',
+		scheduledTime: request.scheduledTime || request.departureTime,
+		pickup: request.pickupAddress || request.pickupLocation?.address || '-',
+		destination: request.destinationAddress || request.destination?.address || '-',
+		type: request.type || request.transportType || '-',
+		requesterName: requester.name,
+		approverName: actor.name || actor.email,
+		vehicleName: params.vehicleName,
+		driverName: params.driverName,
+		voucherCode: params.voucherCode,
+		rejectionReason: params.rejectionReason,
+	};
+
+	if (action === 'approve') {
+		const tpl = transportApprovedEmail(emailData);
+		await sendEmail({ to: requester.email, ...tpl });
+	} else if (action === 'reject') {
+		const tpl = transportRejectedEmail(emailData);
+		await sendEmail({ to: requester.email, ...tpl });
+	} else if (action === 'cancel') {
+		const cancelledByAdmin = actor.userId !== request.userId;
+		if (cancelledByAdmin) {
+			const tpl = transportCancelledEmail(emailData, true);
+			await sendEmail({ to: requester.email, ...tpl });
+		} else {
+			const adminEmails = await getAdminEmails(request.companyId);
+			if (adminEmails.length) {
+				const tpl = transportCancelledEmail(emailData, false);
+				await sendEmail({ to: adminEmails, ...tpl });
+			}
+		}
+	}
 }

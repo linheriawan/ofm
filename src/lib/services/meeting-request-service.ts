@@ -1,6 +1,14 @@
 import { ObjectId, type Db } from 'mongodb';
 import { collections } from '$lib/server/db/mongodb';
 import { createPaginationMeta } from '$lib/server/api/response';
+import { sendEmail, getUserInfo, getAdminEmails } from '$lib/server/email';
+import {
+	meetingApprovedEmail,
+	meetingRejectedEmail,
+	meetingCancelledEmail,
+	meetingNewRequestEmail,
+	type MeetingEmailData
+} from '$lib/server/email/templates';
 
 export interface ListParams {
 	page?: number;
@@ -169,5 +177,64 @@ export async function applyAction(
 		{ $set: update }
 	);
 
+	// Fire-and-forget email notifications for status-changing actions
+	const emailAction = params.action;
+	if (['approve', 'reject', 'cancel'].includes(emailAction)) {
+		sendMeetingNotification(db, request, params, user, emailAction).catch((e) =>
+			console.error('[Email] Meeting notification failed:', e)
+		);
+	}
+
 	return {};
+}
+
+async function sendMeetingNotification(
+	db: Db,
+	request: any,
+	params: ActionParams,
+	actor: any,
+	action: string
+): Promise<void> {
+	console.log(`[Email] Meeting ${action} notification — userId: ${request.userId}`);
+	const requester = await getUserInfo(request.userId);
+	if (!requester) {
+		console.warn(`[Email] User not found for userId: ${request.userId} — skipping notification`);
+		return;
+	}
+	console.log(`[Email] Sending ${action} notification to ${requester.email}`);
+
+	const emailData: MeetingEmailData = {
+		requestId: request._id?.toString(),
+		title: request.title,
+		type: request.type,
+		startTime: request.startTime,
+		endTime: request.endTime,
+		roomName: request.roomName,
+		requesterName: requester.name,
+		approverName: actor.name || actor.email,
+		rejectionReason: params.rejectionReason,
+		cancellationReason: params.notes,
+	};
+
+	if (action === 'approve') {
+		const tpl = meetingApprovedEmail(emailData);
+		await sendEmail({ to: requester.email, ...tpl });
+	} else if (action === 'reject') {
+		const tpl = meetingRejectedEmail(emailData);
+		await sendEmail({ to: requester.email, ...tpl });
+	} else if (action === 'cancel') {
+		const cancelledByAdmin = actor.userId !== request.userId;
+		if (cancelledByAdmin) {
+			// Notify the requester their booking was cancelled
+			const tpl = meetingCancelledEmail(emailData, true);
+			await sendEmail({ to: requester.email, ...tpl });
+		} else {
+			// Requester cancelled their own — notify admins
+			const adminEmails = await getAdminEmails(request.companyId);
+			if (adminEmails.length) {
+				const tpl = meetingCancelledEmail({ ...emailData, requesterName: requester.name }, false);
+				await sendEmail({ to: adminEmails, ...tpl });
+			}
+		}
+	}
 }

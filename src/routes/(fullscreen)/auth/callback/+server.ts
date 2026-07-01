@@ -87,7 +87,7 @@ export const GET: RequestHandler = async (event) => {
 		console.log('✅ User roles loaded:', roleNames);
 
 		console.log('🔐 Creating session...');
-		const sessionToken = await createSession(userInfo, tokens, user.companyId, roleNames);
+		const sessionToken = await createSession(userInfo, tokens, user.companyId, roleNames, user.userId);
 		console.log('✅ Session created');
 
 		setSessionCookie(event, sessionToken);
