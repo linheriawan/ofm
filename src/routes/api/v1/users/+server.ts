@@ -62,7 +62,6 @@ export const GET: RequestHandler = async ({ url }) => {
 				roleCounts[key] = (roleCounts[key] ?? 0) + c.count;
 			}
 		}
-
 		const result = await listDocuments<User>('users', { filter, page, limit });
 
 		if (result.data) {

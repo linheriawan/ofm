@@ -35,16 +35,16 @@ export const load: LayoutServerLoad = async ({ locals, parent }) => {
 				.find({ companyId: { $in: user.companyAccess }, isActive: true })
 				.sort({ companyName: 1 })
 				.toArray();
-		} else if (user.companyId) {
+		} else if (user.companyCode) {
 			// Single-company user: only their own company
 			companies = await db
 				.collection(collections.companies)
-				.find({ companyId: user.companyId, isActive: true })
+				.find({ companyId: user.companyCode, isActive: true })
 				.toArray();
 		}
 
 		const selectedCompanyId =
-			user.selectedCompanyId || user.companyId || companies[0]?.companyId || null;
+			user.selectedCompanyId || user.companyCode || companies[0]?.code || null;
 
 		// Build tree for forms (company access picker, role scope picker)
 		const companyTree: CompanyNode[] = buildCompanyTree(companies);
@@ -56,7 +56,7 @@ export const load: LayoutServerLoad = async ({ locals, parent }) => {
 				companyName: c.companyName,
 				parentCompanyId: c.parentCompanyId
 			})),
-			ssoBaseUrl: env.SSO_ISSUER || 'http://localhost:5173',
+			ssoBaseUrl: env.SSO_ISSUER || 'https://sso.ias.id',
 			companyTree,
 			selectedCompanyId
 		};

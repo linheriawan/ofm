@@ -161,8 +161,12 @@ export function buildFilterFromParams(searchParams: URLSearchParams, allowedFilt
 
 	for (const key of allowedFilters) {
 		const value = searchParams.get(key);
-		if (value) {
-			filter[key] = value;
+    if (value) {
+      switch (value){
+        case 'true': filter[key] = true; break;
+        case 'false': filter[key] = false; break;
+        default: filter[key] = value;  break;
+      }
 		}
 	}
 

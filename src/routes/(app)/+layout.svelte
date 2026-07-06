@@ -8,7 +8,7 @@
 	let masterDataDropdownOpen = false;
 	let configDropdownOpen = false;
 	let userMenuOpen = false;
-
+	let agreeTOU=false
 	// Get user from page data
 	$: user = $page.data.user;
 	$: ssoBaseUrl = $page.data.ssoBaseUrl;
@@ -44,9 +44,7 @@
 		}
 	}
 
-	function toggleMenu() {
-		isMenuOpen = !isMenuOpen;
-	}
+	function toggleMenu() { isMenuOpen = !isMenuOpen; }
 
 	function toggleRequestsDropdown() {
 		requestsDropdownOpen = !requestsDropdownOpen;
@@ -96,22 +94,34 @@
 
 		document.addEventListener('click', handleClickOutside);
 
-		return () => {
-			document.removeEventListener('click', handleClickOutside);
-		};
+		return () => { document.removeEventListener('click', handleClickOutside); };
 	});
 </script>
 
 <div class="app">
+    {#if !agreeTOU}
+    <div style="width:100vw;height:100vh;overflow:hidden;">
+        <div style="display: flex; flex-direction: column;height:90vh;padding:1em;">
+            <h1 style="align-self: center;">Terms Of Usage</h1>
+            <ol>
+                <li></li>
+                <li></li>
+            </ol>
+        </div>
+        <div style="display: flex; align-items: center; flex-direction: column;">
+            <button onclick={()=>agreeTOU=true}> I Accept, Continue </button>
+        </div>
+    </div>
+    {:else}
+
 	{#if isAuthenticated}
 	<header>
 		<nav>
+		    <button class="menu-toggle" onclick={toggleMenu}> ☰ </button>
 			<div class="nav-brand">
 				<h1>OFM</h1>
 				<span class="subtitle">Office Facility Management</span>
 			</div>
-
-			<button class="menu-toggle" onclick={toggleMenu}> ☰ </button>
 
 			<ul class:open={isMenuOpen}>
 				<li>
@@ -193,7 +203,7 @@
 				<div class="company-switcher">
 					<select value={selectedCompanyId} onchange={switchCompany}>
 						{#each accessibleCompanies as company}
-							<option value={company.companyId}>{company.companyName}</option>
+							<option value={company.companyId} >{company.companyName}</option>
 						{/each}
 					</select>
 				</div>
@@ -257,6 +267,8 @@
 		<p>&copy; 2025 Office Facility Management System</p>
 	</footer>
 	{/if}
+
+	{/if}
 </div>
 
 <style>
@@ -283,31 +295,18 @@
 	}
 
 	nav {
+    	display: flex; align-items: center;
+        height: 60px;
 		margin: 0 auto;
-		padding: 0 2rem;
-		display: flex;
-		align-items: center;
-		gap: 2rem;
-		height: 60px;
+		padding: 0 1rem;
+		gap: 1rem;
 	}
 
-	.nav-brand {
-		display: flex;
-		flex-direction: column;
-		gap: 0.2rem;
-	}
-
-	.nav-brand h1 {
-		margin: 0;
-		font-size: 1.5rem;
-		font-weight: 700;
-	}
-
+	.nav-brand { display: flex; flex-direction: column; gap: 0.2rem; }
+	.nav-brand h1 { margin: 0; font-size: 1.5rem; font-weight: 700; }
 	.subtitle {
-		font-size: 0.75rem;
-		opacity: 0.9;
-		color:white;
-		margin-top: -.5em;
+		color:white; font-size: 0.75rem; opacity: 0.9;
+		margin-top: -.5em; white-space:nowrap; overflow: hidden; text-overflow: ellipsis;
 	}
 
 	.menu-toggle {
@@ -339,18 +338,11 @@
 		font-weight: 500;
 	}
 
-	nav ul li a:hover {
-		background: rgba(255, 255, 255, 0.2);
-	}
-
-	nav ul li a.active {
-		background: rgba(255, 255, 255, 0.3);
-	}
+	nav ul li a:hover { background: rgba(255, 255, 255, 0.2); }
+	nav ul li a.active { background: rgba(255, 255, 255, 0.3); }
 
 	/* Dropdown */
-	.dropdown {
-		position: relative;
-	}
+	.dropdown { position: relative; }
 
 	.dropdown-trigger {
 		background: none;
@@ -364,14 +356,8 @@
 		font-size: 1rem;
 		font-family: inherit;
 	}
-
-	.dropdown-trigger:hover {
-		background: rgba(255, 255, 255, 0.2);
-	}
-
-	.dropdown-trigger.active {
-		background: rgba(255, 255, 255, 0.3);
-	}
+	.dropdown-trigger:hover { background: rgba(255, 255, 255, 0.2); }
+	.dropdown-trigger.active { background: rgba(255, 255, 255, 0.3); }
 
 	.dropdown-menu {
 		position: absolute;
@@ -388,14 +374,8 @@
 	}
 
 	@keyframes dropdownFade {
-		from {
-			opacity: 0;
-			transform: translateY(-10px);
-		}
-		to {
-			opacity: 1;
-			transform: translateY(0);
-		}
+		from { opacity: 0; transform: translateY(-10px); }
+		to { opacity: 1; transform: translateY(0); }
 	}
 
 	.dropdown-menu a, .menu-item {
@@ -439,29 +419,8 @@
 		max-width: 180px;
 	}
 
-	.company-switcher select option {
-		background: #4a5568;
-		color: white;
-	}
-
-	.company-switcher select:focus {
-		outline: none;
-		border-color: rgba(255, 255, 255, 0.6);
-	}
-
-	.company-badge {
-		background: rgba(255, 255, 255, 0.15);
-		color: white;
-		border: 1px solid rgba(255, 255, 255, 0.3);
-		padding: 0.4rem 0.75rem;
-		border-radius: 6px;
-		font-size: 0.85rem;
-		font-weight: 500;
-		white-space: nowrap;
-		max-width: 180px;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
+	.company-switcher select option { background: #4a5568; color: white; }
+	.company-switcher select:focus { outline: none; border-color: rgba(255, 255, 255, 0.6); }
 
 	.user-menu {
 		position: relative;
@@ -490,15 +449,8 @@
 		border-color: rgba(255, 255, 255, 0.5);
 	}
 
-	.user-name {
-		font-size: 0.9rem;
-		white-space: nowrap;
-	}
-
-	.user-arrow {
-		font-size: 0.75rem;
-		opacity: 0.8;
-	}
+	.user-name { font-size: 0.9rem; white-space: nowrap; }
+	.user-arrow { font-size: 0.75rem; opacity: 0.8; }
 
 	.user-dropdown {
 		position: absolute;
@@ -598,18 +550,10 @@
 	}
 
 	main {
-		flex: 1;
-		width: 100%;
-		margin: 0 auto;
-		padding: 2rem;
-		box-sizing: border-box;
-		overflow-x: hidden;
+		flex: 1; width: 100%; margin: 0 auto; padding: 2rem; box-sizing: border-box; overflow-x: hidden;
 	}
 
-	main.no-header {
-		padding: 0;
-	}
-
+	main.no-header { padding: 0; }
 	main > * {
 		max-width: 1400px;
 		margin-left: auto;
@@ -622,46 +566,31 @@
 		text-align: center;
 		padding: .5rem;
 		margin-top: 3rem;
-	}
-
-	footer p {
-		margin: 0;
-		font-size: 0.9rem;
-		opacity: 0.8;
+		p { margin: 0; font-size: 0.9rem; opacity: 0.8; }
 	}
 
 	@media (max-width: 768px) {
-		.menu-toggle {
-			display: block;
-			margin-left: auto;
-		}
-
+		.menu-toggle { display: block;  }
 		nav ul {
 			position: absolute;
-			top: 70px;
+			top: 60px;
 			left: 0;
 			right: 0;
 			background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 			flex-direction: column;
-			padding: 1rem;
+			padding: 0 0 1rem 0;
 			box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 			display: none;
 		}
-
-		nav ul.open {
-			display: flex;
+		nav ul.open { display: flex;  }
+		nav ul li{
+		    width: 100%;
+			button,a{width: 100%;display:block;text-align:center;}
 		}
 
-		nav ul li a {
-			display: block;
-		}
-
-		.user-menu {
-			display: none;
-		}
-
-		main {
-			padding: 1rem;
-		}
+		main { padding: 1rem; }
+		.nav-brand{display:none}
+		.company-switcher select {max-width: 130px;}
+		/*.user-menu { display: none; }*/
 	}
 </style>

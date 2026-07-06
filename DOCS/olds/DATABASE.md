@@ -32,7 +32,7 @@ This will:
 ### What gets seeded:
 
 **Organizations:**
-- 1 Company (Indonesian Aviation Services - IAS)
+- 1 Company (Injourney Aviation Services - IAS)
 - 2 Locations (Jakarta, Surabaya)
 
 **Users & Permissions:**

@@ -317,7 +317,7 @@
                     <div>Requester</div><div>{bookerName}</div>
                     <div>Unit</div><div>{bookerDepartment}</div>
                 </div>
-				{#if bookdata.status !== 'completed'}
+				{#if bookdata.status !== 'completed' && bookdata.status !== 'cancelled'}
 				<button class="btn-cancel-booking" onclick={cancelBooking} disabled={isCancelling}>
 					{isCancelling ? 'Cancelling…' : 'Cancel Booking'}
 				</button>
