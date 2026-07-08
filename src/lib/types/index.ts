@@ -48,6 +48,7 @@ export interface User extends BaseDocument {
 	companyAccess?: string[]; // Companies accessible to regional admins
 	isActive: boolean;
 	lastLogin?: Date;
+	touAcceptedAt?: Date; // one-time Terms of Usage consent
 }
 
 export type RolePermission = 'employee' | 'driver' | 'admin';

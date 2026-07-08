@@ -73,6 +73,59 @@ export async function listMeetingRequests(db: Db, params: ListParams) {
 		db.collection(collections.meetingRequests).countDocuments(query)
 	]);
 
+	// Resolve room names for requests that don't have one stamped yet (e.g. pending)
+	const unresolvedRoomIds = [...new Set(
+		docs.filter((d) => d.roomId && !d.roomName).map((d) => d.roomId)
+	)];
+	if (unresolvedRoomIds.length) {
+		const rooms = await db.collection(collections.meetingRooms)
+			.find({ roomId: { $in: unresolvedRoomIds } })
+			.project({ roomId: 1, roomName: 1 })
+			.toArray();
+		const roomNameById = new Map(rooms.map((r) => [r.roomId, r.roomName]));
+		for (const d of docs) {
+			if (d.roomId && !d.roomName) d.roomName = roomNameById.get(d.roomId);
+		}
+	}
+
+	// Backfill requester phone/department on legacy docs created before denormalization
+	const unresolvedUserIds = [...new Set(
+		docs.filter((d) => d.userId && (!d.userPhone || !d.userDepartment)).map((d) => d.userId)
+	)];
+	if (unresolvedUserIds.length) {
+		const users = await db.collection(collections.users)
+			.find({ userId: { $in: unresolvedUserIds } })
+			.project({ userId: 1, phone: 1, departmentId: 1 })
+			.toArray();
+		const userById = new Map(users.map((u) => [u.userId, u]));
+
+		// departmentId may reference departments.departmentId or their _id
+		const deptIds = [...new Set(users.map((u) => u.departmentId).filter(Boolean))];
+		const deptNameById = new Map<string, string>();
+		if (deptIds.length) {
+			const deptFilters: any[] = [{ departmentId: { $in: deptIds } }];
+			const deptObjectIds = deptIds.filter((id) => ObjectId.isValid(id));
+			if (deptObjectIds.length) {
+				deptFilters.push({ _id: { $in: deptObjectIds.map((id) => new ObjectId(id)) } });
+			}
+			const depts = await db.collection(collections.departments)
+				.find({ $or: deptFilters })
+				.project({ departmentId: 1, departmentName: 1 })
+				.toArray();
+			for (const dept of depts) {
+				if (dept.departmentId) deptNameById.set(dept.departmentId, dept.departmentName);
+				deptNameById.set(dept._id.toString(), dept.departmentName);
+			}
+		}
+
+		for (const d of docs) {
+			const u = d.userId ? userById.get(d.userId) : undefined;
+			if (!u) continue;
+			if (!d.userPhone) d.userPhone = u.phone;
+			if (!d.userDepartment && u.departmentId) d.userDepartment = deptNameById.get(u.departmentId);
+		}
+	}
+
 	return {
 		data: docs.map(normalise),
 		meta: createPaginationMeta(page, limit, total)

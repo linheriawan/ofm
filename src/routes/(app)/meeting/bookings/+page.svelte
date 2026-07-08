@@ -8,7 +8,14 @@
 	const columns = [
 		{ key: 'requestNumber', label: 'Request #' },
 		{ key: 'title', label: 'Meeting Title' },
-		{ key: 'roomId', label: 'Room', format: (val: string) => val || '-' },
+		{
+			key: 'roomId',
+			label: 'Room',
+			format: (val: string, row?: any) =>
+				val ? (row?.roomName ? `[${val}] ${row.roomName}` : val) : '-'
+		},
+		{ key: 'userName', label: 'Requester', format: (val: string) => val || '-' },
+		{ key: 'userDepartment', label: 'Department', format: (val: string) => val || '-' },
 		{
 			key: 'type',
 			label: 'Type',

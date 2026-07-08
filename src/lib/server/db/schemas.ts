@@ -144,6 +144,8 @@ export interface MeetingRequest extends BaseDocument {
 	userId: string;
 	userName: string;
 	userEmail: string;
+	userPhone?: string; // denormalized so admins can contact the requester
+	userDepartment?: string; // denormalized department/org unit name
 	companyId: string;
 	departmentId?: string;
 
@@ -162,6 +164,7 @@ export interface MeetingRequest extends BaseDocument {
 
 	// Room booking (for offline/hybrid)
 	roomId?: string;
+	roomName?: string; // denormalized from meeting_rooms for display
 	locationId?: string;
 
 	// Online meeting (for online/hybrid)

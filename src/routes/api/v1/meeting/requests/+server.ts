@@ -75,11 +75,21 @@ export const POST: RequestHandler = async (event) => {
 		const db = getDB();
 		const now = new Date();
 
+		// Denormalize room name for display (list pages, approvals)
+		let roomName: string | undefined;
+		if (body.roomId) {
+			const room = await db.collection(collections.meetingRooms)
+				.findOne({ roomId: body.roomId }, { projection: { roomName: 1 } });
+			roomName = room?.roomName;
+		}
+
 		const request: MeetingRequest = {
 			requestNumber: generateRequestNumber('MR'),
 			userId: user.userId,
 			userName: user.name || user.email,
 			userEmail: user.email,
+			userPhone: user.phone,
+			userDepartment: user.orgUnitName,
 			companyId: user.companyId || 'default',
 
 			title: body.title,
@@ -94,6 +104,7 @@ export const POST: RequestHandler = async (event) => {
 			externalParticipants: body.externalParticipants,
 
 			roomId: body.roomId,
+			roomName,
 			locationId: body.locationId,
 
 			platform: body.platform,

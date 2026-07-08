@@ -40,6 +40,7 @@
 	// Booker info (edit mode only)
 	let bookerName = $state('');
 	let bookerDepartment = $state('');
+	let bookerPhone = $state('');
 	let isCancelling = $state(false);
 	let bookdata = $state<any>({});
 	// Fetch rooms from API
@@ -114,20 +115,24 @@
 				notes = booking.notes || '';
 
 				bookerName = booking.userName || booking.userEmail || '';
+				bookerDepartment = booking.userDepartment || '';
+				bookerPhone = booking.userPhone || '';
 
-				// Resolve department from the booker's user record
-				if (booking.userId) {
+				// Legacy bookings: resolve missing info from the booker's user record
+				if (booking.userId && (!bookerDepartment || !bookerPhone)) {
 					const [userRes, deptRes] = await Promise.all([
 						fetch(`/api/v1/users/${encodeURIComponent(booking.userId)}`).then(r => r.json()),
 						fetch('/api/v1/departments?limit=200').then(r => r.json())
 					]);
-					console.log(userRes,encodeURIComponent(booking.userId))
 					const bookerUser = userRes.success ? userRes.data : null;
 
-					if (bookerUser?.departmentId && deptRes.success) {
-						const dept = deptRes.data?.find((d: any) => d._id === bookerUser.departmentId || d.departmentId === bookerUser.departmentId);
-						bookerDepartment = dept?.departmentName ?? '';
-						bookerName=bookerUser.firstName+' '+bookerUser.lastName
+					if (bookerUser) {
+						bookerName = `${bookerUser.firstName} ${bookerUser.lastName}`.trim() || bookerName;
+						if (!bookerPhone) bookerPhone = bookerUser.phone || '';
+						if (!bookerDepartment && bookerUser.departmentId && deptRes.success) {
+							const dept = deptRes.data?.find((d: any) => d._id === bookerUser.departmentId || d.departmentId === bookerUser.departmentId);
+							bookerDepartment = dept?.departmentName ?? '';
+						}
 					}
 				}
 			}
@@ -316,6 +321,9 @@
                     <div>Status</div><div>{bookdata.status}</div>
                     <div>Requester</div><div>{bookerName}</div>
                     <div>Unit</div><div>{bookerDepartment}</div>
+                    {#if bookerPhone}
+                    <div>Phone</div><div><a href="tel:{bookerPhone}">{bookerPhone}</a></div>
+                    {/if}
                 </div>
 				{#if bookdata.status !== 'completed' && bookdata.status !== 'cancelled'}
 				<button class="btn-cancel-booking" onclick={cancelBooking} disabled={isCancelling}>

@@ -298,6 +298,12 @@
 									<span class="label">Participants:</span>
 									<span class="value">{request.participantCount || request.participants.length}</span>
 								</div>
+								{#if request.roomName || request.roomId}
+									<div class="info-item">
+										<span class="label">Room:</span>
+										<span class="value">🏢 {request.roomName || request.roomId}</span>
+									</div>
+								{/if}
 								{#if request.platform}
 									<div class="info-item">
 										<span class="label">Platform:</span>
@@ -398,6 +404,9 @@
 					<p><strong>Organizer:</strong> {selectedRequest.userName}</p>
 					<p><strong>Type:</strong> {selectedRequest.type}</p>
 					<p><strong>Title:</strong> {selectedRequest.title}</p>
+					{#if selectedRequest.roomName || selectedRequest.roomId}
+						<p><strong>Room:</strong> {selectedRequest.roomName || selectedRequest.roomId}</p>
+					{/if}
 					<p><strong>Start:</strong> {formatDate(selectedRequest.startTime)}</p>
 					<p><strong>End:</strong> {formatDate(selectedRequest.endTime)}</p>
 					<p><strong>Participants:</strong> {selectedRequest.participantCount || selectedRequest.participants.length}</p>
@@ -415,11 +424,6 @@
 						></textarea>
 					</div>
 				{:else if selectedRequest.status === 'pending'}
-					{#if selectedRequest.roomId || selectedRequest.roomName}
-						<div class="info-banner">
-							<strong>Room:</strong> {selectedRequest.roomName || selectedRequest.roomId}
-						</div>
-					{/if}
 					<div class="form-group">
 						<label for="approvalNotes">Notes (Optional)</label>
 						<textarea
@@ -874,16 +878,6 @@
 	textarea:focus {
 		outline: none;
 		border-color: #667eea;
-	}
-
-	.info-banner {
-		background: #f0f9ff;
-		border: 1px solid #bae6fd;
-		border-radius: 6px;
-		padding: 0.75rem 1rem;
-		margin-bottom: 1rem;
-		font-size: 0.9rem;
-		color: #0369a1;
 	}
 
 	.assignment-section {

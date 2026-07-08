@@ -10,6 +10,8 @@ export interface AuthenticatedUser {
 	userId: string;
 	email: string;
 	name?: string;
+	phone?: string;
+	orgUnitName?: string; // department / unit kerja
 	roles: string[];
 	permissions?: string[]; // resolved from roles collection: 'employee' | 'driver' | 'admin'
 	companyId?: string;

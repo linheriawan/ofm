@@ -9,11 +9,24 @@ export const load: LayoutServerLoad = async ({ locals, parent }) => {
 	const user = locals.user;
 
 	if (!user) {
-		return { ...parentData, accessibleCompanies: [], companyTree: [], selectedCompanyId: null };
+		return {
+			...parentData,
+			accessibleCompanies: [],
+			companyTree: [],
+			selectedCompanyId: null,
+			touAcceptedAt: null
+		};
 	}
 
 	try {
 		const db = await connectDB();
+
+		// Terms of Usage consent timestamp (persisted on the user document)
+		const dbUser = await db
+			.collection(collections.users)
+			.findOne({ userId: user.userId }, { projection: { touAcceptedAt: 1 } });
+		const touAcceptedAt: Date | null = dbUser?.touAcceptedAt ?? null;
+
 		const userPerms = user.permissions ?? [];
 		const isGlobalAdmin =
 			userPerms.includes('*') || userPerms.includes('admin') ||
@@ -58,7 +71,8 @@ export const load: LayoutServerLoad = async ({ locals, parent }) => {
 			})),
 			ssoBaseUrl: env.SSO_ISSUER || 'https://sso.ias.id',
 			companyTree,
-			selectedCompanyId
+			selectedCompanyId,
+			touAcceptedAt
 		};
 	} catch (err) {
 		console.error('Error loading accessible companies:', err);
@@ -66,7 +80,8 @@ export const load: LayoutServerLoad = async ({ locals, parent }) => {
 			...parentData,
 			accessibleCompanies: [],
 			companyTree: [],
-			selectedCompanyId: user.companyId || null
+			selectedCompanyId: user.companyId || null,
+			touAcceptedAt: null
 		};
 	}
 };

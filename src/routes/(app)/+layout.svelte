@@ -8,11 +8,35 @@
 	let masterDataDropdownOpen = false;
 	let configDropdownOpen = false;
 	let userMenuOpen = false;
-	let agreeTOU=false
+	// Date the Terms of Usage last changed — bump this to force everyone to re-consent.
+	// Consent accepted before this date is treated as not given.
+	const touDate = new Date('2026-07-08T00:00:00+07:00');
+	$: agreeTOU = $page.data.touAcceptedAt
+		? new Date($page.data.touAcceptedAt) >= touDate
+		: false;
+	let savingTOU = false;
+
+	async function acceptTOU() {
+		if (savingTOU) return;
+		savingTOU = true;
+		try {
+			const response = await fetch('/api/v1/users/accept-tou', { method: 'POST' });
+			const result = await response.json();
+			if (result.success) {
+				agreeTOU = true;
+			} else {
+				alert(result.error?.message || 'Failed to save consent');
+			}
+		} catch {
+			alert('Failed to save consent');
+		} finally {
+			savingTOU = false;
+		}
+	}
+
 	// Get user from page data
 	$: user = $page.data.user;
 	$: ssoBaseUrl = $page.data.ssoBaseUrl;
-	$: isAuthenticated = !!user;
 	$: isAdmin = !!(user?.permissions?.includes('admin') ||
 		user?.roles?.includes('admin') || user?.roles?.includes('super_admin'));
 
@@ -109,12 +133,11 @@
             </ol>
         </div>
         <div style="display: flex; align-items: center; flex-direction: column;">
-            <button onclick={()=>agreeTOU=true}> I Accept, Continue </button>
+            <button onclick={acceptTOU} disabled={savingTOU}> {savingTOU ? 'Saving...' : 'I Accept, Continue'} </button>
         </div>
     </div>
     {:else}
 
-	{#if isAuthenticated}
 	<header>
 		<nav>
 		    <button class="menu-toggle" onclick={toggleMenu}> ☰ </button>
@@ -256,17 +279,14 @@
 			</div>
 		</nav>
 	</header>
-	{/if}
 
-	<main class:no-header={!isAuthenticated}>
+	<main>
 		<slot />
 	</main>
 
-	{#if isAuthenticated}
 	<footer>
 		<p>&copy; 2025 Office Facility Management System</p>
 	</footer>
-	{/if}
 
 	{/if}
 </div>
@@ -553,7 +573,6 @@
 		flex: 1; width: 100%; margin: 0 auto; padding: 2rem; box-sizing: border-box; overflow-x: hidden;
 	}
 
-	main.no-header { padding: 0; }
 	main > * {
 		max-width: 1400px;
 		margin-left: auto;
