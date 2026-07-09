@@ -11,6 +11,23 @@
 	animation: fadeIn 0.3s ease-in;
 }
 
+.transport-request-page .page-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 1.5rem;
+	flex-wrap: wrap;
+}
+
+.transport-request-page .header-left { flex: 1; min-width: 0; }
+
+.transport-request-page .header-right {
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+	flex-shrink: 0;
+}
+
 .transport-form-container {
 	display: flex;
 	flex-direction: column;

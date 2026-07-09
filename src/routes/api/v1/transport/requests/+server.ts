@@ -87,6 +87,8 @@ export const POST: RequestHandler = async (event) => {
 			userId: user.userId,
 			userName: user.name || user.email,
 			userEmail: user.email,
+			userPhone: user.phone,
+			userDepartment: user.orgUnitName,
 			companyId: user.companyId || 'default',
 
 			pickup: body.pickup,

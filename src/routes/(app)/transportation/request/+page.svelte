@@ -77,6 +77,12 @@
 
 	let selectedVehicle = '';
 
+	// Requester info (edit mode only)
+	let bookdata: any = {};
+	let bookerName = '';
+	let bookerDepartment = '';
+	let bookerPhone = '';
+
 	// Load existing booking if in edit mode
 	async function loadBooking() {
 		if (!bookingId) return;
@@ -88,6 +94,7 @@
 
 			if (result.success && result.data) {
 				const booking = result.data;
+				bookdata = booking;
 
 				// Pre-fill form fields
 				requestType = booking.type === 'company_car' ? 'company-car' : 'voucher';
@@ -119,6 +126,28 @@
 				selectedTransportCompanyId = booking.transportCompanyId || '';
 				selectedVehicle = booking.vehicleId || '';
 				driverShouldWait = booking.driverShouldWait || false;
+
+				bookerName = booking.userName || booking.userEmail || '';
+				bookerDepartment = booking.userDepartment || '';
+				bookerPhone = booking.userPhone || '';
+
+				// Legacy requests: resolve missing info from the requester's user record
+				if (booking.userId && (!bookerDepartment || !bookerPhone)) {
+					const [userRes, deptRes] = await Promise.all([
+						fetch(`/api/v1/users/${encodeURIComponent(booking.userId)}`).then(r => r.json()),
+						fetch('/api/v1/departments?limit=200').then(r => r.json())
+					]);
+					const bookerUser = userRes.success ? userRes.data : null;
+
+					if (bookerUser) {
+						bookerName = `${bookerUser.firstName} ${bookerUser.lastName}`.trim() || bookerName;
+						if (!bookerPhone) bookerPhone = bookerUser.phone || '';
+						if (!bookerDepartment && bookerUser.departmentId && deptRes.success) {
+							const dept = deptRes.data?.find((d: any) => d._id === bookerUser.departmentId || d.departmentId === bookerUser.departmentId);
+							bookerDepartment = dept?.departmentName ?? '';
+						}
+					}
+				}
 			}
 		} catch (error) {
 			console.error('Failed to load booking:', error);
@@ -346,10 +375,25 @@
 
 <div class="transport-request-page">
 	<div class="page-header">
-		<h1>{isEditMode ? 'View/Edit Transportation Request' : 'Request Transportation'}</h1>
-		<p class="page-subtitle">
-			{isEditMode ? 'View or modify your transportation request' : 'Book a company car or request a transportation voucher'}
-		</p>
+		<div class="header-left">
+			<h1>{isEditMode ? 'View/Edit Transportation Request' : 'Request Transportation'}</h1>
+			<p class="page-subtitle">
+				{isEditMode ? 'View or modify your transportation request' : 'Book a company car or request a transportation voucher'}
+			</p>
+		</div>
+		{#if isEditMode && bookerName}
+			<div class="header-right">
+				<div style="display: grid; grid-template-columns: 1fr 1fr;">
+					<div>Request Number</div><div>{bookdata.requestNumber}</div>
+					<div>Status</div><div>{bookdata.status}</div>
+					<div>Requester</div><div>{bookerName}</div>
+					<div>Unit</div><div>{bookerDepartment}</div>
+					{#if bookerPhone}
+					<div>Phone</div><div><a href="tel:{bookerPhone}">{bookerPhone}</a></div>
+					{/if}
+				</div>
+			</div>
+		{/if}
 	</div>
 
 	{#if isLoadingBooking}

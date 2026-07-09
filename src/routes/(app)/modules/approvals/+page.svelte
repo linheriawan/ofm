@@ -302,6 +302,16 @@
 									<span class="label">Passengers:</span>
 									<span class="value">{request.passengerCount}</span>
 								</div>
+								{#if request.type === 'company_car' && request.vehicleName}
+									<div class="info-item">
+										<span class="label">Vehicle:</span>
+										<span class="value">{request.vehicleName}</span>
+									</div>
+									<div class="info-item">
+										<span class="label">Driver:</span>
+										<span class="value">{request.driverName || '—'}</span>
+									</div>
+								{/if}
 							</div>
 
 							{#if request.specialRequirements}
@@ -331,7 +341,7 @@
 							{#if request.status === 'assigned'}
 								<div class="assigned-info">
 									{#if request.type === 'company_car'}
-										<span>✓ {request.vehicleName || 'Vehicle assigned'}{request.driverName ? ` — ${request.driverName}` : ''}</span>
+										<span>✓ Vehicle assigned</span>
 									{:else}
 										<span>✓ Voucher: {request.voucherCode}</span>
 									{/if}

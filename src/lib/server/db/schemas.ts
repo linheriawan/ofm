@@ -40,6 +40,8 @@ export interface TransportationRequest extends BaseDocument {
 	userId: string;
 	userName: string;
 	userEmail: string;
+	userPhone?: string; // denormalized so admins can contact the requester
+	userDepartment?: string; // denormalized department/org unit name
 	companyId: string;
 	departmentId?: string;
 
