@@ -4,6 +4,7 @@ import { exchangeCodeForTokens, getUserInfo } from '$lib/server/auth/oauth';
 import { createSession, setSessionCookie } from '$lib/server/auth/session';
 import { syncUserFromSSO } from '$lib/server/auth/sync';
 import { getOAuthState, deleteOAuthState } from '$lib/server/auth/oauth-state';
+import { resolveSsoRoles } from '$lib/services/roles-service';
 
 export const GET: RequestHandler = async (event) => {
 	const { url, cookies } = event;
@@ -86,8 +87,13 @@ export const GET: RequestHandler = async (event) => {
 		}
 		console.log('✅ User roles loaded:', roleNames);
 
+		// App Roles asserted by the SSO for this client — validated against OFM's own
+		// roles collection (unknown names from the SSO are dropped, not trusted blindly).
+		const ssoRoleNames = await resolveSsoRoles(db, userInfo.roles);
+		console.log('✅ SSO roles resolved:', ssoRoleNames);
+
 		console.log('🔐 Creating session...');
-		const sessionToken = await createSession(userInfo, tokens, user.companyId, roleNames, user.userId);
+		const sessionToken = await createSession(userInfo, tokens, user.companyId, roleNames, user.userId, ssoRoleNames);
 		console.log('✅ Session created');
 
 		setSessionCookie(event, sessionToken);

@@ -25,6 +25,11 @@ export interface UserInfo {
 	name?: string;
 	email_verified?: boolean;
 
+	// App Role names granted for this client in the SSO (Realm Role → Client Role).
+	// Only present when non-empty. Names must match an OFM roles.roleId to have any effect —
+	// see resolveSsoRoles() in sync.ts.
+	roles?: string[];
+
 	// Employee basic info
 	employeeId?: string; // NIK
 	firstName?: string;

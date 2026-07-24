@@ -125,7 +125,7 @@ export interface SessionData {
 	expiresAt: number;
 }
 
-export async function createSession(userInfo: UserInfo, tokens: OAuthTokens, localCompanyId?: string, userRoles?: string[], dbUserId?: string): Promise<string> {
+export async function createSession(userInfo: UserInfo, tokens: OAuthTokens, localCompanyId?: string, userRoles?: string[], dbUserId?: string, ssoRoles?: string[]): Promise<string> {
 	const sessionData: SessionData = {
 		userId: dbUserId || userInfo.sub,
 		email: userInfo.email,
@@ -169,7 +169,7 @@ export async function createSession(userInfo: UserInfo, tokens: OAuthTokens, loc
 
 		// Roles - from OFM database
 		roles: userRoles || [],
-		ssoRoles: [], // Can be populated from SSO if available
+		ssoRoles: ssoRoles || [], // App Roles asserted by the SSO for this client (validated against roles.roleId)
 
 		tokens,
 		expiresAt: Date.now() + tokens.expires_in * 1000
@@ -206,6 +206,13 @@ export async function refreshSession(session: SessionData): Promise<string> {
 		session.tokens = newTokens;
 		session.expiresAt = Date.now() + newTokens.expires_in * 1000;
 		session.name = userInfo.name || session.name;
+
+		// Re-validate SSO-asserted App Roles so a revoked role takes effect on the
+		// next token refresh, rather than lingering until the user's next full login.
+		const { connectDB } = await import('$lib/server/db/mongodb');
+		const { resolveSsoRoles } = await import('$lib/services/roles-service');
+		const db = await connectDB();
+		session.ssoRoles = await resolveSsoRoles(db, userInfo.roles);
 
 		return await encrypt(JSON.stringify(session));
 	} catch (error) {

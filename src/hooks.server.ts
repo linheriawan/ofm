@@ -103,9 +103,12 @@ export const handle: Handle = async ({ event, resolve }) => {
 						selectedCompanyId: session.selectedCompanyId
 					};
 
-					// Resolve canonical permissions from roles collection
+					// Resolve canonical permissions from roles collection — union of OFM-local
+					// roles and App Roles asserted by the SSO (ssoRoles), so a role granted
+					// centrally via the SSO's Realm Role/Client Role actually takes effect here.
 					if (event.locals.user) {
-						event.locals.user.permissions = await resolvePermissions(getDB(), session.roles ?? []);
+						const effectiveRoleIds = [...new Set([...(session.roles ?? []), ...(session.ssoRoles ?? [])])];
+						event.locals.user.permissions = await resolvePermissions(getDB(), effectiveRoleIds);
 					}
 				}
 			}

@@ -37,6 +37,24 @@ export async function initializeSystemRoles(db: Db): Promise<void> {
 	}
 }
 
+/**
+ * Validate App Role names asserted by the SSO (via the OIDC `roles` claim)
+ * against OFM's own roles collection, matched by `roleId`. Unknown names are
+ * dropped — the SSO can only grant roles that already exist here, it can't
+ * inject arbitrary permission strings.
+ */
+export async function resolveSsoRoles(db: Db, ssoRoleNames: string[] | undefined): Promise<string[]> {
+	if (!ssoRoleNames?.length) return [];
+
+	const roles = await db
+		.collection(collections.roles)
+		.find({ roleId: { $in: ssoRoleNames }, isActive: true })
+		.project({ roleId: 1 })
+		.toArray();
+
+	return roles.map((r) => r.roleId);
+}
+
 export async function resolvePermissions(db: Db, roleIds: string[]): Promise<string[]> {
 	if (!roleIds?.length) return ['employee'];
 
